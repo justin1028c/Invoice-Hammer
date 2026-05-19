@@ -1,0 +1,38 @@
+*.iml
+.gradle
+.kotlin/
+.idea/
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+build/
+**/build/
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Generated aggregate (regenerate with aggregate_codebase.py)
+CROSS_PLATFORM_AUDIT.md
+
+# --- iOS / XcodeGen ---------------------------------------------------------
+# The .xcodeproj is generated from iosApp/project.yml by XcodeGen.
+# project.yml is the source of truth; the generated bundle is throwaway.
+iosApp/iosApp.xcodeproj/
+iosApp/iosApp.xcworkspace/
+# Per-user Xcode state inside any (locally generated) project bundle:
+**/xcuserdata/
+**/*.xcuserstate
+# Swift Package Manager build artifacts inside the iOS folder:
+iosApp/.build/
+iosApp/Package.resolved
+# CocoaPods (not used today, but guard against accidental commits):
+iosApp/Pods/
+iosApp/Podfile.lock
+# Kotlin/Native xcode-frameworks output:
+**/build/xcode-frameworks/

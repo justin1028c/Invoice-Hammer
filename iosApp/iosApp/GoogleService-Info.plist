@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>716278040823-6afkdloh5qs359mr896tl725ge7gl8h0.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.716278040823-6afkdloh5qs359mr896tl725ge7gl8h0</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>716278040823-pksk3q4s3g2n40t52ordl99oj49oc6es.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAgvmA9HNfzk8oAma_6pI44ZPZodz-FTYo</string>
+	<key>GCM_SENDER_ID</key>
+	<string>716278040823</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.fordham.toolbelt</string>
+	<key>PROJECT_ID</key>
+	<string>toolbelt-3812f381</string>
+	<key>STORAGE_BUCKET</key>
+	<string>toolbelt-3812f381.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:716278040823:ios:a63b8193aa9de15f33ebf2</string>
+</dict>
+</plist>

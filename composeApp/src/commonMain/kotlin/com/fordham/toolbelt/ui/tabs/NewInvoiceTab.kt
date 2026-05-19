@@ -1,0 +1,289 @@
+package com.fordham.toolbelt.ui.tabs
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.fordham.toolbelt.domain.model.*
+import com.fordham.toolbelt.ui.components.TacticalButton
+import com.fordham.toolbelt.ui.tabs.components.*
+import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
+import com.fordham.toolbelt.util.Permission
+import com.fordham.toolbelt.util.PlatformActions
+
+@Composable
+fun NewInvoiceTab(
+    uiState: NewInvoiceUiState,
+    businessSettings: BusinessSettings,
+    allClients: List<Client>,
+    categories: List<String>,
+    onSaveBusinessSettings: (BusinessSettings) -> Unit,
+    onTimerToggle: () -> Unit,
+    onHourlyRateChange: (String) -> Unit,
+    onBillLabor: () -> Unit,
+    onLogoUriChange: (String?) -> Unit,
+    onPhotoCaptured: (String) -> Unit,
+    onClientNameChange: (String) -> Unit,
+    onClientAddressChange: (String) -> Unit,
+    onSetInvoiceClientDropdownVisible: (Boolean) -> Unit,
+    onSaveToClientDirectoryChange: (Boolean) -> Unit,
+    onRemovePhoto: (String) -> Unit,
+    onSetReceiptPickerVisible: (Boolean) -> Unit,
+    onSetInvoiceCategoryDropdownVisible: (Boolean) -> Unit,
+    onCategoryChange: (String) -> Unit,
+    onItemDescChange: (String) -> Unit,
+    onItemAmtChange: (String) -> Unit,
+    onProcessInvoiceAi: (List<String>) -> Unit,
+    onAddManualLineItem: () -> Unit,
+    onRemoveLineItem: (LineItem) -> Unit,
+    onTaxTextChange: (String) -> Unit,
+    onDepositCollectedChange: (String) -> Unit,
+    onSaveInvoice: (Boolean, BusinessSettings, (String) -> Unit) -> Unit,
+    onLinkReceipt: (ReceiptItem, Double) -> Unit,
+    onShareFile: (String, String) -> Unit,
+    platformActions: PlatformActions,
+    isPremium: Boolean = false
+) {
+    var showBusinessDialog by remember { mutableStateOf(false) }
+
+    if (showBusinessDialog) {
+        BusinessProfileDialog(
+            businessSettings = businessSettings,
+            onDismiss = { showBusinessDialog = false },
+            onSave = { onSaveBusinessSettings(it) }
+        )
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp).verticalScroll(rememberScrollState())) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("INVOICE DETAILS", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
+            TextButton(onClick = { showBusinessDialog = true }) {
+                Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("BUSINESS", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(2.dp, if (uiState.timerRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(18.dp)) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text("JOB TIMER", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary)
+                        Text(uiState.formattedTime, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    TacticalButton(
+                        onClick = { onTimerToggle() }, 
+                        text = if (!uiState.timerRunning) "START TIMER" else "STOP TIMER", 
+                        icon = { Icon(if (!uiState.timerRunning) Icons.Default.PlayArrow else Icons.Default.Stop, null) },
+                        containerColor = if (!uiState.timerRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    )
+                }
+                if (!uiState.timerRunning && uiState.elapsedSeconds > 0) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = uiState.hourlyRate,
+                            onValueChange = { onHourlyRateChange(it) },
+                            label = { Text("RATE ($/HR)", fontWeight = FontWeight.Black) },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        TacticalButton(onClick = { onBillLabor() }, text = "BILL TIME")
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        TacticalButton(
+            onClick = { 
+                platformActions.pickImage { uri ->
+                    uri?.let { onLogoUriChange(it) }
+                }
+            }, 
+            text = if (uiState.logoUri == null) "UPLOAD LOGO" else "LOGO READY ✓", 
+            modifier = Modifier.fillMaxWidth(), 
+            containerColor = MaterialTheme.colorScheme.primary,
+            icon = { Icon(Icons.Default.Image, null) }
+        )
+
+        Spacer(Modifier.height(10.dp))
+        Box {
+            OutlinedTextField(
+                value = uiState.clientName,
+                onValueChange = { onClientNameChange(it) },
+                label = { Text("CLIENT NAME", fontWeight = FontWeight.Black) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(4.dp),
+                trailingIcon = { IconButton(onClick = { onSetInvoiceClientDropdownVisible(true) }) { Icon(Icons.Default.ArrowDropDown, null) } }
+            )
+            DropdownMenu(expanded = uiState.showClientDropdown, onDismissRequest = { onSetInvoiceClientDropdownVisible(false) }) {
+                allClients.forEach { c ->
+                    DropdownMenuItem(
+                        text = { Text(c.name.uppercase(), fontWeight = FontWeight.Bold) },
+                        onClick = { 
+                            onClientNameChange(c.name)
+                            onClientAddressChange(c.address)
+                            onSetInvoiceClientDropdownVisible(false)
+                        }
+                    )
+                }
+            }
+        }
+        OutlinedTextField(value = uiState.clientAddress, onValueChange = { onClientAddressChange(it) }, label = { Text("CLIENT ADDRESS", fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = uiState.saveToClientDirectory, onCheckedChange = { onSaveToClientDirectoryChange(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
+            Text("SAVE TO CLIENT DIRECTORY", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("JOB PHOTOS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
+            TextButton(onClick = {
+                platformActions.capturePhoto { uri ->
+                    uri?.let { onPhotoCaptured(it) }
+                }
+            }) {
+                Icon(Icons.Default.CameraAlt, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text("SNAP PHOTO", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        if (uiState.capturedPhotos.isEmpty()) {
+            Text("NO PHOTOS ADDED YET", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), fontWeight = FontWeight.Bold)
+        } else {
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                uiState.capturedPhotos.forEach { uri ->
+                    Box(modifier = Modifier.size(100.dp)) {
+                        Card(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))) {
+                            coil3.compose.AsyncImage(
+                                model = uri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        IconButton(onClick = { onRemovePhoto(uri) }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)) {
+                            Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        InvoiceLineItemsList(
+            uiState = uiState,
+            businessSettings = businessSettings,
+            categories = categories,
+            onSetReceiptPickerVisible = onSetReceiptPickerVisible,
+            onSetInvoiceCategoryDropdownVisible = onSetInvoiceCategoryDropdownVisible,
+            onCategoryChange = onCategoryChange,
+            onItemDescChange = onItemDescChange,
+            onItemAmtChange = onItemAmtChange,
+            onProcessInvoiceAi = onProcessInvoiceAi,
+            onAddManualLineItem = onAddManualLineItem,
+            onRemoveLineItem = onRemoveLineItem
+        )
+
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(value = uiState.taxText, onValueChange = { onTaxTextChange(it) }, label = { Text("TAX RATE %", fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp))
+        OutlinedTextField(value = uiState.depositCollected, onValueChange = { onDepositCollectedChange(it) }, label = { Text("DEPOSIT COLLECTED ($)", fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(4.dp))
+        
+        Spacer(Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TacticalButton(onClick = { onSaveInvoice(true, businessSettings) { onShareFile(it, "Estimate") } }, text = "SAVE ESTIMATE", modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.secondary, enabled = uiState.canSave)
+            TacticalButton(onClick = { onSaveInvoice(false, businessSettings) { onShareFile(it, "Invoice") } }, text = "SAVE INVOICE", modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.primary, enabled = uiState.canSave)
+        }
+        Spacer(Modifier.height(120.dp))
+    }
+
+    var selectedReceipt by remember { mutableStateOf<ReceiptItem?>(null) }
+    var showMarkupPrompt by remember { mutableStateOf(false) }
+    var markupInput by remember { mutableStateOf("20") }
+
+    if (uiState.showReceiptPicker) {
+        AlertDialog(
+            onDismissRequest = { onSetReceiptPickerVisible(false) },
+            title = { Text("FLOATING EXPENSE POOL", fontWeight = FontWeight.Black) },
+            text = {
+                if (uiState.availableReceipts.isEmpty()) {
+                    Text("NO UNBILLED RECEIPTS FOUND.")
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        items(uiState.availableReceipts.size) { index ->
+                            val receipt = uiState.availableReceipts[index]
+                            ListItem(
+                                headlineContent = { Text(receipt.description.uppercase(), fontWeight = FontWeight.Black) },
+                                supportingContent = { Text(receipt.formattedPrice) },
+                                trailingContent = { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) },
+                                modifier = Modifier.clickable { 
+                                    selectedReceipt = receipt
+                                    showMarkupPrompt = true
+                                    onSetReceiptPickerVisible(false)
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { onSetReceiptPickerVisible(false) }) { Text("CLOSE") } }
+        )
+    }
+
+    if (showMarkupPrompt && selectedReceipt != null) {
+        AlertDialog(
+            onDismissRequest = { showMarkupPrompt = false },
+            title = { Text("APPLY MARKUP?", fontWeight = FontWeight.Black) },
+            text = {
+                Column {
+                    Text("LINKING: ${selectedReceipt!!.description}")
+                    Text("RAW COST: ${selectedReceipt!!.formattedPrice}")
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = markupInput,
+                        onValueChange = { markupInput = it },
+                        label = { Text("MARKUP PERCENTAGE %", fontWeight = FontWeight.Black) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        onLinkReceipt(selectedReceipt!!, 0.0)
+                        showMarkupPrompt = false
+                        selectedReceipt = null
+                    }) { Text("NO (AT COST)") }
+                    TacticalButton(onClick = {
+                        val pct = markupInput.toDoubleOrNull() ?: 0.0
+                        onLinkReceipt(selectedReceipt!!, pct)
+                        showMarkupPrompt = false
+                        selectedReceipt = null
+                    }, text = "APPLY %")
+                }
+            }
+        )
+    }
+}

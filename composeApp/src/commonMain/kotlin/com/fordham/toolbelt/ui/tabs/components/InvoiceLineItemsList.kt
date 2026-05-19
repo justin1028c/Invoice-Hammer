@@ -1,0 +1,131 @@
+package com.fordham.toolbelt.ui.tabs.components
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
+import com.fordham.toolbelt.domain.model.BusinessSettings
+import com.fordham.toolbelt.domain.model.LineItem
+import com.fordham.toolbelt.ui.components.TacticalButton
+import com.fordham.toolbelt.util.DateTimeUtil
+
+@Composable
+fun InvoiceLineItemsList(
+    uiState: NewInvoiceUiState,
+    businessSettings: BusinessSettings,
+    categories: List<String>,
+    onSetReceiptPickerVisible: (Boolean) -> Unit,
+    onSetInvoiceCategoryDropdownVisible: (Boolean) -> Unit,
+    onCategoryChange: (String) -> Unit,
+    onItemDescChange: (String) -> Unit,
+    onItemAmtChange: (String) -> Unit,
+    onProcessInvoiceAi: (List<String>) -> Unit,
+    onAddManualLineItem: () -> Unit,
+    onRemoveLineItem: (LineItem) -> Unit
+) {
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("LINE ITEMS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
+            if (uiState.availableReceipts.isNotEmpty()) {
+                TextButton(onClick = { onSetReceiptPickerVisible(true) }) {
+                    Icon(Icons.Default.Link, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("LINK UNBILLED", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(18.dp)) {
+            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box {
+                    OutlinedButton(
+                        onClick = { onSetInvoiceCategoryDropdownVisible(true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(uiState.selectedCategory.uppercase(), fontWeight = FontWeight.Black)
+                    }
+                    DropdownMenu(
+                        expanded = uiState.showCategoryDropdown,
+                        onDismissRequest = { onSetInvoiceCategoryDropdownVisible(false) }
+                    ) {
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category.uppercase(), fontWeight = FontWeight.Bold) },
+                                onClick = { 
+                                    onCategoryChange(category)
+                                    onSetInvoiceCategoryDropdownVisible(false)
+                                }
+                            ) 
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = uiState.itemDesc,
+                    onValueChange = { onItemDescChange(it) },
+                    label = { Text("DESCRIPTION", fontWeight = FontWeight.Black) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = uiState.itemAmt,
+                        onValueChange = { onItemAmtChange(it) },
+                        label = { Text("PRICE ($)", fontWeight = FontWeight.Black) },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(4.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        TacticalButton(
+                            onClick = { onProcessInvoiceAi(categories) },
+                            text = if (uiState.isProcessingAi) "" else "AI FILL",
+                            enabled = !uiState.isProcessingAi && uiState.itemDesc.length > 5 && businessSettings.isPremium,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            icon = { if (uiState.isProcessingAi) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) else Icon(Icons.Default.AutoAwesome, null) }
+                        )
+                    }
+                }
+                TacticalButton(onClick = { onAddManualLineItem() }, text = "ADD ITEM", modifier = Modifier.align(Alignment.End), containerColor = MaterialTheme.colorScheme.secondary, enabled = uiState.canAddManual)
+            }
+        }
+        uiState.lineItems.forEach { item ->
+            ListItem(
+                headlineContent = { Text(item.category + ": $" + DateTimeUtil.formatDecimal(item.amount, 2), fontWeight = FontWeight.Bold) },
+                supportingContent = { Text(item.description) },
+                trailingContent = { IconButton(onClick = { onRemoveLineItem(item) }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)) } },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
+        }
+        if (uiState.lineItems.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                Text("No items yet. Add labor, parts, or use AI Fill.", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}

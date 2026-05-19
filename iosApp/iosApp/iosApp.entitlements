@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        Keychain access group. The `$(AppIdentifierPrefix)` placeholder is
+        resolved by Xcode at build time using the active provisioning team's
+        prefix. James must NOT hard-code his team prefix here; setting the
+        `DEVELOPMENT_TEAM` in Xcode is enough.
+
+        The single entry below matches the default keychain group Xcode would
+        auto-generate for a target whose Capabilities pane has Keychain Sharing
+        disabled, so this file is safe to commit even before a team is chosen.
+    -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.fordham.toolbelt</string>
+    </array>
+</dict>
+</plist>

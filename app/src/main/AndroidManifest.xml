@@ -1,0 +1,77 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <package android:name="com.thehomedepot" />
+        <package android:name="com.lowes.android" />
+        <package android:name="com.acehardware.rewards" />
+        <package android:name="com.menards.mobile" />
+        <package android:name="com.ferguson.mobile" />
+        <package android:name="com.sherwin.probuyplus" />
+        <package android:name="com.grainger.graingerapp" />
+        <package android:name="com.abcsupply.myabcsupply" />
+        <package android:name="com.graybar.mobile" />
+        <package android:name="com.siteone.mobile" />
+        <package android:name="com.amazon.mShop.android.business.shopping" />
+        <package android:name="com.multiservice.ntca" />
+        <package android:name="com.sunbeltrentals.app" />
+        <package android:name="com.hilti.mobile.hiltionline" />
+        <package android:name="com.mcmaster.android" />
+    </queries>
+
+    <application
+        android:name=".ToolbeltApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.InvoiceApp"
+        android:enableOnBackInvokedCallback="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.fordham.toolbelt.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            xmlns:tools="http://schemas.android.com/tools"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+    </application>
+
+</manifest>

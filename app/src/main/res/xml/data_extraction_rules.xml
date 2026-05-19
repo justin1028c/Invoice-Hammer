@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="invoice_database"/>
+        <exclude domain="sharedpref" path="secure_vault.xml"/>
+        <exclude domain="sharedpref" path="toolbelt_settings.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="invoice_database"/>
+        <exclude domain="sharedpref" path="secure_vault.xml"/>
+        <exclude domain="sharedpref" path="toolbelt_settings.xml"/>
+    </device-transfer>
+</data-extraction-rules>
