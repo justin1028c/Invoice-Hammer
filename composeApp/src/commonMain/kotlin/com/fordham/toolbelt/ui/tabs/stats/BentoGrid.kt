@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,7 +30,7 @@ fun BentoGrid(stats: BusinessStats) {
                 modifier = Modifier.weight(1.8f),
                 title = "NET PROFIT YTD",
                 value = stats.formattedNetProfit,
-                icon = Icons.Default.TrendingUp,
+                icon = Icons.AutoMirrored.Filled.TrendingUp,
                 color = StatsGreen,
                 backgroundContent = {
                     TrendLineBackground(StatsGreen)
@@ -69,7 +69,7 @@ fun BentoGrid(stats: BusinessStats) {
                 title = "UNBILLED",
                 value = stats.formattedUnbilledExpenses,
                 subValue = "FLOATING COSTS",
-                icon = Icons.Default.ReceiptLong,
+                icon = Icons.AutoMirrored.Filled.ReceiptLong,
                 color = MaterialTheme.colorScheme.secondary,
                 backgroundContent = {
                     ReceiptDottedBackground(MaterialTheme.colorScheme.secondary)

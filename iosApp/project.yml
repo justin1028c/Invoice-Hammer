@@ -50,6 +50,9 @@ packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS
     from: 7.1.0
+  Stripe:
+    url: https://github.com/stripe/stripe-ios
+    from: "24.11.0"
 
 targets:
   iosApp:
@@ -78,6 +81,25 @@ targets:
         ENABLE_BITCODE: "NO"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        POWERPAY_BASE_URL: ""
+        POWERPAY_APP_ID: ""
+        POWERPAY_PUBLIC_KEY: ""
+        POWERPAY_SIGNING_SECRET: ""
+        POWERPAY_ENV: "sandbox"
+        POWERPAY_API_VARIANT: "sdk"
+        SUPABASE_URL: ""
+        SUPABASE_ANON_KEY: ""
+        SUPABASE_SERVICE_ROLE_KEY: ""
+        SUPABASE_SCHEMA: "public"
+        GEMINI_MODEL_NAME: "gemini-3.1-flash-lite"
+        FOREMAN_GEMINI_BACKEND_URL: ""
+        FOREMAN_BACKEND_API_KEY: ""
+        GOOGLE_CLIENT_ID: "716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com"
+        STRIPE_PUBLISHABLE_KEY: ""
+        STRIPE_PAYMENT_BACKEND_URL: ""
+        STRIPE_CONNECT_ONBOARDING_URL: ""
+        STRIPE_BACKEND_API_KEY: ""
+        STRIPE_APPLICATION_FEE_BPS: "100"
         # The Run Script build phase below invokes the Gradle task
         # `embedAndSignAppleFrameworkForXcode`, which writes ComposeApp.framework
         # to `$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)`
@@ -121,6 +143,10 @@ targets:
         product: GoogleSignIn
       - package: GoogleSignIn
         product: GoogleSignInSwift
+      - package: Stripe
+        product: StripeCore
+      - package: Stripe
+        product: StripePaymentSheet
 
 schemes:
   iosApp:

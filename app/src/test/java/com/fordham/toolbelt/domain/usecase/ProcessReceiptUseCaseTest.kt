@@ -3,9 +3,9 @@ package com.fordham.toolbelt.domain.usecase
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.GeminiRepository
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
-import com.fordham.toolbelt.domain.repository.SettingsRepository
+import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
+import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
 import io.mockk.*
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
@@ -15,28 +15,31 @@ class ProcessReceiptUseCaseTest {
 
     private val geminiRepository: GeminiRepository = mockk()
     private val receiptRepository: ReceiptRepository = mockk(relaxed = true)
-    private val settingsRepository: SettingsRepository = mockk()
+    private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase = mockk()
     private lateinit var useCase: ProcessReceiptUseCase
 
     private val testImageBytes = byteArrayOf(1, 2, 3, 4, 5)
     private val testItems = listOf(
-        ReceiptItem(id = com.fordham.toolbelt.domain.model.ReceiptId("item1"), description = "Lumber", quantity = 1.0, unitPrice = 50.0, totalPrice = 50.0),
-        ReceiptItem(id = com.fordham.toolbelt.domain.model.ReceiptId("item2"), description = "Nails", quantity = 2.0, unitPrice = 10.0, totalPrice = 20.0)
+        ReceiptItem(id = ReceiptId("item1"), description = "Lumber", quantity = 1.0, unitPrice = 50.0, totalPrice = 50.0),
+        ReceiptItem(id = ReceiptId("item2"), description = "Nails", quantity = 2.0, unitPrice = 10.0, totalPrice = 20.0)
     )
 
     @Before
     fun setup() {
-        useCase = ProcessReceiptUseCase(geminiRepository, receiptRepository, settingsRepository)
+        mockkObject(com.fordham.toolbelt.util.AppLogger)
+        every { com.fordham.toolbelt.util.AppLogger.e(any(), any(), any()) } just Runs
+        every { com.fordham.toolbelt.util.AppLogger.d(any(), any()) } just Runs
+        useCase = ProcessReceiptUseCase(geminiRepository, receiptRepository, hasSubscriptionFeature)
     }
 
     private fun request(clientName: String? = null) = ProcessReceiptRequest(
-        imageBytes = testImageBytes,
-        clientName = clientName
+        imageBytes = ReceiptImagePayload(testImageBytes),
+        clientName = clientName?.let { ClientName(it) }
     )
 
     @Test
     fun `invoke saves items with client name when premium is active`() = runTest {
-        coEvery { settingsRepository.businessSettingsFlow } returns flowOf(BusinessSettings(isPremium = true))
+        every { hasSubscriptionFeature(SubscriptionFeature.ReceiptOcr) } returns true
         coEvery { geminiRepository.processReceiptImage(testImageBytes) } returns ReceiptImageOutcome.Success(testItems)
         val itemsSlot = slot<List<ReceiptItem>>()
         coEvery { receiptRepository.insertItems(capture(itemsSlot)) } returns ReceiptOutcome.Success
@@ -52,7 +55,7 @@ class ProcessReceiptUseCaseTest {
 
     @Test
     fun `invoke returns PremiumRequired when user is not premium`() = runTest {
-        coEvery { settingsRepository.businessSettingsFlow } returns flowOf(BusinessSettings(isPremium = false))
+        every { hasSubscriptionFeature(SubscriptionFeature.ReceiptOcr) } returns false
 
         val result = useCase(request("Client"))
 
@@ -63,7 +66,7 @@ class ProcessReceiptUseCaseTest {
 
     @Test
     fun `invoke returns error when AI fails`() = runTest {
-        coEvery { settingsRepository.businessSettingsFlow } returns flowOf(BusinessSettings(isPremium = true))
+        every { hasSubscriptionFeature(SubscriptionFeature.ReceiptOcr) } returns true
         coEvery { geminiRepository.processReceiptImage(testImageBytes) } returns ReceiptImageOutcome.Failure(
             FailureMessage("AI processing failed")
         )
@@ -77,7 +80,7 @@ class ProcessReceiptUseCaseTest {
 
     @Test
     fun `invoke returns error when exception thrown`() = runTest {
-        coEvery { settingsRepository.businessSettingsFlow } returns flowOf(BusinessSettings(isPremium = true))
+        every { hasSubscriptionFeature(SubscriptionFeature.ReceiptOcr) } returns true
         coEvery { geminiRepository.processReceiptImage(testImageBytes) } throws RuntimeException("Unexpected error")
 
         val result = useCase(request("Client"))

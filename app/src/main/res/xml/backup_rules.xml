@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <exclude domain="database" path="invoice_database"/>
+    <exclude domain="database" path="invoice_hammer.db"/>
+    <exclude domain="database" path="invoice_hammer.db-wal"/>
+    <exclude domain="database" path="invoice_hammer.db-shm"/>
     <exclude domain="sharedpref" path="secure_vault.xml"/>
     <exclude domain="sharedpref" path="toolbelt_settings.xml"/>
 </full-backup-content>

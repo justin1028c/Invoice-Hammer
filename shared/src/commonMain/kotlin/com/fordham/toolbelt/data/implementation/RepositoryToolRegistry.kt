@@ -1,175 +1,297 @@
 package com.fordham.toolbelt.data.implementation
 
-import com.fordham.toolbelt.domain.model.DraftInvoice
-import com.fordham.toolbelt.domain.model.FailureMessage
-import com.fordham.toolbelt.domain.model.InvoiceOutcome
-import com.fordham.toolbelt.domain.model.ReceiptListOutcome
-import com.fordham.toolbelt.domain.model.agent.AgentFunction
-import com.fordham.toolbelt.domain.model.agent.ClientSearchHit
-import com.fordham.toolbelt.domain.model.agent.CreateDraftInvoiceArgs
-import com.fordham.toolbelt.domain.model.agent.CurrencyAmountCents
-import com.fordham.toolbelt.domain.model.agent.DeleteInvoiceApprovalArgs
-import com.fordham.toolbelt.domain.model.agent.FunctionParameter
-import com.fordham.toolbelt.domain.model.agent.GetUnbilledReceiptsArgs
-import com.fordham.toolbelt.domain.model.agent.NaturalLanguage
-import com.fordham.toolbelt.domain.model.agent.ParameterName
-import com.fordham.toolbelt.domain.model.agent.ParameterType
-import com.fordham.toolbelt.domain.model.agent.SearchClientsArgs
-import com.fordham.toolbelt.domain.model.agent.SendInvoiceApprovalArgs
-import com.fordham.toolbelt.domain.model.agent.ToolArguments
-import com.fordham.toolbelt.domain.model.agent.ToolDescription
-import com.fordham.toolbelt.domain.model.agent.ToolExecutionResult
-import com.fordham.toolbelt.domain.model.agent.ToolName
-import com.fordham.toolbelt.domain.model.agent.UnbilledReceiptSummary
-import com.fordham.toolbelt.domain.repository.ClientRepository
-import com.fordham.toolbelt.domain.repository.DraftRepository
-import com.fordham.toolbelt.domain.repository.InvoiceRepository
-import com.fordham.toolbelt.domain.repository.ReceiptRepository
-import com.fordham.toolbelt.domain.repository.ToolRegistry
-import com.fordham.toolbelt.util.randomUUID
-import kotlinx.coroutines.flow.first
-import kotlin.math.roundToLong
+
+
+import com.fordham.toolbelt.domain.model.agent.*
+
+import com.fordham.toolbelt.domain.repository.*
+
+import com.fordham.toolbelt.domain.usecase.AddJobNoteUseCase
+
+import com.fordham.toolbelt.domain.usecase.GenerateAndSaveInvoiceUseCase
+
+import com.fordham.toolbelt.domain.usecase.ProcessReceiptUseCase
+
+import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
+
+
 
 class RepositoryToolRegistry(
+
     private val clientRepository: ClientRepository,
+
     private val receiptRepository: ReceiptRepository,
+
     private val draftRepository: DraftRepository,
-    private val invoiceRepository: InvoiceRepository
+
+    private val invoiceRepository: InvoiceRepository,
+
+    private val settingsRepository: SettingsRepository,
+
+    private val supplierRepository: SupplierRepository,
+
+    private val addJobNoteUseCase: AddJobNoteUseCase,
+
+    private val generateAndSaveInvoiceUseCase: GenerateAndSaveInvoiceUseCase,
+
+    private val processReceiptUseCase: ProcessReceiptUseCase,
+
+    private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase
+
 ) : ToolRegistry {
-    override fun availableFunctions(): List<AgentFunction> {
-        return listOf(
-            AgentFunction(
-                toolName = ToolName.SearchClients,
-                description = ToolDescription("Search the client directory by name, address, phone, or notes."),
-                parameters = listOf(FunctionParameter(ParameterName("query"), ParameterType.Text, required = true))
-            ),
-            AgentFunction(
-                toolName = ToolName.GetUnbilledReceipts,
-                description = ToolDescription("Find unbilled receipts for a resolved client."),
-                parameters = listOf(FunctionParameter(ParameterName("clientId"), ParameterType.Text, required = true))
-            ),
-            AgentFunction(
-                toolName = ToolName.CreateDraftInvoice,
-                description = ToolDescription("Start a draft invoice for a resolved client."),
-                parameters = listOf(FunctionParameter(ParameterName("clientId"), ParameterType.Text, required = true))
-            ),
-            AgentFunction(
-                toolName = ToolName.SendInvoiceForApproval,
-                description = ToolDescription("Queue an invoice send action for explicit user approval."),
-                parameters = listOf(FunctionParameter(ParameterName("invoiceId"), ParameterType.Text, required = true))
-            ),
-            AgentFunction(
-                toolName = ToolName.DeleteInvoiceForApproval,
-                description = ToolDescription("Queue an invoice delete action for explicit user approval."),
-                parameters = listOf(FunctionParameter(ParameterName("invoiceId"), ParameterType.Text, required = true))
-            )
-        )
-    }
 
-    override suspend fun execute(
-        toolName: ToolName,
-        arguments: ToolArguments
-    ): ToolExecutionResult {
+
+
+    override fun availableFunctions(): List<AgentFunction> = listOf(
+
+        fn(ToolName.SearchClients, "Search clients by name, phone, email, or address.", "query"),
+
+        fn(ToolName.OpenSupplier, "Open a specific store app or website by name or ID.", "supplierId", "supplierName"),
+
+        fn(ToolName.SelectClient, "Open a client profile by id or name.", "clientId", "clientName"),
+
+        fn(ToolName.GetClientDetails, "Summarize a client profile.", "clientId"),
+
+        fn(ToolName.GetUnbilledReceipts, "List unbilled receipts for a client.", "clientId"),
+
+        fn(
+            ToolName.OpenTab,
+            "Switch main tab. tabName MUST be one bottom-bar label: ${AppTab.NAV_LABELS}. " +
+                "Use this tool alone for navigation — no search or other tools.",
+            "tabName"
+        ),
+
+        fn(ToolName.CreateClient, "Create a new client record.", "clientName", "address", "phone", "email"),
+
+        fn(ToolName.CreateDraftInvoice, "Start a new invoice draft for a client.", "clientId"),
+
+        fn(
+
+            ToolName.UpdateDraftInvoice,
+
+            "Fill the New Invoice draft: client, address, tax, deposit, line items (JSON array).",
+
+            "clientName",
+
+            "clientAddress",
+
+            "taxRate",
+
+            "deposit",
+
+            "lineItemsJson",
+
+            "replaceLineItems"
+
+        ),
+
+        fn(ToolName.AddJobNote, "Add a job note to a client.", "clientName", "note"),
+
+        fn(ToolName.SaveInvoiceFromDraft, "Save the current draft as invoice PDF + database record.", "isEstimate"),
+
+        fn(ToolName.SearchInvoiceHistory, "Search invoices by client, id, or summary text.", "query"),
+
+        fn(ToolName.ScanLastReceipt, "OCR the last captured receipt photo into Receipts.", "clientName"),
+
+        fn(
+
+            ToolName.QuickInvoice,
+
+            "One-shot for an existing client: draft, line items, save PDF invoice. " +
+                "Prefer flat fields jobDescription + category + totalAmount for a single line; " +
+                "use lineItemsJson only for multiple lines or hour/rate math.",
+
+            "clientName",
+
+            "clientAddress",
+
+            "jobDescription",
+
+            "category",
+
+            "totalAmount",
+
+            "lineItemsJson",
+
+            "isEstimate",
+
+            "createClientIfMissing"
+
+        ),
+
+        fn(
+            ToolName.QuickClientAndInvoice,
+            "One-shot for a brand-new client: create client with address, fill job line + trade category, " +
+                "set total, and save PDF invoice in ONE call. Never chain CREATE_CLIENT or UPDATE_DRAFT. " +
+                "Prefer flat fields jobDescription + category + totalAmount.",
+            "clientName",
+            "clientAddress",
+            "jobDescription",
+            "category",
+            "totalAmount",
+            "lineItemsJson",
+            "isEstimate"
+        ),
+
+        fn(ToolName.QuickClientLookup, "Search client and return profile summary.", "query"),
+
+        fn(ToolName.AppendDraftLines, "Add line items to the current draft without replacing existing lines.", "lineItemsJson"),
+
+        fn(ToolName.DuplicateLastInvoice, "Copy the client's most recent invoice into a new draft.", "clientName"),
+
+        fn(
+            ToolName.DuplicateAndEdit,
+            "Copy the client's last invoice into a draft and append extra line items for editing.",
+            "clientName",
+            "lineItemsJson"
+        ),
+
+        fn(
+            ToolName.QuickInvoiceFromUnbilledReceipts,
+            "Bill all unbilled receipt expenses for a client into one invoice PDF.",
+            "clientName",
+            "isEstimate",
+            "createClientIfMissing"
+        ),
+
+        fn(
+
+            ToolName.QuickSendInvoice,
+
+            "[APPROVAL] Find invoice and queue email or SMS send.",
+
+            "invoiceId",
+
+            "clientName",
+
+            "channel",
+
+            "recipientPhone",
+
+            "recipientEmail",
+
+            "message"
+
+        ),
+
+        fn(ToolName.SendInvoiceEmail, "[APPROVAL] Email an invoice PDF.", "invoiceId", "recipientEmail", "subject", "body"),
+
+        fn(ToolName.SendInvoiceSms, "[APPROVAL] Text an invoice PDF.", "invoiceId", "recipientPhone", "message"),
+        fn(ToolName.DeleteInvoiceForApproval, "[APPROVAL] Delete an invoice.", "invoiceId"),
+        fn(ToolName.OpenLastInvoice, "Open the PDF of the most recently saved invoice instantly.", "invoiceId")
+
+    )
+
+
+
+    private val executions = RepositoryToolRegistryExecutions(
+
+        clientRepository,
+
+        receiptRepository,
+
+        draftRepository,
+
+        invoiceRepository,
+
+        settingsRepository,
+
+        supplierRepository,
+
+        addJobNoteUseCase,
+
+        generateAndSaveInvoiceUseCase,
+
+        processReceiptUseCase,
+
+        hasSubscriptionFeature
+
+    )
+
+
+
+    override suspend fun execute(toolName: ToolName, arguments: ToolArguments): ToolExecutionResult {
+
         return when (arguments) {
-            is SearchClientsArgs -> executeSearchClients(arguments)
-            is GetUnbilledReceiptsArgs -> executeGetUnbilledReceipts(arguments)
-            is CreateDraftInvoiceArgs -> executeCreateDraftInvoice(arguments)
-            is SendInvoiceApprovalArgs -> executeSendInvoiceApproval(arguments)
-            is DeleteInvoiceApprovalArgs -> executeDeleteInvoiceApproval(arguments)
+
+            is SearchClientsArgs -> executions.executeSearchClients(arguments)
+
+            is SelectClientArgs -> executions.executeSelectClient(arguments)
+
+            is GetClientDetailsArgs -> executions.executeGetClientDetails(arguments)
+
+            is GetUnbilledReceiptsArgs -> executions.executeGetUnbilledReceipts(arguments)
+
+            is OpenTabArgs -> executions.executeOpenTab(arguments)
+
+            is CreateClientArgs -> executions.executeCreateClient(arguments)
+
+            is CreateDraftInvoiceArgs -> executions.executeCreateDraftInvoice(arguments)
+
+            is UpdateDraftInvoiceArgs -> executions.executeUpdateDraftInvoice(arguments)
+
+            is AddJobNoteArgs -> executions.executeAddJobNote(arguments)
+
+            is SaveInvoiceFromDraftArgs -> executions.executeSaveInvoiceFromDraft(arguments)
+
+            is SearchInvoiceHistoryArgs -> executions.executeSearchInvoiceHistory(arguments)
+
+            is ScanLastReceiptArgs -> executions.executeScanLastReceipt(arguments)
+
+            is QuickInvoiceArgs -> executions.executeQuickInvoice(arguments)
+
+            is QuickClientAndInvoiceArgs -> executions.executeQuickClientAndInvoice(arguments)
+
+            is QuickClientLookupArgs -> executions.executeQuickClientLookup(arguments)
+
+            is AppendDraftLinesArgs -> executions.executeAppendDraftLines(arguments)
+
+            is DuplicateLastInvoiceArgs -> executions.executeDuplicateLastInvoice(arguments)
+
+            is DuplicateAndEditArgs -> executions.executeDuplicateAndEdit(arguments)
+
+            is QuickInvoiceFromUnbilledReceiptsArgs -> executions.executeQuickInvoiceFromUnbilledReceipts(arguments)
+
+            is QuickSendInvoiceArgs -> executions.executeQuickSendInvoice(arguments)
+
+            is SendInvoiceEmailArgs -> executions.executeSendInvoiceEmail(arguments)
+
+            is SendInvoiceSmsArgs -> executions.executeSendInvoiceSms(arguments)
+
+            is DeleteInvoiceApprovalArgs -> executions.executeDeleteInvoice(arguments)
+            is OpenLastInvoiceArgs -> executions.executeOpenLastInvoice(arguments)
+            is OpenSupplierArgs -> executions.executeOpenSupplier(arguments)
+
         }
+
     }
 
-    private suspend fun executeSearchClients(arguments: SearchClientsArgs): ToolExecutionResult {
-        val clients = clientRepository.searchClients(arguments.query.value)
-        return ToolExecutionResult.ClientSearchCompleted(
-            clients = clients.map { client ->
-                ClientSearchHit(
-                    clientId = client.id,
-                    displayName = NaturalLanguage(client.name)
+
+
+    private fun fn(toolName: ToolName, description: String, vararg params: String): AgentFunction {
+        return AgentFunction(
+            toolName = toolName,
+            description = ToolDescription(description),
+            parameters = params.map {
+                FunctionParameter(
+                    com.fordham.toolbelt.domain.model.agent.ParameterName(it),
+                    ParameterType.Text,
+                    required = it !in OPTIONAL_FUNCTION_PARAMS
                 )
             }
         )
     }
 
-    private suspend fun executeGetUnbilledReceipts(arguments: GetUnbilledReceiptsArgs): ToolExecutionResult {
-        val client = clientRepository.getAllClients().first().let { outcome ->
-            when (outcome) {
-                is com.fordham.toolbelt.domain.model.ClientListOutcome.Success ->
-                    outcome.clients.firstOrNull { it.id == arguments.clientId }
-                is com.fordham.toolbelt.domain.model.ClientListOutcome.Failure -> null
-            }
-        } ?: return ToolExecutionResult.Failure(
-            toolName = ToolName.GetUnbilledReceipts,
-            error = FailureMessage("Client was not found.")
+    private companion object {
+        val OPTIONAL_FUNCTION_PARAMS = setOf(
+            "replaceLineItems",
+            "createClientIfMissing",
+            "lineItemsJson",
+            "jobDescription",
+            "category",
+            "totalAmount",
+            "isEstimate"
         )
-
-        return when (val receipts = receiptRepository.getItemsByClient(client.name).first()) {
-            is ReceiptListOutcome.Failure -> ToolExecutionResult.Failure(
-                toolName = ToolName.GetUnbilledReceipts,
-                error = receipts.error
-            )
-            is ReceiptListOutcome.Success -> ToolExecutionResult.UnbilledReceiptsFound(
-                clientId = arguments.clientId,
-                receipts = receipts.receipts
-                    .filterNot { it.isBilled }
-                    .map { receipt ->
-                        UnbilledReceiptSummary(
-                            receiptId = receipt.id,
-                            supplierName = NaturalLanguage(receipt.supplierName.ifBlank { "General" }),
-                            amount = CurrencyAmountCents((receipt.totalPrice * 100.0).roundToLong())
-                        )
-                    }
-            )
-        }
-    }
-
-    private suspend fun executeCreateDraftInvoice(arguments: CreateDraftInvoiceArgs): ToolExecutionResult {
-        val client = clientRepository.getAllClients().first().let { outcome ->
-            when (outcome) {
-                is com.fordham.toolbelt.domain.model.ClientListOutcome.Success ->
-                    outcome.clients.firstOrNull { it.id == arguments.clientId }
-                is com.fordham.toolbelt.domain.model.ClientListOutcome.Failure -> null
-            }
-        } ?: return ToolExecutionResult.Failure(
-            toolName = ToolName.CreateDraftInvoice,
-            error = FailureMessage("Client was not found.")
-        )
-
-        val invoiceId = com.fordham.toolbelt.domain.model.InvoiceId(randomUUID())
-        draftRepository.saveDraft(
-            DraftInvoice(
-                clientName = client.name,
-                clientAddress = client.address,
-                saveToClientDirectory = false
-            )
-        )
-        return ToolExecutionResult.DraftInvoiceCreated(
-            invoiceId = invoiceId,
-            clientId = client.id
-        )
-    }
-
-    private suspend fun executeSendInvoiceApproval(arguments: SendInvoiceApprovalArgs): ToolExecutionResult {
-        val invoice = invoiceRepository.getInvoiceById(arguments.invoiceId)
-            ?: return ToolExecutionResult.Failure(
-                toolName = ToolName.SendInvoiceForApproval,
-                error = FailureMessage("Invoice was not found.")
-            )
-        return ToolExecutionResult.InvoiceApprovalQueued(invoice.id)
-    }
-
-    private suspend fun executeDeleteInvoiceApproval(arguments: DeleteInvoiceApprovalArgs): ToolExecutionResult {
-        val invoice = invoiceRepository.getInvoiceById(arguments.invoiceId)
-            ?: return ToolExecutionResult.Failure(
-                toolName = ToolName.DeleteInvoiceForApproval,
-                error = FailureMessage("Invoice was not found.")
-            )
-        return when (val outcome = invoiceRepository.deleteInvoice(invoice)) {
-            is InvoiceOutcome.Success -> ToolExecutionResult.InvoiceDeletionQueued(invoice.id)
-            is InvoiceOutcome.Failure -> ToolExecutionResult.Failure(
-                toolName = ToolName.DeleteInvoiceForApproval,
-                error = outcome.error
-            )
-        }
     }
 }
+

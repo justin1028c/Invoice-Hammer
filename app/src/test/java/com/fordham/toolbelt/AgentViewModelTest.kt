@@ -12,15 +12,39 @@ import com.fordham.toolbelt.domain.model.agent.ToolCallId
 import com.fordham.toolbelt.domain.model.agent.ToolExecutionResult
 import com.fordham.toolbelt.domain.model.agent.ToolName
 import com.fordham.toolbelt.domain.model.agent.AgentOutcome as TypedAgentOutcome
+import com.fordham.toolbelt.domain.model.subscription.PremiumFeature
+import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
+import com.fordham.toolbelt.domain.model.subscription.TokenConsumptionOutcome
+import com.fordham.toolbelt.domain.model.subscription.TokenCount
 import com.fordham.toolbelt.domain.repository.AgentLlmGateway
+import com.fordham.toolbelt.domain.repository.BillingRepository
 import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
+import com.fordham.toolbelt.domain.repository.DraftRepository
+import com.fordham.toolbelt.domain.repository.SubscriptionRepository
+import com.fordham.toolbelt.domain.model.DraftInvoice
+import kotlinx.coroutines.flow.flowOf
 import com.fordham.toolbelt.domain.repository.ToolRegistry
+import com.fordham.toolbelt.domain.usecase.ForemanOrchestrator
 import com.fordham.toolbelt.domain.usecase.RunForemanAgentUseCase
+import com.fordham.toolbelt.domain.model.agent.ForemanAppContextBundle
+import com.fordham.toolbelt.domain.model.agent.ForemanRuntimeSnapshot
+import com.fordham.toolbelt.domain.model.agent.ForemanSessionStore
+import com.fordham.toolbelt.domain.repository.NoOpForemanSessionPersistencePort
+import com.fordham.toolbelt.domain.usecase.subscription.ConsumeTokenUseCase
+import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
+import com.fordham.toolbelt.util.PlatformActions
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import com.fordham.toolbelt.ui.viewmodel.AgentViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -37,17 +61,49 @@ class AgentViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        llmGateway = FakeAgentLlmGateway(TypedAgentOutcome.TextResponse(NaturalLanguage("Ready.")))
-        toolRegistry = FakeToolRegistry(ToolExecutionResult.ClientSearchCompleted(emptyList()))
-        viewModel = AgentViewModel(
-            RunForemanAgentUseCase(
-                llmGateway = llmGateway,
-                toolRegistry = toolRegistry,
-                dispatchers = TestForemanAgentDispatchers(testDispatcher)
+        llmGateway = FakeAgentLlmGateway(
+            TypedAgentOutcome.ToolExecutionRequested(
+                toolCallId = ToolCallId("tool-1"),
+                toolName = ToolName.SearchClients,
+                arguments = SearchClientsArgs(NaturalLanguage("Acme"))
             ),
-            toolRegistry
+            TypedAgentOutcome.TextResponse(NaturalLanguage("Ready."))
+        )
+        toolRegistry = FakeToolRegistry(ToolExecutionResult.ClientSearchCompleted(emptyList()))
+        viewModel = buildViewModel()
+    }
+
+    private fun buildViewModel(): AgentViewModel {
+        val subscriptionRepository = mockk<SubscriptionRepository>(relaxed = true)
+        val billingRepository = mockk<BillingRepository>(relaxed = true)
+        val draftRepository = mockk<DraftRepository>(relaxed = true)
+        every { subscriptionRepository.hasFeature(SubscriptionFeature.ForemanAgent) } returns true
+        coEvery { billingRepository.consumeToken(PremiumFeature.FOREMAN_AGENT) } returns
+            TokenConsumptionOutcome.Success(TokenCount(5))
+        coEvery { draftRepository.getDraft() } returns flowOf(DraftInvoice())
+        val platformActions = mockk<PlatformActions>(relaxed = true)
+        val useCase = RunForemanAgentUseCase(
+            llmGateway = llmGateway,
+            toolRegistry = toolRegistry,
+            draftRepository = draftRepository,
+            dispatchers = TestForemanAgentDispatchers(testDispatcher),
+            hasSubscriptionFeature = HasSubscriptionFeatureUseCase(subscriptionRepository),
+            consumeToken = ConsumeTokenUseCase(billingRepository),
+            platformActions = platformActions
+        )
+        return AgentViewModel(
+            ForemanOrchestrator(
+                chainEngine = useCase,
+                sessionStore = ForemanSessionStore(
+                    NoOpForemanSessionPersistencePort,
+                    CoroutineScope(testDispatcher)
+                )
+            )
         )
     }
+
+    private fun testAppContext(prompt: String = "appContext") =
+        ForemanAppContextBundle(prompt, ForemanRuntimeSnapshot.empty())
 
     @After
     fun tearDown() {
@@ -69,25 +125,29 @@ class AgentViewModelTest {
 
     @Test
     fun `executeAgentCommand sets processing then success state`() = runTest {
-        llmGateway.outcome = TypedAgentOutcome.ToolExecutionRequested(
+        llmGateway = FakeAgentLlmGateway(
+            TypedAgentOutcome.ToolExecutionRequested(
             toolCallId = ToolCallId("tool-1"),
             toolName = ToolName.SearchClients,
-            arguments = SearchClientsArgs(NaturalLanguage("Acme"))
+                arguments = SearchClientsArgs(NaturalLanguage("Acme"))
+            ),
+            TypedAgentOutcome.TextResponse(NaturalLanguage("Ready."))
         )
         toolRegistry.result = ToolExecutionResult.ClientSearchCompleted(
             listOf(ClientSearchHit(ClientId("client-1"), NaturalLanguage("Acme Roofing")))
         )
+        viewModel = buildViewModel()
 
         var capturedIntent: AiAgentIntent? = null
-        viewModel.executeAgentCommand("find Acme", "appContext") { intent ->
+        viewModel.executeAgentCommand("find Acme", testAppContext(), { intent ->
             capturedIntent = intent
-        }
+        }, {})
 
         viewModel.uiState.test {
             val state = awaitItem()
             assertFalse(state.isProcessing)
             assertTrue(state.isActive)
-            assertEquals("Found 1 matching client: Acme Roofing", state.lastResponse)
+            assertTrue(state.lastResponse?.contains("Ready.") == true)
             assertNull(state.errorMessage)
             assertTrue(capturedIntent is AiAgentIntent.SummarizeClient)
         }
@@ -95,9 +155,12 @@ class AgentViewModelTest {
 
     @Test
     fun `executeAgentCommand handles error state`() = runTest {
-        llmGateway.outcome = TypedAgentOutcome.Failure(FailureMessage("Connection failed"))
+        llmGateway = FakeAgentLlmGateway(
+            TypedAgentOutcome.Failure(FailureMessage("Connection failed"))
+        )
+        viewModel = buildViewModel()
 
-        viewModel.executeAgentCommand("test command", "appContext") {}
+        viewModel.executeAgentCommand("test command", testAppContext(), {}, {})
 
         viewModel.uiState.test {
             val state = awaitItem()
@@ -118,8 +181,11 @@ class AgentViewModelTest {
 
     @Test
     fun `clearAgentResponse clears last response`() = runTest {
-        llmGateway.outcome = TypedAgentOutcome.TextResponse(NaturalLanguage("Test response"))
-        viewModel.executeAgentCommand("test", "appContext") {}
+        llmGateway = FakeAgentLlmGateway(
+            TypedAgentOutcome.TextResponse(NaturalLanguage("Test response"))
+        )
+        viewModel = buildViewModel()
+        viewModel.executeAgentCommand("test", testAppContext(), {}, {})
 
         viewModel.clearAgentResponse()
 
@@ -133,13 +199,16 @@ class AgentViewModelTest {
     ) : ForemanAgentDispatchers
 
     private class FakeAgentLlmGateway(
-        var outcome: TypedAgentOutcome
+        private val outcomes: ArrayDeque<TypedAgentOutcome>
     ) : AgentLlmGateway {
+        constructor(vararg outcomes: TypedAgentOutcome) : this(ArrayDeque(outcomes.toList()))
+
         override suspend fun prompt(
             systemPrompt: NaturalLanguage,
             session: ForemanSession,
             functions: List<AgentFunction>
-        ): TypedAgentOutcome = outcome
+        ): TypedAgentOutcome = outcomes.removeFirstOrNull()
+            ?: TypedAgentOutcome.TextResponse(NaturalLanguage("Done."))
     }
 
     private class FakeToolRegistry(

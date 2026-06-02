@@ -1,0 +1,51 @@
+---
+description: Clean Architecture + data boundaries for :shared (domain, data, use cases)
+globs: shared/**/*.kt
+alwaysApply: false
+---
+
+# :shared — domain, data, platform
+
+## Domain (`domain/`)
+
+- Pure Kotlin only. No platform imports, Room entities, or transport DTOs.
+- **Sealed interfaces** for outcomes (`*Outcome`); no `kotlin.Result` or exception-driven expected failures.
+- **Value objects** at public boundaries (`ClientId`, `EmailAddress`, …), not bare primitives for domain concepts.
+- Use cases depend on **repository interfaces** and domain ports only — never `data.remote.*` or `data.implementation.*`.
+
+## Data (`data/`)
+
+- DTOs, Room entities, and API models stay in **data**; map to domain in `data/implementation/` via `Mappers.kt`.
+- Integration configs (Stripe, PowerPay, Supabase) stay in **data**; expose connection/intent behavior through domain repository ports.
+
+## Platform
+
+- `expect` / `actual` or interface + `androidMain` / `iosMain` — no Android-only concrete code in `commonMain`.
+- Register platform services in Koin `platformModule()` only (`shared/androidMain` and `shared/iosMain`).
+
+## Persistence
+
+- Room in `commonMain`; **version 20** with explicit migrations (e.g. `MIGRATION_19_20`). No `fallbackToDestructiveMigration()` unless explicitly approved.
+
+## Agent / Foreman
+
+- Tool execution via `ToolRegistry`; destructive actions use `ForemanToolPolicy` (approval required).
+- Multi-step flows belong in `RunForemanAgentUseCase`, not only single-tool-per-turn in UI.
+
+## Concurrency
+
+- Inject dispatchers for disk/network use cases; Room builder `setQueryCoroutineContext` is infrastructure-only.
+
+## Request boundaries
+
+- `GenerateInvoiceRequest`, `SaveInvoiceRequest`, and `ProcessReceiptRequest` use domain value types (`ClientName`, `MoneyAmount`, `ReceiptImagePayload`, …).
+- `AuthOutcome.Failure` uses `FailureMessage` (not a separate auth error type).
+- `Invoice` / `DraftInvoice` may still use primitives for persistence and UI drafts — map at use-case boundaries when calling save/generate flows.
+
+## Tests
+
+- Prefer `commonTest` for use cases; platform tests only for true platform I/O.
+
+## Dependencies
+
+- Prefer KMP libraries in `commonMain`. If Android-only API is unavoidable, add matching `iosMain` in the same change.

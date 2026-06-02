@@ -13,5 +13,6 @@ interface InvoiceRepository {
     suspend fun deleteInvoice(invoice: Invoice): InvoiceOutcome
     suspend fun getInvoiceById(id: InvoiceId): Invoice?
     fun getInvoicesByClient(clientName: String): Flow<List<Invoice>>
+    suspend fun searchInvoices(query: String): List<Invoice>
     suspend fun deleteAllInvoices(): InvoiceOutcome
 }

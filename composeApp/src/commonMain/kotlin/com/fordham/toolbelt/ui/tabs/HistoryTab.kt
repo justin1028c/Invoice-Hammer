@@ -39,7 +39,8 @@ fun HistoryTab(
     onShowPaidOnlyChange: (Boolean) -> Unit,
     onUpdateInvoice: (Invoice) -> Unit,
     onConvertEstimateToInvoice: (Invoice) -> Unit,
-    platformActions: PlatformActions
+    platformActions: PlatformActions,
+    listScrollEnabled: Boolean = true
 ) {
     if (uiState.invoiceToDelete != null) {
         AlertDialog(
@@ -64,7 +65,10 @@ fun HistoryTab(
         )
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        userScrollEnabled = listScrollEnabled
+    ) {
         item { 
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(

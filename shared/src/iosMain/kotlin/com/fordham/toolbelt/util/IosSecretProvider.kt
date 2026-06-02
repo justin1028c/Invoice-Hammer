@@ -1,23 +1,17 @@
 package com.fordham.toolbelt.util
 
 class IosSecretProvider : SecretProvider {
-    override fun getGeminiApiKey(): String {
-        val key = IosSecurityServiceProvider.bridge
-            ?.getSecret(GEMINI_API_KEY)
-            .orEmpty()
-        check(key.isNotBlank()) { "Gemini API Key is missing for iOS" }
-        return key
-    }
-
-    override fun getGeminiModelName(): String {
-        return "gemini-1.5-flash"
-    }
-
     override fun getGoogleClientId(): String {
-        return "716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com"
+        val clientId = IosSecurityServiceProvider.bridge
+            ?.getSecret(GOOGLE_CLIENT_ID)
+            .orEmpty()
+        check(clientId.isNotBlank()) {
+            "Google client ID is missing for iOS — set GOOGLE_CLIENT_ID in Xcode build settings / project.yml"
+        }
+        return clientId
     }
 
-    private companion object {
-        const val GEMINI_API_KEY = "gemini_api_key"
+    companion object {
+        const val GOOGLE_CLIENT_ID = "google_client_id"
     }
 }

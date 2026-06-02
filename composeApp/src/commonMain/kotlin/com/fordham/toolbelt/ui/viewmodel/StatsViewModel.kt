@@ -48,12 +48,12 @@ class StatsViewModel(
         }
     }
 
-    fun exportBentoReport(onGenerated: (String) -> Unit) {
+    fun exportBentoReport(onGenerated: (String, String?) -> Unit) {
         viewModelScope.launch(ioDispatcher) {
             when (val outcome = generateTaxReportUseCase.executeBentoReport()) {
                 is TaxExportOutcome.Success -> {
                     withContext(mainDispatcher) {
-                        onGenerated(outcome.path)
+                        onGenerated(outcome.path, outcome.savedTo)
                     }
                 }
                 is TaxExportOutcome.Failure -> {
@@ -66,12 +66,12 @@ class StatsViewModel(
         }
     }
 
-    fun exportTaxBundle(onGenerated: (String) -> Unit) {
+    fun exportTaxBundle(onGenerated: (String, String?) -> Unit) {
         viewModelScope.launch(ioDispatcher) {
             when (val outcome = generateTaxReportUseCase.executeZip()) {
                 is TaxExportOutcome.Success -> {
                     withContext(mainDispatcher) {
-                        onGenerated(outcome.path)
+                        onGenerated(outcome.path, outcome.savedTo)
                     }
                 }
                 is TaxExportOutcome.Failure -> {

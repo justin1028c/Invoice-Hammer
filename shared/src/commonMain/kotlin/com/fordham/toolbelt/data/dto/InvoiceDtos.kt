@@ -8,19 +8,25 @@ import kotlinx.serialization.Serializable
 data class LineItemDto(
     val description: String,
     val amount: Double,
-    val category: String = "Service"
+    val category: String = "Service",
+    val quantity: Double? = null,
+    val unitPrice: Double? = null
 ) {
     fun toDomain() = LineItem(
         description = description,
         amount = amount,
-        category = category
+        category = category,
+        quantity = quantity,
+        unitPrice = unitPrice
     )
 
     companion object {
         fun fromDomain(domain: LineItem) = LineItemDto(
             description = domain.description,
             amount = domain.amount,
-            category = domain.category
+            category = domain.category,
+            quantity = domain.quantity,
+            unitPrice = domain.unitPrice
         )
     }
 }

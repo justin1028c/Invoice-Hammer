@@ -50,7 +50,7 @@ fun ClientsTab(
     onClearAiSummary: () -> Unit,
     onCallClient: (String) -> Unit,
     onEmailClient: (String) -> Unit,
-    onPhotoCaptured: (String, String) -> Unit,
+    onPhotoCaptured: (String, String, JobPhotoPhase) -> Unit,
     platformActions: PlatformActions,
     isPremium: Boolean = false
 ) {
@@ -176,9 +176,9 @@ fun ClientsTab(
                 ClientPhotosSection(
                     jobPhotos = jobPhotos,
                     canCapture = clientInvoices.isNotEmpty(),
-                    onSnapPhotoClick = { 
+                    onCapturePhoto = { phase ->
                         platformActions.capturePhoto { uri ->
-                            uri?.let { onPhotoCaptured(it, clientInvoices.first().id.value) }
+                            uri?.let { onPhotoCaptured(it, clientInvoices.first().id.value, phase) }
                         }
                     }
                 )
@@ -188,9 +188,9 @@ fun ClientsTab(
             ClientInvoicesSection(
                 invoices = clientInvoices,
                 onInvoiceClick = { if (it.pdfPath.isNotEmpty()) onViewPdf(it.pdfPath) },
-                onAddPhotoClick = { inv ->
+                onAddPhotoClick = { inv, phase ->
                     platformActions.capturePhoto { uri ->
-                        uri?.let { onPhotoCaptured(it, inv.id.value) }
+                        uri?.let { onPhotoCaptured(it, inv.id.value, phase) }
                     }
                 }
             )

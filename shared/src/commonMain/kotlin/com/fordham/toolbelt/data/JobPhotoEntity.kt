@@ -20,5 +20,6 @@ data class JobPhotoEntity(
     @PrimaryKey val id: String = randomUUID(),
     val invoiceId: String,
     val localUri: String,
+    val phase: String = "BEFORE",
     val timestamp: Long = DateTimeUtil.nowEpochMillis()
 )

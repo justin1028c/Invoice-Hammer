@@ -17,8 +17,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.ui.theme.*
 import com.fordham.toolbelt.domain.model.BusinessSettings
+import com.fordham.toolbelt.ui.components.BusinessLogoSection
 import com.fordham.toolbelt.ui.components.TacticalButton
+import com.fordham.toolbelt.domain.model.stripe.StripeConnectSetupState
+import com.fordham.toolbelt.domain.model.stripe.StripePaymentMode
+import com.fordham.toolbelt.ui.tabs.settings.SettingsCloudSyncSection
+import com.fordham.toolbelt.ui.tabs.settings.SettingsSection
+import com.fordham.toolbelt.ui.tabs.settings.SettingsStripeConnectSection
+import com.fordham.toolbelt.ui.tabs.settings.SettingsSubscriptionSection
+import com.fordham.toolbelt.ui.tabs.settings.PermissionItem
+import com.fordham.toolbelt.domain.model.SupabaseConnectionMode
+import com.fordham.toolbelt.ui.viewmodel.CloudSyncOperation
 import com.fordham.toolbelt.ui.viewmodel.SyncState
+import com.fordham.toolbelt.util.Permission
 import com.fordham.toolbelt.util.PlatformActions
 
 @Composable
@@ -29,12 +40,50 @@ fun SettingsTab(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSync: () -> Unit,
+    onRestore: () -> Unit,
+    onOpenPaywall: () -> Unit = {},
+    isPro: Boolean = false,
     syncState: SyncState,
-    platformActions: PlatformActions
+    supabaseConnectionMode: SupabaseConnectionMode = SupabaseConnectionMode.Disabled,
+    stripePaymentMode: StripePaymentMode = StripePaymentMode.ManualEntrySimulator,
+    stripeConnectState: StripeConnectSetupState = StripeConnectSetupState.BackendDisabled,
+    stripeConnectBusy: Boolean = false,
+    onRefreshStripeConnect: () -> Unit = {},
+    onStartStripeConnectOnboarding: () -> Unit = {},
+    platformActions: PlatformActions,
+    onPickBusinessLogo: () -> Unit,
+    onRemoveBusinessLogo: () -> Unit
 ) {
     var tempSettings by remember(settings) { mutableStateOf(settings) }
+    var showRestoreConfirm by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val isDarkMode = MaterialTheme.colorScheme.background == Color(0xFF000000)
+    val isSupabaseLive = supabaseConnectionMode is SupabaseConnectionMode.Live
+    val isCloudBusy = syncState is SyncState.Syncing
+
+    if (showRestoreConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirm = false },
+            title = { Text("RESTORE FROM SUPABASE?", fontWeight = FontWeight.Black) },
+            text = {
+                Text(
+                    "This replaces local clients, invoices, receipts, suppliers, and business settings with your latest Supabase backup. Job photos and payment ledger entries are not restored.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreConfirm = false
+                        onRestore()
+                    }
+                ) { Text("RESTORE", fontWeight = FontWeight.Black) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreConfirm = false }) { Text("CANCEL") }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -52,122 +101,39 @@ fun SettingsTab(
         
         Spacer(Modifier.height(24.dp))
 
-        // ACCOUNT & CLOUD SECTION
-        SettingsSection(title = "ACCOUNT & CLOUD SYNC") {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                if (currentUser == null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Cloud Backup Inactive", fontWeight = FontWeight.Bold)
-                            Text("Sign in with Google to enable cloud backup and syncing.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                        }
-                        TacticalButton(
-                            onClick = onSignIn,
-                            text = "SIGN IN",
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.height(40.dp)
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val photoUrl = currentUser.photoUrl
-                        if (photoUrl != null) {
-                            com.fordham.toolbelt.ui.components.CircleImage(
-                                url = photoUrl.value,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        } else {
-                            Icon(Icons.Default.AccountCircle, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                        }
-                        
-                        Spacer(Modifier.width(12.dp))
-                        
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(currentUser.displayName?.value ?: "Contractor", fontWeight = FontWeight.Black)
-                            Text(currentUser.email?.value ?: "", style = MaterialTheme.typography.bodySmall)
-                        }
-                        
-                        TextButton(onClick = onSignOut) {
-                            Text("SIGN OUT", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    
-                    Divider(modifier = Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Google Drive Backup", fontWeight = FontWeight.Bold)
-                            val statusText = when (syncState) {
-                                is SyncState.Syncing -> "Uploading encrypted app backup..."
-                                is SyncState.Success -> "Backup complete!"
-                                is SyncState.Error -> "Error: ${syncState.message}"
-                                else -> "Backs up app data to your private Drive app folder."
-                            }
-                            val statusColor = when (syncState) {
-                                is SyncState.Success -> MaterialTheme.colorScheme.primary
-                                is SyncState.Error -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                            Text(statusText, style = MaterialTheme.typography.bodySmall, color = statusColor)
-                        }
-                        TacticalButton(
-                            onClick = onSync,
-                            text = if (syncState is SyncState.Syncing) "" else "SYNC NOW",
-                            containerColor = if (syncState is SyncState.Success) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.height(40.dp),
-                            enabled = syncState !is SyncState.Syncing,
-                            icon = {
-                                if (syncState is SyncState.Syncing) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else if (syncState is SyncState.Success) {
-                                    Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // PREMIUM SECTION
-        SettingsSection(title = "PRO FEATURES") {
+        SettingsSection(title = "INVOICE REMINDERS") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Pro Premium Status", fontWeight = FontWeight.Bold)
                     Text(
-                        if (tempSettings.isPremium) "UNLOCKED: Bento Reports & AI Control Center active" 
-                        else "LOCKED: Basic functionality only",
+                        "Unpaid invoice reminders",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Daily notification with up to three unpaid invoices (not estimates). First reminder ~15 minutes after enabling, then every 24 hours.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (tempSettings.isPremium) MaterialTheme.colorScheme.primary else Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
-                    checked = tempSettings.isPremium,
-                    onCheckedChange = { 
-                        val newSettings = tempSettings.copy(isPremium = it)
-                        tempSettings = newSettings
-                        onSaveSettings(newSettings)
+                    checked = tempSettings.notificationsEnabled,
+                    onCheckedChange = { enabled ->
+                        val apply = {
+                            tempSettings = tempSettings.copy(notificationsEnabled = enabled)
+                            onSaveSettings(tempSettings)
+                        }
+                        if (enabled) {
+                            platformActions.requestPermission(Permission.POST_NOTIFICATIONS) {
+                                apply()
+                            }
+                        } else {
+                            apply()
+                        }
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
@@ -180,6 +146,52 @@ fun SettingsTab(
                 )
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsCloudSyncSection(
+            currentUser = currentUser,
+            syncState = syncState,
+            supabaseConnectionMode = supabaseConnectionMode,
+            isSupabaseLive = isSupabaseLive,
+            isCloudBusy = isCloudBusy,
+            onSignIn = onSignIn,
+            onSignOut = onSignOut,
+            onSync = onSync,
+            onRequestRestoreConfirm = { showRestoreConfirm = true }
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsStripeConnectSection(
+            stripePaymentMode = stripePaymentMode,
+            connectState = stripeConnectState,
+            connectBusy = stripeConnectBusy,
+            currentUser = currentUser,
+            onRefreshConnectStatus = onRefreshStripeConnect,
+            onStartConnectOnboarding = onStartStripeConnectOnboarding
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsSection(title = "BUSINESS BRANDING") {
+            BusinessLogoSection(
+                logoUri = tempSettings.logoUri,
+                onPickLogo = onPickBusinessLogo,
+                onRemoveLogo = onRemoveBusinessLogo
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsSubscriptionSection(
+            tempSettings = tempSettings,
+            isPro = isPro,
+            isDarkMode = isDarkMode,
+            onOpenPaywall = onOpenPaywall,
+            onSaveSettings = onSaveSettings,
+            onTempSettingsChange = { tempSettings = it }
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -212,6 +224,53 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
+        // SECURITY SECTION (Biometric Lock Toggle)
+        SettingsSection(title = "SECURITY") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Biometric Lock", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Require fingerprint or passcode to unlock Invoice Hammer on launch. (Screenshots and recordings are never blocked).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Switch(
+                    checked = tempSettings.biometricLockEnabled,
+                    onCheckedChange = { enabled ->
+                        val apply = {
+                            tempSettings = tempSettings.copy(biometricLockEnabled = enabled)
+                            onSaveSettings(tempSettings)
+                        }
+                        if (enabled) {
+                            if (platformActions.isBiometricAvailable()) {
+                                apply()
+                            } else {
+                                platformActions.showToast("Biometrics not available on this device")
+                            }
+                        } else {
+                            apply()
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = BrandOrange,
+                        checkedBorderColor = BrandOrange,
+                        uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.White,
+                        uncheckedTrackColor = if (isDarkMode) Color(0xFF222222) else Color(0xFFCCCCCC),
+                        uncheckedBorderColor = if (isDarkMode) Color(0xFF444444) else Color(0xFF999999)
+                    )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
         // PRIVACY & PERMISSIONS SECTION (Google Policy Compliance)
         SettingsSection(title = "PRIVACY & PERMISSIONS") {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -226,6 +285,12 @@ fun SettingsTab(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
+                PermissionItem(
+                    icon = Icons.Default.Notifications,
+                    title = "Notifications",
+                    description = "Used for daily unpaid invoice reminders. You can turn these off in Invoice Reminders at the top of Settings."
+                )
+
                 PermissionItem(
                     icon = Icons.Default.Mic,
                     title = "Microphone Access",
@@ -261,52 +326,5 @@ fun SettingsTab(
         )
         
         Spacer(Modifier.height(100.dp))
-    }
-}
-
-@Composable
-fun SettingsSection(title: String, content: @Composable () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(18.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-        ) {
-            Box(modifier = Modifier.padding(16.dp)) {
-                content()
-            }
-        }
-    }
-}
-
-@Composable
-fun PermissionItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    description: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp).padding(top = 2.dp)
-        )
-        Column {
-            Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
-            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }

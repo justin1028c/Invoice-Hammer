@@ -15,6 +15,6 @@ data class DraftInvoice(
     val timerRunning: Boolean = false,
     val saveToClientDirectory: Boolean = false,
     val lineItems: List<LineItem> = emptyList(),
-    val capturedPhotos: List<String> = emptyList(),
+    val capturedPhotos: List<CapturedJobPhoto> = emptyList(),
     val linkedReceiptIds: List<String> = emptyList()
 )

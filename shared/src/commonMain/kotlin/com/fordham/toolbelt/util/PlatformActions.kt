@@ -3,6 +3,16 @@ package com.fordham.toolbelt.util
 interface PlatformActions {
     fun openUrl(url: String)
     fun shareFile(path: String, title: String)
+    /** Share a document with optional email/SMS targeting (opens system chooser). */
+    fun shareDocument(
+        path: String,
+        title: String,
+        mimeType: String = "application/pdf",
+        recipientEmail: String = "",
+        recipientPhone: String = "",
+        subject: String = "",
+        body: String = ""
+    )
     fun openPdf(path: String)
     fun callPhone(phoneNumber: String)
     fun sendEmail(email: String)
@@ -17,9 +27,11 @@ interface PlatformActions {
     fun pickImage(onResult: (String?) -> Unit)
     fun capturePhoto(onResult: (String?) -> Unit)
     fun scheduleNotification(id: String, title: String, body: String, delayMillis: Long)
+    fun cancelScheduledNotification(id: String)
 }
 
 object Permission {
     const val RECORD_AUDIO = "record_audio"
     const val CAMERA = "camera"
+    const val POST_NOTIFICATIONS = "post_notifications"
 }

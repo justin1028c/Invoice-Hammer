@@ -19,7 +19,7 @@ fun getIosDatabaseBuilder(passphrase: String): RoomDatabase.Builder<AppDatabase>
         factory =  { AppDatabase::class.instantiateImpl() }
     ).setDriver(NativeSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .fallbackToDestructiveMigration()
+        .addMigrations(MIGRATION_19_20)
         .addCallback(object : RoomDatabase.Callback() {
             override fun onOpen(db: SQLiteConnection) {
                 db.prepare("PRAGMA key = '$escapedPassphrase'").step()

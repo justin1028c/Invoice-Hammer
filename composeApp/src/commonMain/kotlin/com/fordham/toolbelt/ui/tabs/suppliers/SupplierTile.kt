@@ -81,7 +81,14 @@ fun SupplierTile(
                                 .padding(2.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (supplier.logoResName != null) {
+                            if (supplier.customLogoPath != null) {
+                                coil3.compose.AsyncImage(
+                                    model = supplier.customLogoPath,
+                                    contentDescription = supplier.name,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else if (supplier.logoResName != null) {
                                 val logoRes = when(supplier.logoResName) {
                                     "logo_home_depot" -> Res.drawable.logo_home_depot
                                     "logo_lowes" -> Res.drawable.logo_lowes

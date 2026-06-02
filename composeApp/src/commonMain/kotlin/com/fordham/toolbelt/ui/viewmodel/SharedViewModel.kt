@@ -5,7 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.GetClientFinancialSummaryUseCase
-import com.fordham.toolbelt.ui.Screen
+import com.fordham.toolbelt.domain.usecase.SaveBusinessLogoUseCase
+import com.fordham.toolbelt.domain.usecase.SyncUnpaidInvoiceRemindersUseCase
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -16,14 +17,16 @@ class SharedViewModel(
     private val photoRepository: PhotoRepository,
     private val invoiceRepository: InvoiceRepository,
     private val receiptRepository: ReceiptRepository,
-    private val getClientFinancialSummaryUseCase: GetClientFinancialSummaryUseCase
+    private val getClientFinancialSummaryUseCase: GetClientFinancialSummaryUseCase,
+    private val saveBusinessLogoUseCase: SaveBusinessLogoUseCase,
+    private val syncUnpaidInvoiceRemindersUseCase: SyncUnpaidInvoiceRemindersUseCase
 ) : ViewModel() {
+
+    private val _logoMessage = MutableSharedFlow<String>()
+    val logoMessage = _logoMessage.asSharedFlow()
 
     private val _selectedClient = MutableStateFlow<Client?>(null)
     val selectedClient: StateFlow<Client?> = _selectedClient.asStateFlow()
-
-    private val _navigationEvent = MutableSharedFlow<Screen>()
-    val navigationEvent = _navigationEvent.asSharedFlow()
 
     val businessSettings: Flow<BusinessSettings> = settingsRepository.businessSettingsFlow
     val allClients: Flow<List<Client>> = clientRepository.getAllClients().map { result ->
@@ -42,7 +45,7 @@ class SharedViewModel(
     val selectedClientInvoices: StateFlow<List<Invoice>> = _selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList<Invoice>())
         else invoiceRepository.allInvoices.map { list -> 
-            list.filter { it.clientName == client.name } 
+            list.filter { it.clientName.trim().equals(client.name.trim(), ignoreCase = true) } 
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -50,12 +53,12 @@ class SharedViewModel(
     val selectedClientPhotos: StateFlow<List<JobPhoto>> = _selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList())
         else invoiceRepository.allInvoices.flatMapLatest { invoices ->
-            val clientInvoiceIds = invoices.filter { it.clientName == client.name }.map { it.id }
+            val clientInvoiceIds = invoices.filter { it.clientName.trim().equals(client.name.trim(), ignoreCase = true) }.map { it.id }
             if (clientInvoiceIds.isEmpty()) flowOf(emptyList())
             else {
                 val flows = clientInvoiceIds.map { photoRepository.observePhotosForInvoice(it) }
                 combine(flows) { array: Array<*> -> 
-                    array.flatMap { it as List<JobPhoto> }.sortedByDescending { p -> p.timestamp } 
+                    array.flatMap { (it as? List<*>).orEmpty().filterIsInstance<JobPhoto>() }.sortedByDescending { p -> p.timestamp } 
                 }
             }
         }
@@ -84,15 +87,30 @@ class SharedViewModel(
         }
     }
 
-    fun navigateTo(screen: Screen) {
+    fun selectClientById(clientId: com.fordham.toolbelt.domain.model.ClientId) {
         viewModelScope.launch {
-            _navigationEvent.emit(screen)
+            val match = allClients.first().find { it.id == clientId }
+            if (match != null) {
+                _selectedClient.value = match
+            }
         }
     }
 
     fun saveBusinessSettings(settings: BusinessSettings) {
         viewModelScope.launch {
             settingsRepository.saveBusinessSettings(settings)
+            syncUnpaidInvoiceRemindersUseCase.execute()
+        }
+    }
+
+    fun saveBusinessLogo(pickedUri: String?) {
+        viewModelScope.launch {
+            val message = when (val outcome = saveBusinessLogoUseCase(pickedUri)) {
+                is SaveBusinessLogoOutcome.Saved -> "Business logo saved for all invoices."
+                is SaveBusinessLogoOutcome.Cleared -> "Business logo removed."
+                is SaveBusinessLogoOutcome.Failure -> outcome.error.value
+            }
+            _logoMessage.emit(message)
         }
     }
 }

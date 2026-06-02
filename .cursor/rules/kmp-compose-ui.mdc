@@ -1,0 +1,27 @@
+---
+description: Compose UI layer — navigation, ViewModels, no data leakage
+globs: composeApp/**/*.kt
+alwaysApply: false
+---
+
+# :composeApp — presentation
+
+## Boundaries
+
+- UI in `composeApp/src/commonMain` only. **Do not** import `com.fordham.toolbelt.data.*`.
+- ViewModels call **use cases** and `domain.repository` interfaces; no Room entities or DTOs.
+
+## Navigation (single model)
+
+- Main shell: **`MainScreen`** → **`HorizontalPager`** (7 pages), indices match **`AppTab`** in `shared/.../domain/model/agent/AppTab.kt`.
+- Cross-launch / notification tab routing: **`MainTabNavigation`** (`shared/commonMain`) + `AppTab.fromName()`.
+- Do **not** add a parallel Compose `NavHost` for main tabs without removing the pager.
+
+## DI
+
+- ViewModels: `composeApp/.../di/ViewModelModule.kt` + `koinViewModel()` from `App.kt` / `MainScreen`.
+- Shared services: `initKoin()` → `platformModule()`, `dataModule`, `useCaseModule` in `shared/.../di/AppModule.kt`.
+
+## State
+
+- UDF: per-tab ViewModels + `SharedViewModel` for settings/clients; sealed outcomes from domain, not exceptions.

@@ -46,3 +46,31 @@ value class BackupPayload(val bytes: ByteArray) {
         require(bytes.isNotEmpty()) { "Backup payload cannot be empty." }
     }
 }
+
+@JvmInline
+value class ClientName(val value: String)
+
+@JvmInline
+value class ClientAddress(val value: String)
+
+@JvmInline
+value class TaxRatePercent(val value: Double)
+
+@JvmInline
+value class ItemsSummary(val value: String)
+
+@JvmInline
+value class PdfFilePath(val value: String)
+
+@JvmInline
+value class MediaUri(val value: String)
+
+@JvmInline
+value class DurationSeconds(val value: Long)
+
+@JvmInline
+value class ReceiptImagePayload(val bytes: ByteArray) {
+    init {
+        require(bytes.isNotEmpty()) { "Receipt image payload cannot be empty." }
+    }
+}

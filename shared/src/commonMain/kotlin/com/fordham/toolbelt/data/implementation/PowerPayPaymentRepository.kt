@@ -2,8 +2,12 @@ package com.fordham.toolbelt.data.implementation
 
 import com.fordham.toolbelt.data.remote.PowerPayClient
 import com.fordham.toolbelt.data.remote.PowerPayClientOutcome
+import com.fordham.toolbelt.data.remote.PowerPayConfig
 import com.fordham.toolbelt.data.remote.PowerPayCreatePaymentRequestDto
 import com.fordham.toolbelt.data.remote.PowerPayPaymentResponseDto
+import com.fordham.toolbelt.data.PaymentRequestDao
+import com.fordham.toolbelt.data.toDomain
+import com.fordham.toolbelt.data.toEntity
 import com.fordham.toolbelt.domain.model.FailureMessage
 import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.InvoiceId
@@ -16,18 +20,27 @@ import com.fordham.toolbelt.domain.model.PaymentProviderType
 import com.fordham.toolbelt.domain.model.PaymentRequestId
 import com.fordham.toolbelt.domain.model.PaymentRequestOutcome
 import com.fordham.toolbelt.domain.model.PaymentRequestType
+import com.fordham.toolbelt.domain.model.StellarExplorerUrl
 import com.fordham.toolbelt.domain.model.StellarTransactionHash
+import com.fordham.toolbelt.domain.model.cardterminal.CardBrand
+import com.fordham.toolbelt.domain.model.cardterminal.CardTerminalPaymentOutcome
+import com.fordham.toolbelt.domain.repository.AuthRepository
 import com.fordham.toolbelt.domain.repository.PaymentRepository
+import com.fordham.toolbelt.util.randomUUID
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 
 class PowerPayPaymentRepository(
-    private val powerPayClient: PowerPayClient
+    private val powerPayClient: PowerPayClient,
+    private val config: PowerPayConfig,
+    private val authRepository: AuthRepository,
+    private val paymentRequestDao: PaymentRequestDao
 ) : PaymentRepository {
-    private val requests = MutableStateFlow<PaymentLedgerOutcome>(PaymentLedgerOutcome.Success(emptyList()))
-
-    override val ledger: Flow<PaymentLedgerOutcome> = requests.asStateFlow()
+    override val ledger: Flow<PaymentLedgerOutcome> =
+        paymentRequestDao.observeAll().map { entities ->
+            PaymentLedgerOutcome.Success(entities.map { it.toDomain() })
+        }
 
     override suspend fun createPaymentRequest(
         invoice: Invoice,
@@ -43,26 +56,27 @@ class PowerPayPaymentRepository(
             PaymentRequestType.FullBalance -> invoice.totalAmount
         }
 
+        val contractorUserId = authRepository.currentUser.firstOrNull()?.id?.value ?: "anonymous"
+
         val outcome = powerPayClient.createInvoicePayment(
             PowerPayCreatePaymentRequestDto(
+                appId = config.appId,
+                contractorUserId = contractorUserId,
                 invoiceId = invoice.id.value,
                 clientName = invoice.clientName,
                 amountUsd = amount,
                 requestType = type.wireName,
                 provider = provider.wireName,
-                description = "${type.descriptionLabel} for ${invoice.clientName}"
+                description = "${type.descriptionLabel} for ${invoice.clientName}",
+                preset = config.preset,
+                environment = config.environment.wireName
             )
         )
 
         return when (outcome) {
             is PowerPayClientOutcome.Success -> {
                 val request = outcome.value.toDomain()
-                val current = (requests.value as? PaymentLedgerOutcome.Success)?.requests.orEmpty()
-                requests.value = PaymentLedgerOutcome.Success(
-                    listOf(request) + current.filterNot {
-                        it.invoiceId == request.invoiceId && it.type == request.type && it.provider == request.provider
-                    }
-                )
+                paymentRequestDao.upsert(request.toEntity())
                 PaymentRequestOutcome.Success(request)
             }
             is PowerPayClientOutcome.Failure -> PaymentRequestOutcome.Failure(outcome.error)
@@ -71,12 +85,54 @@ class PowerPayPaymentRepository(
 
     override suspend fun refreshLedger(): PaymentLedgerOutcome {
         val outcome = powerPayClient.getTransactionHistory()
-        val ledgerOutcome = when (outcome) {
-            is PowerPayClientOutcome.Success -> PaymentLedgerOutcome.Success(outcome.value.map { it.toDomain() })
+        return when (outcome) {
+            is PowerPayClientOutcome.Success -> {
+                val requests = outcome.value.map { it.toDomain() }
+                paymentRequestDao.upsertAll(requests.map { it.toEntity() })
+                PaymentLedgerOutcome.Success(paymentRequestDao.getAll().map { it.toDomain() })
+            }
             is PowerPayClientOutcome.Failure -> PaymentLedgerOutcome.Failure(outcome.error)
         }
-        requests.value = ledgerOutcome
-        return ledgerOutcome
+    }
+
+    override suspend fun markInvoicePaid(
+        invoiceId: InvoiceId,
+        paidAtMillis: Long,
+        transactionHash: StellarTransactionHash?,
+        explorerUrl: StellarExplorerUrl?
+    ): PaymentLedgerOutcome {
+        paymentRequestDao.markInvoicePaid(
+            invoiceId = invoiceId.value,
+            status = "paid",
+            paidAtMillis = paidAtMillis,
+            transactionHash = transactionHash?.value,
+            explorerUrl = explorerUrl?.value
+        )
+        return PaymentLedgerOutcome.Success(paymentRequestDao.getAll().map { it.toDomain() })
+    }
+
+    override suspend fun recordCardTerminalPayment(
+        invoice: Invoice,
+        type: PaymentRequestType,
+        amount: Double,
+        lastFourDigits: String,
+        brand: CardBrand,
+        paidAtMillis: Long
+    ): CardTerminalPaymentOutcome {
+        val request = InvoicePaymentRequest(
+            id = PaymentRequestId(randomUUID()),
+            invoiceId = invoice.id,
+            invoiceClientName = invoice.clientName,
+            type = type,
+            provider = PaymentProviderType.CardTerminal,
+            requestedAmount = MoneyAmount(amount),
+            status = InvoicePaymentStatus.Paid,
+            paymentLink = PaymentLinkUrl("terminal://${brand.name.lowercase()}/••••$lastFourDigits"),
+            paidAtMillis = paidAtMillis,
+            assetCode = "USD"
+        )
+        paymentRequestDao.upsert(request.toEntity())
+        return CardTerminalPaymentOutcome.Success(request)
     }
 
     private fun PowerPayPaymentResponseDto.toDomain(): InvoicePaymentRequest {
@@ -91,6 +147,7 @@ class PowerPayPaymentRepository(
             paymentLink = PaymentLinkUrl(paymentLinkUrl),
             createdAtMillis = createdAtMillis,
             stellarTransactionHash = transactionHash?.let { StellarTransactionHash(it) },
+            stellarExplorerUrl = explorerUrl?.let { StellarExplorerUrl(it) },
             assetCode = assetCode
         )
     }
@@ -106,13 +163,14 @@ class PowerPayPaymentRepository(
         "apple_pay" -> PaymentProviderType.ApplePay
         "stellar_usdc" -> PaymentProviderType.StellarUsdc
         "card_link" -> PaymentProviderType.CardLink
+        "card_terminal" -> PaymentProviderType.CardTerminal
         else -> PaymentProviderType.CardLink
     }
 
-    private fun String.toInvoicePaymentStatus(): InvoicePaymentStatus = when (this) {
+    private fun String.toInvoicePaymentStatus(): InvoicePaymentStatus = when (this.lowercase()) {
         "requested" -> InvoicePaymentStatus.Requested
-        "pending" -> InvoicePaymentStatus.Pending
-        "paid" -> InvoicePaymentStatus.Paid
+        "pending", "unpaid" -> InvoicePaymentStatus.Pending
+        "paid", "paid_in_full", "deposit_paid", "milestone_paid" -> InvoicePaymentStatus.Paid
         "failed" -> InvoicePaymentStatus.Failed
         "expired" -> InvoicePaymentStatus.Expired
         else -> InvoicePaymentStatus.Pending
@@ -131,8 +189,8 @@ private val PaymentRequestType.wireName: String
 
 private val PaymentRequestType.descriptionLabel: String
     get() = when (this) {
-        PaymentRequestType.Deposit -> "Deposit request"
-        PaymentRequestType.FullBalance -> "Full payment request"
+        PaymentRequestType.Deposit -> "Project deposit"
+        PaymentRequestType.FullBalance -> "Invoice payment"
     }
 
 private val PaymentProviderType.wireName: String
@@ -141,4 +199,7 @@ private val PaymentProviderType.wireName: String
         PaymentProviderType.ApplePay -> "apple_pay"
         PaymentProviderType.StellarUsdc -> "stellar_usdc"
         PaymentProviderType.CardLink -> "card_link"
+        PaymentProviderType.CardTerminal -> "card_terminal"
+        PaymentProviderType.TapToPay -> "tap_to_pay"
+        PaymentProviderType.BluetoothReader -> "bluetooth_reader"
     }

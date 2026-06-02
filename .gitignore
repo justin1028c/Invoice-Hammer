@@ -16,6 +16,10 @@ build/
 .externalNativeBuild
 .cxx
 local.properties
+keystore/
+dist/release/*.apk
+dist/release/*.aab
+dist/release/*.apks
 
 # Generated aggregate (regenerate with aggregate_codebase.py)
 CROSS_PLATFORM_AUDIT.md

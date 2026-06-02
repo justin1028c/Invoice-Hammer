@@ -23,6 +23,7 @@ class RoomJobNoteRepository(
         jobNoteDao.insertNote(note.toEntity())
         JobNoteOutcome.Success
     } catch (e: Exception) {
+        logRepositoryFailure("RoomJobNoteRepository", "repository", e)
         JobNoteOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to insert note"))
     }
 
@@ -30,6 +31,9 @@ class RoomJobNoteRepository(
         jobNoteDao.deleteNote(note.toEntity())
         JobNoteOutcome.Success
     } catch (e: Exception) {
+    logRepositoryFailure("RoomJobNoteRepository", "repository", e)
         JobNoteOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete note"))
     }
 }
+
+private const val TAG = "RoomJobNoteRepository"

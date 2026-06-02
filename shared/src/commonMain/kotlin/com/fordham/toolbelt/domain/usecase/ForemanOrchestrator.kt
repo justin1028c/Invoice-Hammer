@@ -1,58 +1,118 @@
 package com.fordham.toolbelt.domain.usecase
 
-import com.fordham.toolbelt.domain.model.*
+import com.fordham.toolbelt.domain.model.ClientId
+import com.fordham.toolbelt.domain.model.agent.AgentOutcome
+import com.fordham.toolbelt.domain.model.agent.ForemanAgentPresentation
+import com.fordham.toolbelt.domain.model.agent.ForemanAgentRun
+import com.fordham.toolbelt.domain.model.agent.ForemanCommandRouter
+import com.fordham.toolbelt.domain.model.agent.ForemanRoute
+import com.fordham.toolbelt.domain.model.agent.ForemanRuntimeBinding
+import com.fordham.toolbelt.domain.model.agent.ForemanRuntimeSnapshot
+import com.fordham.toolbelt.domain.model.agent.ForemanSessionStore
+import com.fordham.toolbelt.domain.model.agent.ForemanToolResultSummarizer
 import com.fordham.toolbelt.domain.model.agent.NaturalLanguage
-import com.fordham.toolbelt.domain.repository.*
 
+/**
+ * Single Foreman entry point — routes local tab/macro vs LLM chain engine.
+ */
 class ForemanOrchestrator(
-    private val geminiRepository: GeminiRepository,
-    private val invoiceRepository: InvoiceRepository,
-    private val clientRepository: ClientRepository,
-    private val settingsRepository: SettingsRepository
+    private val chainEngine: RunForemanAgentUseCase,
+    private val sessionStore: ForemanSessionStore
 ) {
-    suspend fun processCommand(input: NaturalLanguage, appContext: NaturalLanguage): OrchestrationResult {
-        // 1. Check Premium Status (Safety Gate)
-        val settings = settingsRepository.getBusinessSettings()
-        if (!settings.isPremium) {
-            return OrchestrationResult.Failure(FailureMessage("Premium subscription required for Agentic commands"))
-        }
+    val session get() = sessionStore.session
+    val completedSteps get() = sessionStore.completedSteps
 
-        // 2. Generate Tool Call from Repository
-        val result = geminiRepository.generateToolCall(input.value, appContext.value)
-        
-        return when (result) {
-            is ToolCallOutcome.Success -> {
-                val toolCall = result.toolCall ?: return OrchestrationResult.ResponseOnly("I'm not sure how to help with that yet.")
-                
-                // 3. Deterministic Safety Gate
-                if (toolCall.type.category == ToolCategory.DESTRUCTIVE) {
-                    OrchestrationResult.ApprovalRequired(toolCall)
-                } else {
-                    executeSafeTool(toolCall)
-                }
-            }
-            is ToolCallOutcome.Failure -> OrchestrationResult.Failure(result.error)
+    suspend fun run(
+        command: NaturalLanguage,
+        systemPrompt: NaturalLanguage,
+        runtime: ForemanRuntimeSnapshot
+    ): ForemanAgentRun {
+        sessionStore.ensureRestored()
+        ForemanRuntimeBinding.bind(runtime)
+        sessionStore.setSystemPrompt(systemPrompt.value)
+        sessionStore.clearSteps()
+
+        return when (val route = ForemanCommandRouter.route(command.value)) {
+            is ForemanRoute.LocalTab -> ForemanAgentRun(
+                outcome = AgentOutcome.TabNavigationCompleted(
+                    tab = route.tab,
+                    userMessage = ForemanToolResultSummarizer.tabOpenedUserMessage(route.tab)
+                ),
+                session = sessionStore.session
+            )
+            is ForemanRoute.LlmChain -> applyRun(
+                chainEngine(
+                    command = route.command,
+                    session = sessionStore.session,
+                    systemPrompt = systemPrompt
+                )
+            )
+            is ForemanRoute.LocalMacro -> applyRun(
+                chainEngine(
+                    command = command,
+                    session = sessionStore.session,
+                    systemPrompt = systemPrompt
+                )
+            )
         }
     }
 
-    private suspend fun executeSafeTool(toolCall: ForemanToolCall): OrchestrationResult {
-        return try {
-            when (val params = toolCall.parameters) {
-                is ToolParameters.SearchClients -> {
-                    val clients = clientRepository.searchClients(params.query)
-                    OrchestrationResult.Executed("Found ${clients.size} clients matching '${params.query}'", toolCall)
-                }
-                is ToolParameters.OpenTab -> {
-                    OrchestrationResult.Executed("Navigating to ${params.tabName} tab", toolCall)
-                }
-                is ToolParameters.AddJobNote -> {
-                    // Logic to add a note
-                    OrchestrationResult.Executed("Added note for ${params.clientName}", toolCall)
-                }
-                else -> OrchestrationResult.Executed(toolCall.reasoning, toolCall)
-            }
-        } catch (e: Exception) {
-            OrchestrationResult.Failure(FailureMessage("Failed to execute tool ${toolCall.type}: ${e.message}"))
-        }
+    suspend fun continueAfterApproval(
+        pending: AgentOutcome.RequiresApproval,
+        runtime: ForemanRuntimeSnapshot
+    ): ForemanAgentRun {
+        sessionStore.ensureRestored()
+        ForemanRuntimeBinding.bind(runtime)
+        return applyRun(
+            chainEngine.continueAfterApproval(
+                pending = pending,
+                session = sessionStore.session,
+                systemPrompt = NaturalLanguage(sessionStore.lastSystemPrompt),
+                completedSteps = sessionStore.completedSteps.toList()
+            )
+        )
+    }
+
+    suspend fun continueAfterClientPick(
+        clientId: ClientId,
+        runtime: ForemanRuntimeSnapshot
+    ): ForemanAgentRun {
+        sessionStore.ensureRestored()
+        ForemanRuntimeBinding.bind(runtime)
+        return applyRun(
+            chainEngine.continueAfterClientPick(
+                clientId = clientId,
+                session = sessionStore.session,
+                systemPrompt = NaturalLanguage(sessionStore.lastSystemPrompt),
+                completedSteps = sessionStore.completedSteps.toList()
+            )
+        )
+    }
+
+    suspend fun continueAfterSaveConfirm(
+        pending: AgentOutcome.SaveConfirmationRequired,
+        runtime: ForemanRuntimeSnapshot
+    ): ForemanAgentRun {
+        sessionStore.ensureRestored()
+        ForemanRuntimeBinding.bind(runtime)
+        return applyRun(
+            chainEngine.continueAfterSaveConfirm(
+                pending = pending,
+                session = sessionStore.session,
+                systemPrompt = NaturalLanguage(sessionStore.lastSystemPrompt),
+                completedSteps = sessionStore.completedSteps.toList()
+            )
+        )
+    }
+
+    fun resetSession() {
+        sessionStore.reset()
+        ForemanRuntimeBinding.reset()
+    }
+
+    private fun applyRun(run: ForemanAgentRun): ForemanAgentRun {
+        sessionStore.updateSession(run.session)
+        sessionStore.replaceSteps(ForemanAgentPresentation.stepsFromOutcome(run.outcome))
+        return run
     }
 }

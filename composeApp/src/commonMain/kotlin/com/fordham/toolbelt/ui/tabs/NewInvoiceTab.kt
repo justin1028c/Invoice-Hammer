@@ -23,6 +23,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.domain.model.*
+import com.fordham.toolbelt.ui.components.CapturedJobPhotoStrip
+import com.fordham.toolbelt.ui.components.JobPhotoCaptureButtons
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.tabs.components.*
 import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
@@ -40,7 +42,7 @@ fun NewInvoiceTab(
     onHourlyRateChange: (String) -> Unit,
     onBillLabor: () -> Unit,
     onLogoUriChange: (String?) -> Unit,
-    onPhotoCaptured: (String) -> Unit,
+    onPhotoCaptured: (String, JobPhotoPhase) -> Unit,
     onClientNameChange: (String) -> Unit,
     onClientAddressChange: (String) -> Unit,
     onSetInvoiceClientDropdownVisible: (Boolean) -> Unit,
@@ -68,7 +70,13 @@ fun NewInvoiceTab(
         BusinessProfileDialog(
             businessSettings = businessSettings,
             onDismiss = { showBusinessDialog = false },
-            onSave = { onSaveBusinessSettings(it) }
+            onSave = { onSaveBusinessSettings(it) },
+            onPickLogo = {
+                platformActions.pickImage { uri ->
+                    uri?.let { onLogoUriChange(it) }
+                }
+            },
+            onRemoveLogo = { onLogoUriChange(null) }
         )
     }
 
@@ -114,17 +122,28 @@ fun NewInvoiceTab(
         }
 
         Spacer(Modifier.height(10.dp))
-        TacticalButton(
-            onClick = { 
+        com.fordham.toolbelt.ui.components.BusinessLogoSection(
+            logoUri = uiState.logoUri,
+            onPickLogo = {
                 platformActions.pickImage { uri ->
                     uri?.let { onLogoUriChange(it) }
                 }
-            }, 
-            text = if (uiState.logoUri == null) "UPLOAD LOGO" else "LOGO READY ✓", 
-            modifier = Modifier.fillMaxWidth(), 
-            containerColor = MaterialTheme.colorScheme.primary,
-            icon = { Icon(Icons.Default.Image, null) }
+            },
+            onRemoveLogo = if (uiState.logoUri != null) {
+                { onLogoUriChange(null) }
+            } else {
+                null
+            }
         )
+        if (uiState.businessLogoSaved && uiState.logoUri != null) {
+            Text(
+                "Saved for all future invoices",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
 
         Spacer(Modifier.height(10.dp))
         Box {
@@ -156,40 +175,30 @@ fun NewInvoiceTab(
         }
 
         Spacer(Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("JOB PHOTOS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
-            TextButton(onClick = {
+        Text(
+            "JOB PHOTOS",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            "Tap BEFORE when you walk in, then AFTER when work is done.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+        JobPhotoCaptureButtons(
+            onCapture = { phase ->
                 platformActions.capturePhoto { uri ->
-                    uri?.let { onPhotoCaptured(it) }
-                }
-            }) {
-                Icon(Icons.Default.CameraAlt, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("SNAP PHOTO", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-
-        if (uiState.capturedPhotos.isEmpty()) {
-            Text("NO PHOTOS ADDED YET", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), fontWeight = FontWeight.Bold)
-        } else {
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                uiState.capturedPhotos.forEach { uri ->
-                    Box(modifier = Modifier.size(100.dp)) {
-                        Card(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))) {
-                            coil3.compose.AsyncImage(
-                                model = uri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        IconButton(onClick = { onRemovePhoto(uri) }, modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)) {
-                            Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        }
-                    }
+                    uri?.let { onPhotoCaptured(it, phase) }
                 }
             }
-        }
+        )
+        CapturedJobPhotoStrip(
+            photos = uiState.capturedPhotos,
+            onRemovePhoto = onRemovePhoto
+        )
 
         Spacer(Modifier.height(16.dp))
         InvoiceLineItemsList(

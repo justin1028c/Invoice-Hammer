@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
 import com.fordham.toolbelt.ui.viewmodel.NewInvoiceViewModel
 import com.fordham.toolbelt.ui.viewmodel.PaymentViewModel
 import com.fordham.toolbelt.ui.viewmodel.ReceiptsViewModel
+import com.fordham.toolbelt.ui.viewmodel.SettingsViewModel
 import com.fordham.toolbelt.ui.viewmodel.SharedViewModel
 import com.fordham.toolbelt.ui.viewmodel.StatsViewModel
 import com.fordham.toolbelt.ui.viewmodel.SuppliersViewModel
@@ -46,13 +48,21 @@ fun MainPagerContent(
     clientsViewModel: ClientsViewModel,
     suppliersViewModel: SuppliersViewModel,
     authViewModel: AuthViewModel,
+    settingsViewModel: SettingsViewModel,
+    onOpenPaywall: () -> Unit,
     sharedViewModel: SharedViewModel,
     paymentViewModel: PaymentViewModel,
     platformActions: PlatformActions,
     onNavigateToSettings: () -> Unit,
-    onChoosePaymentMethod: (Invoice, PaymentRequestType) -> Unit
+    onChoosePaymentMethod: (Invoice, PaymentRequestType) -> Unit,
+    paymentRequests: List<com.fordham.toolbelt.domain.model.InvoicePaymentRequest> = emptyList(),
+    blockPagerScroll: Boolean = false
 ) {
-    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize(),
+        userScrollEnabled = !blockPagerScroll
+    ) { page ->
         when (page) {
             0 -> NewInvoiceTab(
                 uiState = newInvoiceUiState,
@@ -64,7 +74,9 @@ fun MainPagerContent(
                 onHourlyRateChange = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnHourlyRateChange(it)) },
                 onBillLabor = { newInvoiceViewModel.onIntent(NewInvoiceIntent.BillLabor) },
                 onLogoUriChange = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnLogoUriChange(it)) },
-                onPhotoCaptured = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnPhotoCaptured(it)) },
+                onPhotoCaptured = { uri, phase ->
+                    newInvoiceViewModel.onIntent(NewInvoiceIntent.OnPhotoCaptured(uri, phase))
+                },
                 onClientNameChange = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnClientNameChange(it)) },
                 onClientAddressChange = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnClientAddressChange(it)) },
                 onSetInvoiceClientDropdownVisible = { newInvoiceViewModel.onIntent(NewInvoiceIntent.SetClientDropdownVisible(it)) },
@@ -89,7 +101,7 @@ fun MainPagerContent(
             1 -> HistoryTab(
                 uiState = historyViewModel.uiState.collectAsStateWithLifecycle().value,
                 filteredHistory = historyViewModel.filteredInvoices.collectAsStateWithLifecycle(initialValue = emptyList()).value,
-                paymentRequests = paymentViewModel.uiState.collectAsStateWithLifecycle().value.requests,
+                paymentRequests = paymentRequests,
                 onViewPdf = { platformActions.openPdf(it) },
                 onSharePdf = { f, t -> platformActions.shareFile(f, t) },
                 onRequestDeposit = { onChoosePaymentMethod(it, PaymentRequestType.Deposit) },
@@ -100,7 +112,8 @@ fun MainPagerContent(
                 onShowPaidOnlyChange = { historyViewModel.onShowPaidOnlyChange(it) },
                 onUpdateInvoice = { historyViewModel.updateInvoice(it) },
                 onConvertEstimateToInvoice = { historyViewModel.convertEstimateToInvoice(it) },
-                platformActions = platformActions
+                platformActions = platformActions,
+                listScrollEnabled = !blockPagerScroll
             )
             2 -> ReceiptsTab(
                 uiState = receiptsViewModel.uiState.collectAsStateWithLifecycle().value,
@@ -126,8 +139,22 @@ fun MainPagerContent(
             3 -> StatsTab(
                 stats = statsViewModel.businessStats.collectAsStateWithLifecycle().value,
                 settings = businessSettings,
-                onExportCsv = { statsViewModel.exportBentoReport { platformActions.shareFile(it, "Bento Report") } },
-                onExportZip = { statsViewModel.exportTaxBundle { platformActions.shareFile(it, "Tax Bundle") } },
+                onExportCsv = {
+                    statsViewModel.exportBentoReport { path, savedTo ->
+                        savedTo?.let {
+                            platformActions.showToast("Saved to $it")
+                        }
+                        platformActions.shareFile(path, "Bento Report")
+                    }
+                },
+                onExportZip = {
+                    statsViewModel.exportTaxBundle { path, savedTo ->
+                        savedTo?.let {
+                            platformActions.showToast("Saved to $it")
+                        }
+                        platformActions.shareFile(path, "Tax Bundle")
+                    }
+                },
                 onNavigateToSettings = onNavigateToSettings,
                 onInsertStressInvoices = { statsViewModel.createStressTestInvoices() },
                 onEraseAllInvoices = { statsViewModel.eraseAllInvoices() }
@@ -142,7 +169,7 @@ fun MainPagerContent(
                 onHideSupplier = { suppliersViewModel.hideSupplier(it) },
                 onAddClick = { suppliersViewModel.setAddSheetVisible(true) },
                 onDismissAdd = { suppliersViewModel.setAddSheetVisible(false) },
-                onAddSupplier = { n, c, a, p, l -> suppliersViewModel.addSupplier(n, c, a, p, l) },
+                onAddSupplier = { n, c, a, p, w, l -> suppliersViewModel.addSupplier(n, c, a, p, w, l) },
                 onSearchQueryChange = { suppliersViewModel.onSearchQueryChange(it) },
                 onClearSuggestions = { suppliersViewModel.clearSuggestions() },
                 onToggleReorder = { a, l -> suppliersViewModel.setReorderMode(a, l) },
@@ -181,16 +208,37 @@ fun MainPagerContent(
                     onClearAiSummary = { clientsViewModel.onIntent(ClientsIntent.ClearAiSummary) },
                     onCallClient = { platformActions.callPhone(it) },
                     onEmailClient = { platformActions.sendEmail(it) },
-                    onPhotoCaptured = { uri, invId -> clientsViewModel.onIntent(ClientsIntent.OnPhotoCaptured(uri, invId)) },
+                    onPhotoCaptured = { uri, invId, phase ->
+                        clientsViewModel.onIntent(ClientsIntent.OnPhotoCaptured(uri, invId, phase))
+                    },
                     isPremium = businessSettings.isPremium,
                     platformActions = platformActions
                 )
             }
-            6 -> SettingsTab(
+            6 -> {
+                val currentUser = authViewModel.currentUser.collectAsStateWithLifecycle().value
+                LaunchedEffect(Unit) { settingsViewModel.onSettingsTabVisible() }
+                LaunchedEffect(currentUser?.id?.value) {
+                    if (currentUser != null) settingsViewModel.refreshConnectStatus()
+                }
+                val stripeConnectState by settingsViewModel.connectState.collectAsStateWithLifecycle()
+                val stripeConnectBusy by settingsViewModel.connectBusy.collectAsStateWithLifecycle()
+                SettingsTab(
                 settings = businessSettings,
-                currentUser = authViewModel.currentUser.collectAsStateWithLifecycle().value,
+                currentUser = currentUser,
+                stripePaymentMode = settingsViewModel.stripePaymentMode,
+                stripeConnectState = stripeConnectState,
+                stripeConnectBusy = stripeConnectBusy,
+                onRefreshStripeConnect = { settingsViewModel.refreshConnectStatus() },
+                onStartStripeConnectOnboarding = {
+                    settingsViewModel.startConnectOnboarding(
+                        onOpenUrl = { platformActions.openUrl(it) },
+                        onMessage = { platformActions.showToast(it) }
+                    )
+                },
                 onSaveSettings = { sharedViewModel.saveBusinessSettings(it) },
                 onSignIn = {
+                    authViewModel.clearAuthMessage()
                     platformActions.signInWithGoogle(
                         onSuccess = { authViewModel.signIn(it) },
                         onError = { platformActions.showToast(it) }
@@ -198,9 +246,20 @@ fun MainPagerContent(
                 },
                 onSignOut = { authViewModel.signOut() },
                 onSync = { authViewModel.triggerBackup() },
+                onRestore = { authViewModel.triggerRestore() },
+                onOpenPaywall = onOpenPaywall,
+                isPro = businessSettings.isPremium,
                 syncState = authViewModel.syncState.collectAsStateWithLifecycle().value,
-                platformActions = platformActions
+                supabaseConnectionMode = authViewModel.supabaseConnectionMode,
+                platformActions = platformActions,
+                onPickBusinessLogo = {
+                    platformActions.pickImage { uri ->
+                        uri?.let { sharedViewModel.saveBusinessLogo(it) }
+                    }
+                },
+                onRemoveBusinessLogo = { sharedViewModel.saveBusinessLogo(null) }
             )
+            }
         }
     }
 }

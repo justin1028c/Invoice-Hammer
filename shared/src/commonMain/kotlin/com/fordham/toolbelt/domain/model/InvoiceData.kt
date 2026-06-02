@@ -11,5 +11,5 @@ data class InvoiceData(
     val settings: BusinessSettings,
     val isEstimate: Boolean = false,
     val deposit: Double = 0.0,
-    val photoUris: List<String> = emptyList()
+    val jobSitePhotos: List<CapturedJobPhoto> = emptyList()
 )

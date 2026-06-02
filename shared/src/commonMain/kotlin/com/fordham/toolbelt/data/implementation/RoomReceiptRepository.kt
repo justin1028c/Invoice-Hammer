@@ -23,6 +23,7 @@ class RoomReceiptRepository(
         receiptDao.insertItems(listOf(item.toEntity()))
         ReceiptOutcome.Success
     } catch (e: Exception) {
+        logRepositoryFailure("RoomReceiptRepository", "repository", e)
         ReceiptOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to insert receipt"))
     }
 
@@ -30,6 +31,7 @@ class RoomReceiptRepository(
         receiptDao.insertItems(items.map { it.toEntity() })
         ReceiptOutcome.Success
     } catch (e: Exception) {
+    logRepositoryFailure("RoomReceiptRepository", "repository", e)
         ReceiptOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to insert receipts"))
     }
 
@@ -37,6 +39,8 @@ class RoomReceiptRepository(
         receiptDao.deleteItem(item.toEntity())
         ReceiptOutcome.Success
     } catch (e: Exception) {
+
+logRepositoryFailure("RoomReceiptRepository", "repository", e)
         ReceiptOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete receipt"))
     }
 
@@ -44,6 +48,7 @@ class RoomReceiptRepository(
         receiptDao.deleteAllItems()
         ReceiptOutcome.Success
     } catch (e: Exception) {
+    logRepositoryFailure("RoomReceiptRepository", "repository", e)
         ReceiptOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to purge receipts"))
     }
 
@@ -61,6 +66,9 @@ class RoomReceiptRepository(
         receiptDao.updateItem(item.toEntity())
         ReceiptOutcome.Success
     } catch (e: Exception) {
+        logRepositoryFailure("RoomReceiptRepository", "repository", e)
         ReceiptOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to update receipt"))
     }
 }
+
+private const val TAG = "RoomReceiptRepository"

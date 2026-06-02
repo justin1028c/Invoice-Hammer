@@ -2,7 +2,10 @@ package com.fordham.toolbelt.data.implementation
 
 import com.fordham.toolbelt.data.DraftDao
 import com.fordham.toolbelt.data.DraftInvoiceEntity
+import com.fordham.toolbelt.data.dto.CapturedJobPhotoDto
 import com.fordham.toolbelt.data.dto.LineItemDto
+import com.fordham.toolbelt.domain.model.CapturedJobPhoto
+import com.fordham.toolbelt.domain.model.JobPhotoPhase
 import com.fordham.toolbelt.domain.model.DraftInvoice
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import kotlinx.coroutines.flow.Flow
@@ -38,11 +41,7 @@ class RoomDraftRepository(
                 } catch (t: Throwable) {
                     emptyList()
                 },
-                capturedPhotos = try {
-                    json.decodeFromString<List<String>>(e.capturedPhotosJson)
-                } catch (t: Throwable) {
-                    emptyList()
-                },
+                capturedPhotos = decodeCapturedPhotos(e.capturedPhotosJson),
                 linkedReceiptIds = try {
                     json.decodeFromString<List<String>>(e.linkedReceiptIdsJson)
                 } catch (t: Throwable) {
@@ -68,7 +67,9 @@ class RoomDraftRepository(
             timerRunning = draft.timerRunning,
             saveToClientDirectory = draft.saveToClientDirectory,
             lineItemsJson = json.encodeToString(draft.lineItems.map { LineItemDto.fromDomain(it) }),
-            capturedPhotosJson = json.encodeToString(draft.capturedPhotos),
+            capturedPhotosJson = json.encodeToString(
+                draft.capturedPhotos.map { CapturedJobPhotoDto.fromDomain(it) }
+            ),
             linkedReceiptIdsJson = json.encodeToString(draft.linkedReceiptIds)
         )
         draftDao.saveDraft(entity)
@@ -76,5 +77,20 @@ class RoomDraftRepository(
 
     override suspend fun clearDraft() {
         draftDao.clearDraft()
+    }
+
+    private fun decodeCapturedPhotos(jsonText: String): List<CapturedJobPhoto> {
+        if (jsonText.isBlank() || jsonText == "[]") return emptyList()
+        return try {
+            json.decodeFromString<List<CapturedJobPhotoDto>>(jsonText).map { it.toDomain() }
+        } catch (_: Throwable) {
+            try {
+                json.decodeFromString<List<String>>(jsonText).map { uri ->
+                    CapturedJobPhoto(uri = uri, phase = JobPhotoPhase.Before)
+                }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        }
     }
 }

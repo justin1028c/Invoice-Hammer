@@ -21,6 +21,7 @@ class RoomPhotoRepository(
         val photos = photoDao.getPhotosForInvoiceOnce(invoiceId.value).map { it.toDomain() }
         PhotoListOutcome.Success(photos)
     } catch (e: Exception) {
+        logRepositoryFailure("RoomPhotoRepository", "repository", e)
         PhotoListOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to retrieve photos once"))
     }
 
@@ -28,6 +29,7 @@ class RoomPhotoRepository(
         photoDao.insertPhoto(photo.toEntity())
         PhotoOutcome.Success
     } catch (e: Exception) {
+    logRepositoryFailure("RoomPhotoRepository", "repository", e)
         PhotoOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to save photo"))
     }
 
@@ -35,6 +37,9 @@ class RoomPhotoRepository(
         photoDao.deletePhoto(photo.toEntity())
         PhotoOutcome.Success
     } catch (e: Exception) {
+logRepositoryFailure("RoomPhotoRepository", "repository", e)
         PhotoOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete photo"))
     }
 }
+
+private const val TAG = "RoomPhotoRepository"

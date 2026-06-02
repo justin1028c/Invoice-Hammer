@@ -11,7 +11,11 @@ sealed interface AgentCommandOutcome {
 }
 
 sealed interface ToolCallOutcome {
-    data class Success(val toolCall: ForemanToolCall?) : ToolCallOutcome
+    data class Success(
+        val toolCall: ForemanToolCall?,
+        /** Populated when [toolCall] is null (UNKNOWN / conversational completion). */
+        val completionReasoning: String = ""
+    ) : ToolCallOutcome
     data class Failure(val error: FailureMessage) : ToolCallOutcome
 }
 

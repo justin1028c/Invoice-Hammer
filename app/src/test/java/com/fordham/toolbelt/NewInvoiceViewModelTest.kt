@@ -4,9 +4,11 @@ import app.cash.turbine.test
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
+import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.usecase.BillLaborUseCase
 import com.fordham.toolbelt.domain.usecase.GenerateAndSaveInvoiceUseCase
 import com.fordham.toolbelt.domain.usecase.ProcessInvoiceAiUseCase
+import com.fordham.toolbelt.domain.usecase.SaveBusinessLogoUseCase
 import com.fordham.toolbelt.ui.viewmodel.NewInvoiceIntent
 import com.fordham.toolbelt.ui.viewmodel.NewInvoiceViewModel
 import io.mockk.*
@@ -29,7 +31,9 @@ class NewInvoiceViewModelTest {
     private val billLaborUseCase: BillLaborUseCase = mockk(relaxed = true)
     private val generateAndSaveInvoiceUseCase: GenerateAndSaveInvoiceUseCase = mockk(relaxed = true)
     private val draftRepository: DraftRepository = mockk()
-    
+    private val settingsRepository: SettingsRepository = mockk(relaxed = true)
+    private val saveBusinessLogoUseCase: SaveBusinessLogoUseCase = mockk(relaxed = true)
+
     private val testDispatcher = UnconfinedTestDispatcher()
     private val draftStateFlow = MutableStateFlow<DraftInvoice>(DraftInvoice())
 
@@ -45,10 +49,12 @@ class NewInvoiceViewModelTest {
             draftStateFlow.value = DraftInvoice()
         }
         coEvery { receiptRepository.getUnassignedReceipts() } returns flowOf(ReceiptListOutcome.Success(emptyList()))
+        every { settingsRepository.businessSettingsFlow } returns flowOf(BusinessSettings())
+        coEvery { settingsRepository.getBusinessSettings() } returns BusinessSettings()
 
         viewModel = NewInvoiceViewModel(
             receiptRepository, processInvoiceAiUseCase, billLaborUseCase,
-            generateAndSaveInvoiceUseCase, draftRepository
+            generateAndSaveInvoiceUseCase, draftRepository, settingsRepository, saveBusinessLogoUseCase
         )
     }
 

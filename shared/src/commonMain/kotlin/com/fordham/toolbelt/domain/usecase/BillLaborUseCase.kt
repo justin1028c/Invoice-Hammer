@@ -34,6 +34,7 @@ class BillLaborUseCase(
         ))
         BillLaborOutcome.Success
     } catch (e: Exception) {
+        com.fordham.toolbelt.util.AppLogger.e("BillLaborUseCase", "invoke failed", e)
         BillLaborOutcome.Error(
             BillLaborFailure.UnexpectedFailure(FailureMessage(e.message ?: "Failed to bill labor"))
         )

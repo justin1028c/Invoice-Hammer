@@ -8,6 +8,17 @@ import com.fordham.toolbelt.domain.model.ReceiptListOutcome
 import com.fordham.toolbelt.domain.model.SyncOutcome
 import com.fordham.toolbelt.domain.model.SyncUploadOutcome
 import com.fordham.toolbelt.domain.model.SupplierListOutcome
+import com.fordham.toolbelt.data.remote.SupabaseBackupDownloadOutcome
+import com.fordham.toolbelt.data.remote.SupabaseBackupUploadOutcome
+import com.fordham.toolbelt.data.remote.SupabaseBackupUploadRequest
+import com.fordham.toolbelt.data.remote.SupabaseClient
+import com.fordham.toolbelt.data.remote.SupabaseConfig
+import com.fordham.toolbelt.domain.model.ClientOutcome
+import com.fordham.toolbelt.domain.model.InvoiceOutcome
+import com.fordham.toolbelt.domain.model.ReceiptOutcome
+import com.fordham.toolbelt.domain.model.SettingsOutcome
+import com.fordham.toolbelt.domain.model.SupplierOutcome
+import com.fordham.toolbelt.domain.repository.AuthRepository
 import com.fordham.toolbelt.domain.repository.ClientRepository
 import com.fordham.toolbelt.domain.repository.DriveAuthTokenProvider
 import com.fordham.toolbelt.domain.repository.DriveTokenOutcome
@@ -36,26 +47,214 @@ import kotlinx.serialization.json.*
 class KtorSyncRepository(
     private val httpClient: HttpClient,
     private val driveAuthTokenProvider: DriveAuthTokenProvider,
+    private val supabaseClient: SupabaseClient,
+    private val supabaseConfig: SupabaseConfig,
+    private val authRepository: AuthRepository,
     private val invoiceRepository: InvoiceRepository,
     private val receiptRepository: ReceiptRepository,
     private val clientRepository: ClientRepository,
     private val supplierRepository: SupplierRepository,
     private val settingsRepository: SettingsRepository,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher
 ) : SyncRepository {
     
     private val driveUploadUrl = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
 
     override suspend fun syncInvoices(): SyncOutcome = withContext(ioDispatcher) {
-        val backup = BackupPayload(buildBackupJson().toString().encodeToByteArray())
-        when (val upload = uploadToDrive(BackupFileName("invoice-hammer-backup.json"), backup)) {
-            is SyncUploadOutcome.Success -> SyncOutcome.Success
-            is SyncUploadOutcome.Failure -> SyncOutcome.Failure(upload.error)
+        val backupJson = KtorSyncBackupJsonBuilder.build(
+            invoiceRepository = invoiceRepository,
+            receiptRepository = receiptRepository,
+            clientRepository = clientRepository,
+            supplierRepository = supplierRepository,
+            settingsRepository = settingsRepository
+        )
+        val backup = BackupPayload(backupJson.toString().encodeToByteArray())
+        val driveOutcome = uploadToDrive(BackupFileName("invoice-hammer-backup.json"), backup)
+        val supabaseOutcome = uploadToSupabase(backupJson)
+
+        val driveOk = driveOutcome is SyncUploadOutcome.Success
+        val supabaseOk = supabaseOutcome is SupabaseBackupUploadOutcome.Success
+
+        return@withContext when {
+            driveOk || supabaseOk -> SyncOutcome.Success
+            supabaseOutcome is SupabaseBackupUploadOutcome.Skipped ->
+                when (driveOutcome) {
+                    is SyncUploadOutcome.Success -> SyncOutcome.Success
+                    is SyncUploadOutcome.Failure -> SyncOutcome.Failure(driveOutcome.error)
+                }
+            supabaseOutcome is SupabaseBackupUploadOutcome.Failure &&
+                driveOutcome is SyncUploadOutcome.Failure ->
+                SyncOutcome.Failure(
+                    FailureMessage(
+                        "Drive: ${driveOutcome.error.value} · Supabase: ${supabaseOutcome.error.value}"
+                    )
+                )
+            supabaseOutcome is SupabaseBackupUploadOutcome.Failure ->
+                SyncOutcome.Failure(supabaseOutcome.error)
+            else ->
+                when (driveOutcome) {
+                    is SyncUploadOutcome.Success -> SyncOutcome.Success
+                    is SyncUploadOutcome.Failure -> SyncOutcome.Failure(driveOutcome.error)
+                }
         }
+    }
+
+    private suspend fun uploadToSupabase(backupJson: JsonObject): SupabaseBackupUploadOutcome {
+        if (!supabaseConfig.isConfigured) {
+            return SupabaseBackupUploadOutcome.Skipped
+        }
+
+        val user = authRepository.currentUser.first()
+            ?: return SupabaseBackupUploadOutcome.Failure(
+                FailureMessage("Sign in to back up to Supabase.")
+            )
+
+        return supabaseClient.uploadBackup(
+            SupabaseBackupUploadRequest(
+                userId = user.id.value,
+                backupJson = backupJson,
+                exportedAtMillis = Clock.System.now().toEpochMilliseconds(),
+                schemaVersion = 1
+            )
+        )
     }
 
     override suspend fun syncReceipts(): SyncOutcome = withContext(ioDispatcher) {
         syncInvoices()
+    }
+
+    override suspend fun restoreFromDrive(): SyncOutcome = withContext(ioDispatcher) {
+        val token = when (val tokenOutcome = driveAuthTokenProvider.getDriveAccessToken()) {
+            is DriveTokenOutcome.Success -> tokenOutcome.token.value
+            is DriveTokenOutcome.Failure -> return@withContext SyncOutcome.Failure(
+                FailureMessage("Drive sign-in required: ${tokenOutcome.error.value}")
+            )
+        }
+
+        return@withContext try {
+            // List files in appDataFolder to find the backup
+            val listUrl = "https://www.googleapis.com/drive/v3/files" +
+                "?spaces=appDataFolder" +
+                "&fields=files(id,name)" +
+                "&q=name%3D%27invoice-hammer-backup.json%27"
+
+            val listResponse = httpClient.get(listUrl) {
+                header(HttpHeaders.Authorization, "Bearer $token")
+                accept(ContentType.Application.Json)
+            }
+
+            if (!listResponse.status.isSuccess()) {
+                return@withContext SyncOutcome.Failure(
+                    FailureMessage("Drive listing failed with HTTP ${listResponse.status.value}.")
+                )
+            }
+
+            val listJson = Json.parseToJsonElement(listResponse.bodyAsText()).jsonObject
+            val files = listJson["files"]?.jsonArray
+            if (files.isNullOrEmpty()) {
+                return@withContext SyncOutcome.Failure(
+                    FailureMessage("No Drive backup found. Run SYNC NOW first.")
+                )
+            }
+
+            val fileId = files[0].jsonObject["id"]?.jsonPrimitive?.content
+                ?: return@withContext SyncOutcome.Failure(
+                    FailureMessage("Drive backup file ID missing.")
+                )
+
+            // Download the file content
+            val downloadUrl = "https://www.googleapis.com/drive/v3/files/$fileId?alt=media"
+            val downloadResponse = httpClient.get(downloadUrl) {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }
+
+            if (!downloadResponse.status.isSuccess()) {
+                return@withContext SyncOutcome.Failure(
+                    FailureMessage("Drive download failed with HTTP ${downloadResponse.status.value}.")
+                )
+            }
+
+            val backupJson = Json.parseToJsonElement(downloadResponse.bodyAsText()).jsonObject
+            applyBackupSnapshot(backupJson)
+        } catch (e: Exception) {
+            SyncOutcome.Failure(FailureMessage(e.message ?: "Failed to restore from Google Drive."))
+        }
+    }
+
+    override suspend fun restoreLatest(): SyncOutcome = withContext(ioDispatcher) {
+        // Drive is the primary sync target (syncInvoices always writes there).
+        // Attempt Drive restore first; only fall back to Supabase if Drive
+        // cannot supply a backup (no token, no file, or network failure).
+        val driveOutcome = restoreFromDrive()
+        if (driveOutcome is SyncOutcome.Success) return@withContext driveOutcome
+
+        // Supabase fallback — only if it is configured.
+        if (!supabaseConfig.isConfigured) return@withContext driveOutcome
+        restoreFromSupabase()
+    }
+
+    override suspend fun restoreFromSupabase(): SyncOutcome = withContext(ioDispatcher) {
+        if (!supabaseConfig.isConfigured) {
+            return@withContext SyncOutcome.Failure(FailureMessage("Supabase is not configured."))
+        }
+
+        val user = authRepository.currentUser.first()
+            ?: return@withContext SyncOutcome.Failure(FailureMessage("Sign in to restore from Supabase."))
+
+        when (val download = supabaseClient.downloadLatestBackup(user.id.value)) {
+            SupabaseBackupDownloadOutcome.NotConfigured ->
+                SyncOutcome.Failure(FailureMessage("Supabase is not configured."))
+            SupabaseBackupDownloadOutcome.NotFound ->
+                SyncOutcome.Failure(FailureMessage("No Supabase backup found for this account. Run SYNC NOW first."))
+            is SupabaseBackupDownloadOutcome.Failure ->
+                SyncOutcome.Failure(download.error)
+            is SupabaseBackupDownloadOutcome.Success ->
+                applyBackupSnapshot(download.backupJson)
+        }
+    }
+
+    private suspend fun applyBackupSnapshot(backupJson: JsonObject): SyncOutcome {
+        val preserveLogoUri = settingsRepository.getBusinessSettings().logoUri
+        val parsed = SupabaseBackupRestoreMapper.parse(backupJson, preserveLogoUri)
+
+        when (val outcome = settingsRepository.saveBusinessSettings(parsed.settings)) {
+            is SettingsOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+            SettingsOutcome.Success -> Unit
+        }
+
+        when (val outcome = clientRepository.replaceAllClients(parsed.clients)) {
+            is ClientOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+            ClientOutcome.Success -> Unit
+        }
+
+        when (val outcome = supplierRepository.replaceAllSuppliers(parsed.suppliers)) {
+            is SupplierOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+            SupplierOutcome.Success -> Unit
+        }
+
+        when (val outcome = invoiceRepository.deleteAllInvoices()) {
+            is InvoiceOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+            InvoiceOutcome.Success -> Unit
+        }
+        if (parsed.invoices.isNotEmpty()) {
+            when (val outcome = invoiceRepository.insertInvoices(parsed.invoices)) {
+                is InvoiceOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+                InvoiceOutcome.Success -> Unit
+            }
+        }
+
+        when (val outcome = receiptRepository.deleteAllItems()) {
+            is ReceiptOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+            ReceiptOutcome.Success -> Unit
+        }
+        if (parsed.receipts.isNotEmpty()) {
+            when (val outcome = receiptRepository.insertItems(parsed.receipts)) {
+                is ReceiptOutcome.Failure -> return SyncOutcome.Failure(outcome.error)
+                ReceiptOutcome.Success -> Unit
+            }
+        }
+
+        return SyncOutcome.Success
     }
 
     override suspend fun uploadToDrive(fileName: BackupFileName, content: BackupPayload): SyncUploadOutcome = withContext(ioDispatcher) {
@@ -90,117 +289,6 @@ class KtorSyncRepository(
             }
         } catch (e: Exception) {
             SyncUploadOutcome.Failure(FailureMessage(e.message ?: "Failed to upload backup to Google Drive."))
-        }
-    }
-
-    private suspend fun buildBackupJson(): JsonObject {
-        val invoices = invoiceRepository.allInvoices.first()
-        val receipts = when (val outcome = receiptRepository.allItems.first()) {
-            is ReceiptListOutcome.Success -> outcome.receipts
-            is ReceiptListOutcome.Failure -> emptyList()
-        }
-        val clients = when (val outcome = clientRepository.getAllClients().first()) {
-            is ClientListOutcome.Success -> outcome.clients
-            is ClientListOutcome.Failure -> emptyList()
-        }
-        val visibleSuppliers = when (val outcome = supplierRepository.getVisibleSuppliers().first()) {
-            is SupplierListOutcome.Success -> outcome.suppliers
-            is SupplierListOutcome.Failure -> emptyList()
-        }
-        val hiddenSuppliers = when (val outcome = supplierRepository.getHiddenSuppliers().first()) {
-            is SupplierListOutcome.Success -> outcome.suppliers
-            is SupplierListOutcome.Failure -> emptyList()
-        }
-        val settings = settingsRepository.getBusinessSettings()
-
-        return buildJsonObject {
-            put("schemaVersion", 1)
-            put("exportedAtMillis", Clock.System.now().toEpochMilliseconds())
-            putJsonObject("settings") {
-                put("businessName", settings.businessName)
-                put("businessSlogan", settings.businessSlogan)
-                put("businessPhone", settings.businessPhone)
-                put("businessEmail", settings.businessEmail)
-                put("businessAddress", settings.businessAddress)
-                put("taxRate", settings.taxRate)
-                put("markupPercentage", settings.markupPercentage)
-                put("isPremium", settings.isPremium)
-                put("isDarkMode", settings.isDarkMode)
-                put("useMetricUnits", settings.useMetricUnits)
-                put("notificationsEnabled", settings.notificationsEnabled)
-            }
-            putJsonArray("clients") {
-                clients.forEach { client ->
-                    addJsonObject {
-                        put("id", client.id.value)
-                        put("name", client.name)
-                        put("email", client.email.value)
-                        put("phone", client.phone.value)
-                        put("address", client.address)
-                        put("notes", client.notes)
-                        put("totalInvoiced", client.totalInvoiced)
-                        put("isFavorite", client.isFavorite)
-                        put("lastUpdated", client.lastUpdated)
-                    }
-                }
-            }
-            putJsonArray("invoices") {
-                invoices.forEach { invoice ->
-                    addJsonObject {
-                        put("id", invoice.id.value)
-                        put("clientName", invoice.clientName)
-                        put("clientAddress", invoice.clientAddress)
-                        put("clientPhone", invoice.clientPhone.value)
-                        put("clientEmail", invoice.clientEmail.value)
-                        put("date", invoice.date)
-                        put("totalAmount", invoice.totalAmount)
-                        put("depositAmount", invoice.depositAmount)
-                        put("itemsSummary", invoice.itemsSummary)
-                        put("pdfPath", invoice.pdfPath)
-                        put("isPaid", invoice.isPaid)
-                        put("isEstimate", invoice.isEstimate)
-                        put("lastUpdated", invoice.lastUpdated)
-                        put("durationSeconds", invoice.durationSeconds)
-                    }
-                }
-            }
-            putJsonArray("receipts") {
-                receipts.forEach { receipt ->
-                    addJsonObject {
-                        put("id", receipt.id.value)
-                        put("description", receipt.description)
-                        put("quantity", receipt.quantity)
-                        put("unitPrice", receipt.unitPrice)
-                        put("totalPrice", receipt.totalPrice)
-                        put("category", receipt.category)
-                        put("clientName", receipt.clientName)
-                        put("imagePath", receipt.imagePath)
-                        put("isBilled", receipt.isBilled)
-                        put("lastUpdated", receipt.lastUpdated)
-                        put("supplierName", receipt.supplierName)
-                        put("linkedInvoiceId", receipt.linkedInvoiceId?.value)
-                    }
-                }
-            }
-            putJsonArray("suppliers") {
-                (visibleSuppliers + hiddenSuppliers).forEach { supplier ->
-                    addJsonObject {
-                        put("id", supplier.id.value)
-                        put("name", supplier.name)
-                        put("category", supplier.category.name)
-                        put("address", supplier.address)
-                        put("phone", supplier.phone.value)
-                        put("webUrl", supplier.webUrl)
-                        put("packageName", supplier.packageName)
-                        put("displayOrder", supplier.displayOrder)
-                        put("isPinned", supplier.isPinned)
-                        put("isHidden", supplier.isHidden)
-                        put("customLogoPath", supplier.customLogoPath)
-                        put("logoResName", supplier.logoResName)
-                        put("isDefault", supplier.isDefault)
-                    }
-                }
-            }
         }
     }
 

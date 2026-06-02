@@ -1,0 +1,55 @@
+# Copy to local.properties (never commit local.properties).
+
+# --- Android beta signing (run scripts/create-beta-keystore.ps1 once) ---
+# release.storeFile=keystore/invoicehammer-beta.jks
+# release.storePassword=your-store-password
+# release.keyAlias=invoicehammer
+# release.keyPassword=your-key-password
+
+# Stellar PowerPay — required for LIVE payments (not demo mode).
+
+# James/Vercel relay URL, e.g. https://your-powerpay.vercel.app
+powerpay.base.url=
+
+# From PowerPay dashboard
+powerpay.app.id=
+powerpay.public.key=pk_test_
+powerpay.signing.secret=whsec_test_
+
+# sandbox | production
+powerpay.env=sandbox
+
+# sdk = website guide (/v1/invoice-payments) | relay = James API (/api/v1/payments)
+powerpay.api.variant=sdk
+
+# Supabase — cloud backup + restore (Settings → SYNC NOW / RESTORE).
+# KMP uses PostgREST over Ktor (not @supabase/supabase-js — that is for Next.js/web only).
+# 1) Run supabase/migrations/001_invoice_hammer_backups.sql in the Supabase SQL editor.
+# 2) Project Settings → API: Project URL + anon or publishable key (sb_publishable_...).
+supabase.url=https://ygvqmexpvdsdnxzmlfml.supabase.co
+supabase.anon.key=sb_publishable_...
+supabase.service.role.key=
+supabase.schema=public
+
+# Stripe Connect — client checkout + on-site Payment Sheet (PCI-safe).
+# Deploy supabase/functions/stripe-payment-api — see supabase/functions/stripe-payment-api/README.md
+stripe.publishable.key=pk_test_
+# Base URL only (app appends /v1/payments/intent):
+# https://YOUR_PROJECT.supabase.co/functions/v1/stripe-payment-api
+stripe.payment.backend.url=
+# Must match STRIPE_BACKEND_API_KEY on the Edge Function (optional but recommended).
+stripe.backend.api.key=
+stripe.connect.onboarding.url=
+stripe.application.fee.bps=100
+
+# Foreman / Gemini — server-side key only (deploy supabase/functions/foreman-gemini-api).
+# Base URL only (app calls POST …/v1/generate):
+foreman.gemini.backend.url=https://YOUR_PROJECT.supabase.co/functions/v1/foreman-gemini-api
+# Must match FOREMAN_BACKEND_API_KEY on the Edge Function.
+foreman.backend.api.key=
+gemini.model.name=gemini-3.1-flash-lite
+
+# --- iOS (Xcode build settings in iosApp/project.yml, or override in generated Xcode project) ---
+# Map the same values into: FOREMAN_GEMINI_BACKEND_URL, FOREMAN_BACKEND_API_KEY, STRIPE_*, etc.
+# They are copied into Keychain at launch via iosApp/iosApp/iOSApp.swift seed* functions.
+# Do NOT put GEMINI_API_KEY in the app — set GEMINI_API_KEY only as a Supabase function secret.

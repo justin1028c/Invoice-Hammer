@@ -20,6 +20,6 @@ class AndroidDatabaseBuilder(
             context = context,
             name = dbFile.absolutePath
         ).openHelperFactory(factory)
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_19_20)
     }
 }

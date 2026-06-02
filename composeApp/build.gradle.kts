@@ -47,9 +47,6 @@ kotlin {
             // Image Loading
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
-            
-            // Navigation
-            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
         }
         
         androidMain.dependencies {

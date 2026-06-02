@@ -14,6 +14,13 @@ sealed class AiAgentIntent {
     data object ScanReceipt : AiAgentIntent()
     data object OpenStores : AiAgentIntent()
     data object PremiumRequired : AiAgentIntent()
+    data class StepByStepInvoiceCommit(
+        val clientName: String,
+        val clientAddress: String,
+        val category: String,
+        val description: String,
+        val amount: Double
+    ) : AiAgentIntent()
     data object Unknown : AiAgentIntent()
 }
 

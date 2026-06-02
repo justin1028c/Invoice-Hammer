@@ -15,6 +15,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.JobPhoto
+import com.fordham.toolbelt.domain.model.JobPhotoPhase
+import com.fordham.toolbelt.ui.components.JobPhotoCaptureButtons
 
 /**
  * Responsibility: Display a horizontal carousel of photos linked to the client's jobs.
@@ -23,22 +25,13 @@ import com.fordham.toolbelt.domain.model.JobPhoto
 fun ClientPhotosSection(
     jobPhotos: List<JobPhoto>,
     canCapture: Boolean,
-    onSnapPhotoClick: () -> Unit
+    onCapturePhoto: (JobPhotoPhase) -> Unit
 ) {
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(), 
-            horizontalArrangement = Arrangement.SpaceBetween, 
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("JOB PHOTOS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
-            if (canCapture) {
-                TextButton(onClick = onSnapPhotoClick) {
-                    Icon(Icons.Default.AddAPhoto, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("SNAP PHOTO", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                }
-            }
+        Text("JOB PHOTOS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+        if (canCapture) {
+            Spacer(Modifier.height(6.dp))
+            JobPhotoCaptureButtons(onCapture = onCapturePhoto)
         }
         
         if (jobPhotos.isNotEmpty()) {
@@ -50,17 +43,37 @@ fun ClientPhotosSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 jobPhotos.forEach { photo ->
-                    Card(
-                        modifier = Modifier.size(120.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    ) {
-                        coil3.compose.AsyncImage(
-                            model = photo.localUri,
-                            contentDescription = null,
+                    Box(modifier = Modifier.size(120.dp)) {
+                        Card(
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        ) {
+                            coil3.compose.AsyncImage(
+                                model = photo.localUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp),
+                            color = when (photo.phase) {
+                                JobPhotoPhase.Before -> MaterialTheme.colorScheme.surfaceVariant
+                                JobPhotoPhase.After -> MaterialTheme.colorScheme.primary
+                            },
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (photo.phase == JobPhotoPhase.Before) "BEFORE" else "AFTER",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }

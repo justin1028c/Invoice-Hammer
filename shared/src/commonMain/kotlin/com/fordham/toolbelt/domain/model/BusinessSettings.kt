@@ -12,5 +12,9 @@ data class BusinessSettings(
     val isPremium: Boolean = false,
     val isDarkMode: Boolean = true,
     val useMetricUnits: Boolean = false,
-    val notificationsEnabled: Boolean = true
+    val notificationsEnabled: Boolean = true,
+    val biometricLockEnabled: Boolean = false,
+    val hammerCredits: Int = 0,
+    val aiActionsUsedThisMonth: Int = 0
 )
+

@@ -9,5 +9,6 @@ interface ClientRepository {
     fun getAllClients(): Flow<ClientListOutcome>
     suspend fun searchClients(query: String): List<Client>
     suspend fun insertClient(client: Client): ClientOutcome
+    suspend fun replaceAllClients(clients: List<Client>): ClientOutcome
     suspend fun deleteClient(client: Client): ClientOutcome
 }

@@ -17,10 +17,26 @@ object AiUtil {
             }
         }
 
-        // Find the first '{' and last '}' to isolate the JSON object
-        val start = cleaned.indexOf('{')
-        val end = cleaned.lastIndexOf('}')
-        
+        // Find the first '{' or '[' and last '}' or ']'
+        val firstBrace = cleaned.indexOf('{')
+        val firstBracket = cleaned.indexOf('[')
+        val lastBrace = cleaned.lastIndexOf('}')
+        val lastBracket = cleaned.lastIndexOf(']')
+
+        val start = when {
+            firstBrace != -1 && firstBracket != -1 -> minOf(firstBrace, firstBracket)
+            firstBrace != -1 -> firstBrace
+            firstBracket != -1 -> firstBracket
+            else -> -1
+        }
+
+        val end = when {
+            lastBrace != -1 && lastBracket != -1 -> maxOf(lastBrace, lastBracket)
+            lastBrace != -1 -> lastBrace
+            lastBracket != -1 -> lastBracket
+            else -> -1
+        }
+
         if (start != -1 && end != -1 && end > start) {
             cleaned = cleaned.substring(start, end + 1)
         }

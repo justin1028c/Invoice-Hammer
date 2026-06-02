@@ -33,7 +33,11 @@ sealed interface ClientsIntent {
     object ClearAiSummary : ClientsIntent
     data class SetReceiptPickerVisible(val visible: Boolean) : ClientsIntent
     data class LinkReceipt(val receipt: ReceiptItem, val clientName: String) : ClientsIntent
-    data class OnPhotoCaptured(val uriString: String, val invoiceId: String) : ClientsIntent
+    data class OnPhotoCaptured(
+        val uriString: String,
+        val invoiceId: String,
+        val phase: JobPhotoPhase
+    ) : ClientsIntent
 }
 
 class ClientsViewModel(
@@ -75,7 +79,7 @@ class ClientsViewModel(
             is ClientsIntent.ClearAiSummary -> _uiState.update { it.copy(aiSummary = null) }
             is ClientsIntent.SetReceiptPickerVisible -> _uiState.update { it.copy(showReceiptPicker = intent.visible) }
             is ClientsIntent.LinkReceipt -> executeLinkReceipt(intent.receipt, intent.clientName)
-            is ClientsIntent.OnPhotoCaptured -> executeSavePhoto(intent.uriString, intent.invoiceId)
+            is ClientsIntent.OnPhotoCaptured -> executeSavePhoto(intent.uriString, intent.invoiceId, intent.phase)
         }
     }
 
@@ -123,9 +127,9 @@ class ClientsViewModel(
         }
     }
 
-    private fun executeSavePhoto(uri: String, invId: String) {
+    private fun executeSavePhoto(uri: String, invId: String, phase: JobPhotoPhase) {
         viewModelScope.launch {
-            saveJobPhotoUseCase(uri, invId)
+            saveJobPhotoUseCase(uri, invId, phase)
         }
     }
 }

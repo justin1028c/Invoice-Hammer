@@ -21,6 +21,7 @@ fun MainScreenDialogs(
     statsError: String?,
     agentError: String?,
     onDismissPremium: () -> Unit,
+    onOpenPaywall: () -> Unit,
     onGoToSettings: () -> Unit,
     onDismissAiConf: () -> Unit,
     onAcceptAi: () -> Unit,
@@ -31,6 +32,7 @@ fun MainScreenDialogs(
     if (showPremiumLock) {
         PremiumLockDialog(
             onDismiss = onDismissPremium,
+            onOpenPaywall = onOpenPaywall,
             onGoToSettings = onGoToSettings
         )
     }

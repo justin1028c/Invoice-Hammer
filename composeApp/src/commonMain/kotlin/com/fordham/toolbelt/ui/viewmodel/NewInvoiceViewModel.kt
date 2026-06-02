@@ -5,119 +5,38 @@ import androidx.lifecycle.viewModelScope
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.*
+import com.fordham.toolbelt.domain.model.SaveBusinessLogoOutcome
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-/**
- * Responsibility: Manage state for creating a new invoice, utilizing a persistent draft.
- * Follows UDF pattern per AI_ARCHITECTURE_RULES.md.
- */
-data class NewInvoiceUiState(
-    val clientName: String = "",
-    val clientAddress: String = "",
-    val taxText: String = "7.0",
-    val depositCollected: String = "",
-    val hourlyRate: String = "50.0",
-    val logoUri: String? = null,
-    val lineItems: List<LineItem> = emptyList(),
-    val selectedCategory: String = "Drywall",
-    val itemDesc: String = "",
-    val itemAmt: String = "",
-    val isProcessingAi: Boolean = false,
-    val pendingAi: List<LineItem> = emptyList(),
-    val showAiConf: Boolean = false,
-    val showClientDropdown: Boolean = false,
-    val showCategoryDropdown: Boolean = false,
-    val isListening: Boolean = false,
-    val timerRunning: Boolean = false,
-    val elapsedSeconds: Long = 0L,
-    val startTime: Long = 0L,
-    val saveToClientDirectory: Boolean = false,
-    val canAddManual: Boolean = false,
-    val canSave: Boolean = false,
-    val errorMessage: String? = null,
-    val capturedPhotos: List<String> = emptyList(),
-    val availableReceipts: List<ReceiptItem> = emptyList(),
-    val showReceiptPicker: Boolean = false
-) {
-    val formattedTime: String get() {
-        val hours = elapsedSeconds / 3600
-        val minutes = (elapsedSeconds % 3600) / 60
-        val seconds = elapsedSeconds % 60
-        return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
-    }
-}
-
-sealed interface NewInvoiceIntent {
-    data class OnClientNameChange(val name: String) : NewInvoiceIntent
-    data class OnClientAddressChange(val address: String) : NewInvoiceIntent
-    data class OnTaxTextChange(val tax: String) : NewInvoiceIntent
-    data class OnDepositCollectedChange(val amt: String) : NewInvoiceIntent
-    data class OnHourlyRateChange(val rate: String) : NewInvoiceIntent
-    data class OnLogoUriChange(val uri: String?) : NewInvoiceIntent
-    data class OnCategoryChange(val cat: String) : NewInvoiceIntent
-    data class OnSaveToClientDirectoryChange(val save: Boolean) : NewInvoiceIntent
-    data class OnItemDescChange(val desc: String) : NewInvoiceIntent
-    data class OnItemAmtChange(val amt: String) : NewInvoiceIntent
-    data class OnPhotoCaptured(val uri: String) : NewInvoiceIntent
-    data class RemovePhoto(val uri: String) : NewInvoiceIntent
-    data class SetClientDropdownVisible(val visible: Boolean) : NewInvoiceIntent
-    data class SetCategoryDropdownVisible(val visible: Boolean) : NewInvoiceIntent
-    data class OnListeningStateChange(val visible: Boolean) : NewInvoiceIntent
-    data class OnShowAiConfChange(val visible: Boolean) : NewInvoiceIntent
-    data class SetReceiptPickerVisible(val visible: Boolean) : NewInvoiceIntent
-    object ClearError : NewInvoiceIntent
-    object ToggleTimer : NewInvoiceIntent
-    object AddManualLineItem : NewInvoiceIntent
-    object BillLabor : NewInvoiceIntent
-    data class RemoveLineItem(val item: LineItem) : NewInvoiceIntent
-    object AcceptAiItems : NewInvoiceIntent
-    data class ProcessInvoiceAi(val categories: List<String>) : NewInvoiceIntent
-    data class LinkReceipt(val receipt: ReceiptItem, val markupPercent: Double) : NewInvoiceIntent
-    data class SaveInvoice(val isEstimate: Boolean, val settings: BusinessSettings, val onGenerated: (String) -> Unit) : NewInvoiceIntent
-}
-
+/** Manages new-invoice draft state (UDF). See [NewInvoiceContract] for ui state and intents. */
 class NewInvoiceViewModel(
     private val receiptRepository: ReceiptRepository,
     private val processInvoiceAiUseCase: ProcessInvoiceAiUseCase,
     private val billLaborUseCase: BillLaborUseCase,
     private val generateAndSaveInvoiceUseCase: GenerateAndSaveInvoiceUseCase,
-    private val draftRepository: DraftRepository
+    private val draftRepository: DraftRepository,
+    private val settingsRepository: SettingsRepository,
+    private val saveBusinessLogoUseCase: SaveBusinessLogoUseCase
 ) : ViewModel() {
 
-    private val _transientState = MutableStateFlow(TransientUiState())
+    private val _transientState = MutableStateFlow(NewInvoiceTransientState())
     private val draftEditor = NewInvoiceDraftEditor(draftRepository)
-    
-    data class TransientUiState(
-        val isProcessingAi: Boolean = false,
-        val isListening: Boolean = false,
-        val errorMessage: String? = null,
-        val showAiConf: Boolean = false,
-        val pendingAi: List<LineItem> = emptyList(),
-        val showClientDropdown: Boolean = false,
-        val showCategoryDropdown: Boolean = false,
-        val showReceiptPicker: Boolean = false,
-        val availableReceipts: List<ReceiptItem> = emptyList(),
-        val clientName: String? = null,
-        val clientAddress: String? = null,
-        val taxText: String? = null,
-        val depositCollected: String? = null,
-        val hourlyRate: String? = null,
-        val itemDesc: String? = null,
-        val itemAmt: String? = null
-    )
 
     val uiState: StateFlow<NewInvoiceUiState> = combine(
         draftEditor.draft,
-        _transientState
-    ) { draft, transient ->
+        _transientState,
+        settingsRepository.businessSettingsFlow
+    ) { draft, transient, settings ->
+        val effectiveLogo = draft.logoUri?.takeIf { it.isNotBlank() } ?: settings.logoUri
         NewInvoiceUiState(
             clientName = transient.clientName ?: draft.clientName,
             clientAddress = transient.clientAddress ?: draft.clientAddress,
             taxText = transient.taxText ?: draft.taxRate.toString(),
             depositCollected = transient.depositCollected ?: draft.deposit.toString(),
             hourlyRate = transient.hourlyRate ?: draft.hourlyRate.toString(),
-            logoUri = draft.logoUri,
+            logoUri = effectiveLogo,
+            businessLogoSaved = !settings.logoUri.isNullOrBlank(),
             lineItems = draft.lineItems,
             selectedCategory = draft.selectedCategory,
             itemDesc = transient.itemDesc ?: draft.itemDesc,
@@ -136,7 +55,9 @@ class NewInvoiceViewModel(
             availableReceipts = transient.availableReceipts,
             showReceiptPicker = transient.showReceiptPicker,
             canAddManual = (transient.itemDesc ?: draft.itemDesc).isNotBlank() && ((transient.itemAmt ?: draft.itemAmt).toDoubleOrNull() ?: 0.0) > 0.0,
-            canSave = (transient.clientName ?: draft.clientName).isNotBlank() && draft.lineItems.isNotEmpty(),
+            canSave = (transient.clientName ?: draft.clientName).isNotBlank() && 
+                      (transient.clientAddress ?: draft.clientAddress).isNotBlank() && 
+                      draft.lineItems.isNotEmpty(),
             errorMessage = transient.errorMessage
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NewInvoiceUiState())
@@ -150,19 +71,28 @@ class NewInvoiceViewModel(
             }
         }
 
-        // Bootstrap transient state with initial saved draft values to prevent cursor jumps
+        // Collect database draft emissions and synchronize transient state when they differ.
+        // This prevents cursor jumps during manual typing while ensuring background updates
+        // (like those from the Foreman voice agent) are immediately reflected in the UI.
         viewModelScope.launch {
+            val settings = settingsRepository.getBusinessSettings()
             val initialDraft = draftEditor.currentDraft()
-            _transientState.update { 
-                it.copy(
-                    clientName = initialDraft.clientName,
-                    clientAddress = initialDraft.clientAddress,
-                    taxText = initialDraft.taxRate.toString(),
-                    depositCollected = initialDraft.deposit.toString(),
-                    hourlyRate = initialDraft.hourlyRate.toString(),
-                    itemDesc = initialDraft.itemDesc,
-                    itemAmt = initialDraft.itemAmt
-                )
+            if (initialDraft.logoUri.isNullOrBlank() && !settings.logoUri.isNullOrBlank()) {
+                draftEditor.updateDraft { it.copy(logoUri = settings.logoUri) }
+            }
+            
+            draftEditor.draft.collect { draft ->
+                _transientState.update { state ->
+                    state.copy(
+                        clientName = if (state.clientName != draft.clientName) draft.clientName else state.clientName,
+                        clientAddress = if (state.clientAddress != draft.clientAddress) draft.clientAddress else state.clientAddress,
+                        taxText = if (state.taxText != draft.taxRate.toString()) draft.taxRate.toString() else state.taxText,
+                        depositCollected = if (state.depositCollected != draft.deposit.toString()) draft.deposit.toString() else state.depositCollected,
+                        hourlyRate = if (state.hourlyRate != draft.hourlyRate.toString()) draft.hourlyRate.toString() else state.hourlyRate,
+                        itemDesc = if (state.itemDesc != draft.itemDesc) draft.itemDesc else state.itemDesc,
+                        itemAmt = if (state.itemAmt != draft.itemAmt) draft.itemAmt else state.itemAmt
+                    )
+                }
             }
         }
     }
@@ -191,7 +121,7 @@ class NewInvoiceViewModel(
                 _transientState.update { it.copy(hourlyRate = intent.rate) }
                 updateDraft { it.copy(hourlyRate = intent.rate.toDoubleOrNull() ?: 0.0) }
             }
-            is NewInvoiceIntent.OnLogoUriChange -> updateDraft { it.copy(logoUri = intent.uri) }
+            is NewInvoiceIntent.OnLogoUriChange -> executeSaveBusinessLogo(intent.uri)
             is NewInvoiceIntent.OnCategoryChange -> updateDraft { it.copy(selectedCategory = intent.cat) }
             is NewInvoiceIntent.OnSaveToClientDirectoryChange -> updateDraft { it.copy(saveToClientDirectory = intent.save) }
             is NewInvoiceIntent.OnItemDescChange -> {
@@ -202,7 +132,7 @@ class NewInvoiceViewModel(
                 _transientState.update { it.copy(itemAmt = intent.amt) }
                 updateDraft { it.copy(itemAmt = intent.amt) }
             }
-            is NewInvoiceIntent.OnPhotoCaptured -> executeAddPhoto(intent.uri)
+            is NewInvoiceIntent.OnPhotoCaptured -> executeAddPhoto(intent.uri, intent.phase)
             is NewInvoiceIntent.RemovePhoto -> executeRemovePhoto(intent.uri)
             is NewInvoiceIntent.SetClientDropdownVisible -> _transientState.update { it.copy(showClientDropdown = intent.visible) }
             is NewInvoiceIntent.SetCategoryDropdownVisible -> _transientState.update { it.copy(showCategoryDropdown = intent.visible) }
@@ -227,12 +157,26 @@ class NewInvoiceViewModel(
         }
     }
 
-    private fun executeAddPhoto(uri: String) = updateDraft { 
-        it.copy(capturedPhotos = it.capturedPhotos + uri)
+    private fun executeSaveBusinessLogo(pickedUri: String?) {
+        viewModelScope.launch {
+            when (val outcome = saveBusinessLogoUseCase(pickedUri)) {
+                is SaveBusinessLogoOutcome.Saved -> {
+                    updateDraft { it.copy(logoUri = outcome.stablePath) }
+                    _transientState.update { it.copy(errorMessage = null) }
+                }
+                is SaveBusinessLogoOutcome.Cleared -> updateDraft { it.copy(logoUri = null) }
+                is SaveBusinessLogoOutcome.Failure ->
+                    _transientState.update { it.copy(errorMessage = outcome.error.value) }
+            }
+        }
     }
 
-    private fun executeRemovePhoto(uri: String) = updateDraft { 
-        it.copy(capturedPhotos = it.capturedPhotos - uri)
+    private fun executeAddPhoto(uri: String, phase: JobPhotoPhase) = updateDraft {
+        it.copy(capturedPhotos = it.capturedPhotos + CapturedJobPhoto(uri = uri, phase = phase))
+    }
+
+    private fun executeRemovePhoto(uri: String) = updateDraft {
+        it.copy(capturedPhotos = it.capturedPhotos.filterNot { photo -> photo.uri == uri })
     }
 
     private fun executeToggleTimer() {
@@ -299,23 +243,42 @@ class NewInvoiceViewModel(
         viewModelScope.launch {
             println("SAVE_INVOICE: Starting executeSaveInvoice...")
             val draft = draftEditor.currentDraft()
-            println("SAVE_INVOICE: Loaded draft with client: ${draft.clientName}, items: ${draft.lineItems}")
+            
+            val finalClientName = (_transientState.value.clientName ?: draft.clientName).trim()
+            val finalClientAddress = (_transientState.value.clientAddress ?: draft.clientAddress).trim()
+            
+            if (finalClientName.isBlank()) {
+                _transientState.update { it.copy(errorMessage = "Client Name must be filled out to save.") }
+                return@launch
+            }
+            if (finalClientAddress.isBlank()) {
+                _transientState.update { it.copy(errorMessage = "Client Address must be filled out to save.") }
+                return@launch
+            }
+            if (draft.lineItems.isEmpty()) {
+                _transientState.update { it.copy(errorMessage = "Job Description / Line Items must be filled out to save. Please enter Category, Description, and Price, then tap 'ADD ITEM'.") }
+                return@launch
+            }
+            
+            val settings = settingsRepository.getBusinessSettings()
+            val logoForPdf = draft.logoUri?.takeIf { it.isNotBlank() } ?: settings.logoUri
+            println("SAVE_INVOICE: Loaded draft with client: $finalClientName, items: ${draft.lineItems}")
             val res = generateAndSaveInvoiceUseCase(
                 GenerateInvoiceRequest(
-                    clientName = draft.clientName,
-                    clientAddress = draft.clientAddress,
+                    clientName = ClientName(finalClientName),
+                    clientAddress = ClientAddress(finalClientAddress),
                     saveToClientDirectory = draft.saveToClientDirectory,
-                    taxRate = draft.taxRate,
-                    deposit = draft.deposit,
+                    taxRate = TaxRatePercent(draft.taxRate),
+                    deposit = MoneyAmount(maxOf(0.0, draft.deposit)),
                     lineItems = draft.lineItems,
-                    logoUriString = draft.logoUri,
+                    logoUriString = logoForPdf?.takeIf { it.isNotBlank() }?.let { MediaUri(it) },
                     businessSettings = set,
                     isEstimate = isEst,
-                    elapsedSeconds = draft.elapsedSeconds,
+                    elapsedSeconds = DurationSeconds(draft.elapsedSeconds),
                     capturedPhotos = draft.capturedPhotos,
-                    linkedReceiptIds = draft.linkedReceiptIds,
+                    linkedReceiptIds = draft.linkedReceiptIds.map { ReceiptId(it) },
                     availableReceipts = _transientState.value.availableReceipts,
-                    onGenerated = onGen
+                    onGenerated = { onGen(it.value) }
                 )
             )
             when (res) {

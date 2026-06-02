@@ -2,112 +2,85 @@ package com.fordham.toolbelt.util
 
 import android.content.Context
 import com.fordham.toolbelt.domain.model.DocumentCategory
-import com.fordham.toolbelt.domain.model.DocumentExportOutcome
+import com.fordham.toolbelt.domain.model.FailureMessage
 import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.ReceiptItem
 import com.fordham.toolbelt.domain.model.TaxExportOutcome
+import com.fordham.toolbelt.domain.repository.BentoReportGenerator
 import com.fordham.toolbelt.domain.repository.DocumentExporter
-import com.fordham.toolbelt.pdf.BentoReportEngine
 import java.io.File
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class AndroidTaxExporter(
     private val context: Context,
-    private val bentoReportEngine: BentoReportEngine,
+    private val bentoReportGenerator: BentoReportGenerator,
     private val documentExporter: DocumentExporter
 ) : TaxExporter {
 
     override suspend fun exportBentoReport(
         invoices: List<Invoice>,
         receipts: List<ReceiptItem>
-    ): TaxExportOutcome = try {
-        val paidInvoices = invoices.filter { it.isPaid && !it.isEstimate }
-        val totalIncome = paidInvoices.sumOf { it.totalAmount }
-        val totalExpenses = receipts.sumOf { it.totalPrice }
+    ): TaxExportOutcome {
+        return try {
+        val reportData = TaxExportSupport.buildBentoReportData(invoices, receipts)
+        val displayName = InvoiceHammerExportNames.bentoReportPdf()
+        val workingDir = File(context.filesDir, "vault/reports").apply { mkdirs() }
+        val workingFile = File(workingDir, displayName)
 
-        val reportData = com.fordham.toolbelt.domain.model.BentoReportData(
-            netProfit = totalIncome - totalExpenses,
-            grossIncome = totalIncome,
-            expenses = totalExpenses,
-            invoices = paidInvoices,
-            receiptCount = receipts.size
-        )
-
-        val pdfFile = bentoReportEngine.generateBentoPdf(reportData)
-            ?: throw Exception("Failed to generate Bento PDF")
-
-        // Mirror to /storage/emulated/0/Documents/InvoiceHammer/Reports/ for user
-        // visibility. Failure is non-fatal — caller still gets the shareable cache path.
-        when (val outcome = documentExporter.publish(
-            sourcePath = pdfFile.absolutePath,
+        if (!bentoReportGenerator.generate(reportData, workingFile.absolutePath)) {
+            TaxExportOutcome.Failure(FailureMessage("Failed to generate Bento PDF"))
+        } else {
+        val published = TaxExportSupport.publishToDocuments(
+            documentExporter = documentExporter,
+            sourcePath = workingFile.absolutePath,
             category = DocumentCategory.Reports,
-            displayName = pdfFile.name
-        )) {
-            is DocumentExportOutcome.Failure -> println("ANDROID_TAX_EXPORTER: Reports publish failed: ${outcome.error.value}")
-            is DocumentExportOutcome.Success -> Unit
-        }
-
-        TaxExportOutcome.Success(pdfFile.absolutePath)
-    } catch (e: Exception) {
-        TaxExportOutcome.Failure(
-            com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to generate report summary")
+            displayName = displayName,
+            logTag = "ANDROID_TAX_EXPORTER"
         )
+        TaxExportOutcome.Success(
+            path = published?.shareablePath ?: workingFile.absolutePath,
+            savedTo = published?.userVisiblePath
+        )
+        }
+        } catch (e: Exception) {
+            TaxExportOutcome.Failure(
+                FailureMessage(e.message ?: "Failed to generate report summary")
+            )
+        }
     }
 
     override suspend fun exportFullTaxBundle(
         invoices: List<Invoice>,
         receipts: List<ReceiptItem>
     ): TaxExportOutcome = try {
-        val name = "Tax_Bundle_${System.currentTimeMillis()}.zip"
-        val cacheFile = File(context.cacheDir, name)
+        val displayName = InvoiceHammerExportNames.taxBundleZip()
+        val workingDir = File(context.filesDir, "vault/tax_bundles").apply { mkdirs() }
+        val cacheFile = File(workingDir, displayName)
 
-        ZipOutputStream(FileOutputStream(cacheFile).buffered()).use { zos ->
-            val addedPaths = mutableSetOf<String>()
+        val reportData = TaxExportSupport.buildBentoReportData(invoices, receipts)
+        val bentoWorking = File(context.filesDir, "vault/reports").apply { mkdirs() }
+        val bentoPath = File(bentoWorking, "bundle_${displayName.removeSuffix(".zip")}.pdf").absolutePath
+        val bentoGenerated = bentoReportGenerator.generate(reportData, bentoPath)
 
-            // 1. Add Bento PDF Summary
-            val summaryResult = exportBentoReport(invoices, receipts)
-            if (summaryResult is TaxExportOutcome.Success) {
-                val pdfEntry = "Business_Report.pdf"
-                zos.putNextEntry(ZipEntry(pdfEntry))
-                File(summaryResult.path).inputStream().use { it.copyTo(zos) }
-                zos.closeEntry()
-                addedPaths.add(pdfEntry)
-            }
+        writeTaxBundleZip(
+            outputPath = cacheFile.absolutePath,
+            businessReportPath = bentoPath.takeIf { bentoGenerated },
+            invoicePdfPaths = TaxExportSupport.invoicePdfPaths(invoices)
+        )
 
-            // 2. Add Invoice PDFs
-            invoices.filter { it.pdfPath.isNotEmpty() }.distinctBy { it.pdfPath }.forEach { invoice ->
-                val f = File(invoice.pdfPath)
-                if (f.exists() && f.isFile && f.length() > 0) {
-                    val entryPath = "Invoices/${f.name}"
-                    if (addedPaths.add(entryPath)) {
-                        try {
-                            zos.putNextEntry(ZipEntry(entryPath))
-                            f.inputStream().use { it.copyTo(zos) }
-                            zos.closeEntry()
-                        } catch (e: Exception) {
-                            try { zos.closeEntry() } catch (_: Exception) {}
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Publish ZIP to Documents/InvoiceHammer/TaxBundles/
-        when (val outcome = documentExporter.publish(
+        val published = TaxExportSupport.publishToDocuments(
+            documentExporter = documentExporter,
             sourcePath = cacheFile.absolutePath,
             category = DocumentCategory.TaxBundles,
-            displayName = name
-        )) {
-            is DocumentExportOutcome.Failure -> println("ANDROID_TAX_EXPORTER: TaxBundle publish failed: ${outcome.error.value}")
-            is DocumentExportOutcome.Success -> Unit
-        }
-
-        TaxExportOutcome.Success(cacheFile.absolutePath)
+            displayName = displayName,
+            logTag = "ANDROID_TAX_EXPORTER"
+        )
+        TaxExportOutcome.Success(
+            path = published?.shareablePath ?: cacheFile.absolutePath,
+            savedTo = published?.userVisiblePath
+        )
     } catch (e: Exception) {
         TaxExportOutcome.Failure(
-            com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to assemble tax bundle zip")
+            FailureMessage(e.message ?: "Failed to assemble tax bundle zip")
         )
     }
 }

@@ -9,7 +9,7 @@ import java.io.File
 
 class AndroidPlatformActions(private val context: Context) : PlatformActions {
     init {
-        println("PLATFORM_ACTIONS: Instance created: ${this.hashCode()}")
+        AppLogger.d(TAG, "Instance created: ${this.hashCode()}")
     }
     override fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
@@ -19,11 +19,32 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     }
 
     override fun shareFile(path: String, title: String) {
+        shareDocument(path, title)
+    }
+
+    override fun shareDocument(
+        path: String,
+        title: String,
+        mimeType: String,
+        recipientEmail: String,
+        recipientPhone: String,
+        subject: String,
+        body: String
+    ) {
         val file = File(path)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
+            if (recipientEmail.isNotBlank()) {
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
+            }
+            if (subject.isNotBlank()) putExtra(Intent.EXTRA_SUBJECT, subject)
+            if (body.isNotBlank()) putExtra(Intent.EXTRA_TEXT, body)
+            if (recipientPhone.isNotBlank()) {
+                putExtra("address", recipientPhone)
+                putExtra("sms_body", body)
+            }
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -58,18 +79,46 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     }
 
     override fun requestPermission(permission: String, onGranted: () -> Unit) {
-        // This usually needs to be handled in the Activity, 
-        // but for now we'll provide the logic to check/ask.
-        // In a real KMP app, we might use a library like MOKO Permissions.
+        when (permission) {
+            Permission.POST_NOTIFICATIONS -> {
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+                    onGranted()
+                    return
+                }
+                if (isPermissionGranted(permission)) {
+                    onGranted()
+                    return
+                }
+                notificationPermissionRequester?.invoke { granted ->
+                    if (granted) onGranted()
+                }
+            }
+            Permission.CAMERA, Permission.RECORD_AUDIO -> {
+                if (isPermissionGranted(permission)) {
+                    onGranted()
+                } else {
+                    runtimePermissionRequester?.invoke(permission, onGranted)
+                }
+            }
+        }
     }
 
     override fun isPermissionGranted(permission: String): Boolean {
-        val androidPermission = when(permission) {
+        val androidPermission = when (permission) {
             Permission.CAMERA -> android.Manifest.permission.CAMERA
             Permission.RECORD_AUDIO -> android.Manifest.permission.RECORD_AUDIO
+            Permission.POST_NOTIFICATIONS -> {
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+                    return true
+                }
+                android.Manifest.permission.POST_NOTIFICATIONS
+            }
             else -> return false
         }
-        return androidx.core.content.ContextCompat.checkSelfPermission(context, androidPermission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            androidPermission
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     override fun showToast(message: String) {
@@ -77,7 +126,15 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     }
 
     override fun launchApp(packageName: String, fallbackUrl: String) {
-        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (packageName.isBlank()) {
+            openUrl(fallbackUrl)
+            return
+        }
+        val intent = try {
+            context.packageManager.getLaunchIntentForPackage(packageName)
+        } catch (e: Exception) {
+            null
+        }
         if (intent != null) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
@@ -89,6 +146,8 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     // Platform-specific hooks
     var activity: androidx.fragment.app.FragmentActivity? = null
     var googleSignInLauncher: ((onSuccess: (String) -> Unit, onError: (String) -> Unit) -> Unit)? = null
+    var notificationPermissionRequester: ((onResult: (Boolean) -> Unit) -> Unit)? = null
+    var runtimePermissionRequester: ((permission: String, onGranted: () -> Unit) -> Unit)? = null
 
     override fun signInWithGoogle(onSuccess: (String) -> Unit, onError: (String) -> Unit) {
         googleSignInLauncher?.invoke(onSuccess, onError) ?: onError("Sign-in launcher not registered")
@@ -118,39 +177,84 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     private var onImagePicked: ((String?) -> Unit)? = null
     var imagePickerLauncher: (() -> Unit)? = null
     var cameraLauncher: (() -> Unit)? = null
+    /** Launches Google account consent UI when Drive scope needs user approval. */
+    var driveAuthRecoveryLauncher: ((android.content.Intent, () -> Unit) -> Unit)? = null
 
     fun handleImageResult(uri: String?) {
         onImagePicked?.invoke(uri)
     }
 
     override fun pickImage(onResult: (String?) -> Unit) {
-        println("PLATFORM_ACTIONS: pickImage called")
+        AppLogger.d(TAG, "pickImage called")
         onImagePicked = onResult
         if (imagePickerLauncher == null) {
-            println("PLATFORM_ACTIONS: imagePickerLauncher is NULL")
+            AppLogger.e(TAG, "imagePickerLauncher is NULL")
         }
         imagePickerLauncher?.invoke() ?: onResult(null)
     }
 
     override fun capturePhoto(onResult: (String?) -> Unit) {
-        println("PLATFORM_ACTIONS: capturePhoto called")
         onImagePicked = onResult
-        if (cameraLauncher == null) {
-            println("PLATFORM_ACTIONS: cameraLauncher is NULL")
+        val launch = {
+            val launcher = cameraLauncher
+            if (launcher == null) {
+                showToast("Camera unavailable")
+                onResult(null)
+            } else {
+                launcher.invoke()
+            }
         }
-        cameraLauncher?.invoke() ?: onResult(null)
+        if (isPermissionGranted(Permission.CAMERA)) {
+            launch()
+        } else {
+            requestPermission(Permission.CAMERA) {
+                if (isPermissionGranted(Permission.CAMERA)) {
+                    launch()
+                } else {
+                    showToast("Camera permission is required to snap receipts")
+                    onResult(null)
+                }
+            }
+        }
     }
 
     override fun scheduleNotification(id: String, title: String, body: String, delayMillis: Long) {
+        if (id != UnpaidInvoiceReminders.WORK_ID) return
+
+        val constraints = androidx.work.Constraints.Builder()
+            .setRequiresBatteryNotLow(false)
+            .build()
+
         val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.fordham.toolbelt.worker.UnpaidInvoiceWorker>(
             24, java.util.concurrent.TimeUnit.HOURS
-        ).setInitialDelay(delayMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .build()
+        )
+            .setInitialDelay(delayMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .setConstraints(constraints)
+            .build()
 
-        androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        val workManager = androidx.work.WorkManager.getInstance(context)
+        workManager.enqueueUniquePeriodicWork(
             id,
-            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
+
+        // Run once immediately so the user gets feedback without waiting for initialDelay.
+        val immediateCheck = androidx.work.OneTimeWorkRequestBuilder<com.fordham.toolbelt.worker.UnpaidInvoiceWorker>()
+            .setConstraints(constraints)
+            .build()
+        workManager.enqueueUniqueWork(
+            "${id}_immediate",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            immediateCheck
+        )
+    }
+
+    override fun cancelScheduledNotification(id: String) {
+        val workManager = androidx.work.WorkManager.getInstance(context)
+        workManager.cancelUniqueWork(id)
+        workManager.cancelUniqueWork("${id}_immediate")
     }
 }
+
+private const val TAG = "PlatformActions"

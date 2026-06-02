@@ -6,19 +6,22 @@ import kotlinx.serialization.Serializable
 data class GeminiRequest(
     val contents: List<GeminiContent>,
     val systemInstruction: GeminiContent? = null,
+    val tools: List<GeminiTools>? = null,
+    val toolConfig: GeminiToolConfig? = null,
     val generationConfig: GeminiGenerationConfig? = null
 )
 
 @Serializable
 data class GeminiContent(
     val parts: List<GeminiPart>,
-    val role: String? = "user"
+    val role: String = "user"
 )
 
 @Serializable
 data class GeminiPart(
     val text: String? = null,
-    val inlineData: GeminiInlineData? = null
+    val inlineData: GeminiInlineData? = null,
+    val functionCall: GeminiFunctionCall? = null
 )
 
 @Serializable
@@ -29,12 +32,13 @@ data class GeminiInlineData(
 
 @Serializable
 data class GeminiGenerationConfig(
-    val responseMimeType: String? = null
+    val responseMimeType: String? = null,
+    val maxOutputTokens: Int? = null
 )
 
 @Serializable
 data class GeminiResponse(
-    val candidates: List<GeminiCandidate>
+    val candidates: List<GeminiCandidate>? = null
 )
 
 @Serializable

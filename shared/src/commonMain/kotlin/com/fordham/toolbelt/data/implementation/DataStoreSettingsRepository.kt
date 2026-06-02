@@ -24,9 +24,13 @@ class DataStoreSettingsRepository(
             logoUri = prefs[LOGO_URI],
             isDarkMode = prefs[DARK_MODE] ?: true,
             useMetricUnits = prefs[USE_METRIC] ?: false,
-            notificationsEnabled = prefs[NOTIFICATIONS] ?: true
+            notificationsEnabled = prefs[NOTIFICATIONS] ?: true,
+            biometricLockEnabled = prefs[BIOMETRIC_LOCK] ?: false,
+            hammerCredits = prefs[HAMMER_CREDITS] ?: 0,
+            aiActionsUsedThisMonth = prefs[AI_ACTIONS_USED] ?: 0
         )
     }
+
 
     override suspend fun getBusinessSettings(): BusinessSettings = businessSettingsFlow.first()
 
@@ -43,8 +47,12 @@ class DataStoreSettingsRepository(
             prefs[DARK_MODE] = settings.isDarkMode
             prefs[USE_METRIC] = settings.useMetricUnits
             prefs[NOTIFICATIONS] = settings.notificationsEnabled
+            prefs[BIOMETRIC_LOCK] = settings.biometricLockEnabled
+            prefs[HAMMER_CREDITS] = settings.hammerCredits
+            prefs[AI_ACTIONS_USED] = settings.aiActionsUsedThisMonth
             settings.logoUri?.let { prefs[LOGO_URI] = it } ?: prefs.remove(LOGO_URI)
         }
+
         SettingsOutcome.Success
     } catch (e: Exception) {
         SettingsOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to save settings"))
@@ -63,5 +71,9 @@ class DataStoreSettingsRepository(
         private val DARK_MODE = booleanPreferencesKey("dark_mode")
         private val USE_METRIC = booleanPreferencesKey("use_metric")
         private val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
+        private val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock_enabled")
+        private val HAMMER_CREDITS = intPreferencesKey("hammer_credits")
+        private val AI_ACTIONS_USED = intPreferencesKey("ai_actions_used_this_month")
     }
 }
+

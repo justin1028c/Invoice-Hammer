@@ -4,5 +4,6 @@ enum class TaskType {
     SUMMARIZE,
     GENERATE,
     ANALYZE,
-    RECOMMEND
+    RECOMMEND,
+    PARSE_VOICE_FRAGMENT
 }

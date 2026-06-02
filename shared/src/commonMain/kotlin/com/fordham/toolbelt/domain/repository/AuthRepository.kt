@@ -1,5 +1,6 @@
 package com.fordham.toolbelt.domain.repository
 
+import com.fordham.toolbelt.domain.model.FailureMessage
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
 
@@ -26,20 +27,21 @@ data class FordhamUser(
     val email: EmailAddress?,
     val displayName: DisplayName?,
     val photoUrl: PhotoUrl?,
-    val isPremium: IsPremium = IsPremium(true)
+    val isPremium: IsPremium
 )
-
-data class OperationError(val message: String)
 
 sealed interface AuthOutcome {
     data class Authenticated(val user: FordhamUser) : AuthOutcome
-    data class Failure(val error: OperationError) : AuthOutcome
+    data class Failure(val error: FailureMessage) : AuthOutcome
     object SignedOut : AuthOutcome
 }
 
 interface AuthRepository {
     val currentUser: StateFlow<FordhamUser?>
-    
+
     suspend fun signInWithGoogle(idToken: IdToken): AuthOutcome
     suspend fun signOut(): AuthOutcome
+
+    /** Re-applies [FordhamUser.isPremium] from the subscription cache (after [syncEntitlementFromSupabase]). */
+    suspend fun refreshCurrentUserPremiumStatus()
 }

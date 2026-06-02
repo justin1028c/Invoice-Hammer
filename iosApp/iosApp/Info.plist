@@ -16,6 +16,42 @@
     <string>We use speech recognition to allow you to dictate invoice line items and notes hands-free.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>We need microphone access for voice-to-text dictation of invoices and expenses.</string>
+    <key>PowerPayBaseUrl</key>
+    <string>$(POWERPAY_BASE_URL)</string>
+    <key>PowerPayAppId</key>
+    <string>$(POWERPAY_APP_ID)</string>
+    <key>PowerPayPublicKey</key>
+    <string>$(POWERPAY_PUBLIC_KEY)</string>
+    <key>PowerPaySigningSecret</key>
+    <string>$(POWERPAY_SIGNING_SECRET)</string>
+    <key>PowerPayEnvironment</key>
+    <string>$(POWERPAY_ENV)</string>
+    <key>PowerPayApiVariant</key>
+    <string>$(POWERPAY_API_VARIANT)</string>
+    <key>SupabaseUrl</key>
+    <string>$(SUPABASE_URL)</string>
+    <key>SupabaseAnonKey</key>
+    <string>$(SUPABASE_ANON_KEY)</string>
+    <key>SupabaseServiceRoleKey</key>
+    <string>$(SUPABASE_SERVICE_ROLE_KEY)</string>
+    <key>SupabaseSchema</key>
+    <string>$(SUPABASE_SCHEMA)</string>
+    <key>GeminiModelName</key>
+    <string>$(GEMINI_MODEL_NAME)</string>
+    <key>GeminiApiKey</key>
+    <string>$(GEMINI_API_KEY)</string>
+    <key>GoogleClientId</key>
+    <string>$(GOOGLE_CLIENT_ID)</string>
+    <key>StripePublishableKey</key>
+    <string>$(STRIPE_PUBLISHABLE_KEY)</string>
+    <key>StripePaymentBackendUrl</key>
+    <string>$(STRIPE_PAYMENT_BACKEND_URL)</string>
+    <key>StripeConnectOnboardingUrl</key>
+    <string>$(STRIPE_CONNECT_ONBOARDING_URL)</string>
+    <key>StripeBackendApiKey</key>
+    <string>$(STRIPE_BACKEND_API_KEY)</string>
+    <key>StripeApplicationFeeBps</key>
+    <string>$(STRIPE_APPLICATION_FEE_BPS)</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -24,6 +60,14 @@
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>com.googleusercontent.apps.716278040823-6afkdloh5qs359mr896tl725ge7gl8h0</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>invoicehammer</string>
             </array>
         </dict>
     </array>

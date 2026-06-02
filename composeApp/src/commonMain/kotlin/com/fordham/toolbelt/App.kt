@@ -13,22 +13,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fordham.toolbelt.domain.model.agent.AppTab
+import com.fordham.toolbelt.navigation.MainTabNavigation
 import com.fordham.toolbelt.ui.MainScreen
 import com.fordham.toolbelt.ui.theme.ToolbeltTheme
 import com.fordham.toolbelt.ui.viewmodel.*
+import com.fordham.toolbelt.domain.usecase.SyncUnpaidInvoiceRemindersUseCase
 import com.fordham.toolbelt.util.PlatformActions
 import com.fordham.toolbelt.util.VoiceAssistant
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun App() {
+fun App(initialTab: AppTab? = null) {
     val platformActions: PlatformActions = koinInject()
+    val syncUnpaidInvoiceReminders: SyncUnpaidInvoiceRemindersUseCase = koinInject()
+    val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository = koinInject()
     var isAuthenticated by remember { mutableStateOf(false) }
     var isCheckingBiometrics by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        if (platformActions.isBiometricAvailable()) {
+        val settings = settingsRepository.getBusinessSettings()
+        if (settings.biometricLockEnabled && platformActions.isBiometricAvailable()) {
             platformActions.authenticateBiometric(
                 title = "Vault Locked",
                 subtitle = "Authenticate to access Invoice Hammer",
@@ -41,8 +47,21 @@ fun App() {
         }
     }
 
-    ToolbeltTheme {
+    LaunchedEffect(isAuthenticated) {
         if (isAuthenticated) {
+            syncUnpaidInvoiceReminders.execute()
+        }
+    }
+
+    ToolbeltTheme(darkTheme = true) {
+        if (isCheckingBiometrics) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFFFFD700))
+            }
+        } else if (isAuthenticated) {
             val newInvoiceViewModel: NewInvoiceViewModel = koinViewModel()
             val historyViewModel: HistoryViewModel = koinViewModel()
             val receiptsViewModel: ReceiptsViewModel = koinViewModel()
@@ -53,6 +72,8 @@ fun App() {
             val authViewModel: AuthViewModel = koinViewModel()
             val paymentViewModel: PaymentViewModel = koinViewModel()
             val sharedViewModel: SharedViewModel = koinViewModel()
+            val subscriptionViewModel: SubscriptionViewModel = koinViewModel()
+            val settingsViewModel: SettingsViewModel = koinViewModel()
             val voiceAssistant: VoiceAssistant = koinInject()
 
             MainScreen(
@@ -66,8 +87,11 @@ fun App() {
                 authViewModel = authViewModel,
                 paymentViewModel = paymentViewModel,
                 sharedViewModel = sharedViewModel,
+                subscriptionViewModel = subscriptionViewModel,
+                settingsViewModel = settingsViewModel,
                 voiceAssistant = voiceAssistant,
-                platformActions = platformActions
+                platformActions = platformActions,
+                initialPage = initialTab?.pageIndex ?: AppTab.NewInvoice.pageIndex
             )
         } else if (!isCheckingBiometrics) {
             // Biometric Lock Screen (Common UI)
@@ -86,9 +110,9 @@ fun App() {
                     Text("Vault Locked", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
-                        onClick = { 
+                        onClick = {
                             platformActions.authenticateBiometric(
-                                title = "Vault Locked", 
+                                title = "Vault Locked",
                                 subtitle = "Authenticate to access",
                                 onSuccess = { isAuthenticated = true },
                                 onError = {}

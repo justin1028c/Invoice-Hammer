@@ -7,16 +7,21 @@ import androidx.compose.ui.text.font.FontWeight
 @Composable
 fun PremiumLockDialog(
     onDismiss: () -> Unit,
+    onOpenPaywall: () -> Unit,
     onGoToSettings: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("PRO FEATURE LOCKED", fontWeight = FontWeight.Black) },
-        text = { Text("AI Command Center requires a Pro Account. Enable it in Settings to unlock AI automation and Bento reporting.") },
+        text = {
+            Text(
+                "Subscribe via Google Play or the App Store to unlock AI Command Center, receipt OCR, Bento reports, and tax exports. Entitlements sync to Supabase."
+            )
+        },
         confirmButton = {
             TacticalButton(
-                onClick = onGoToSettings,
-                text = "GO TO SETTINGS"
+                onClick = onOpenPaywall,
+                text = "VIEW PLANS"
             )
         },
         dismissButton = {

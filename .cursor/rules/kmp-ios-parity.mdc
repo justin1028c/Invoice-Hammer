@@ -1,0 +1,67 @@
+---
+description: KMP Android + iOS parity — no Android-only features or iOS stubs
+alwaysApply: true
+---
+
+# Invoice Hammer — Android + iOS parity
+
+**Policy source of truth:** `.cursor/rules/` (this file + glob-specific rules). Do not rely on root `ARCHITECTURE*.md` files for agent guidance.
+
+## Non-negotiable
+
+- Ship features for **both** Android and iOS unless the user explicitly scopes to one platform.
+- **Business logic** → `shared/src/commonMain` only (no `android.*`, `ios.*`, Room entities, or DTOs in domain).
+- **UI** → `composeApp/src/commonMain` (Compose Multiplatform).
+- **Platform APIs** (PDF, files, camera, share sheet, MediaStore) → `shared/src/androidMain` **and** `shared/src/iosMain` with the **same** `commonMain` contract.
+
+## Interface parity
+
+For every new or changed `commonMain` abstraction (`interface`, `expect`, repository, platform service):
+
+1. Add or update **`androidMain`** implementation.
+2. Add or update **`iosMain`** implementation (same public API; no drift).
+3. Register both in `platformModule()` (`androidMain` / `iosMain` Koin modules).
+
+**Forbidden in shipping paths:**
+
+- `FailureMessage("not supported on iOS")` or equivalent permanent stubs.
+- Android-only implementations with no `iosMain` counterpart.
+- Calling `java.util.*`, `android.*`, or `UIKit`/`Foundation` from `commonMain`.
+
+## Documents / exports
+
+User-visible files go under **`Documents/InvoiceHammer/`** via `DocumentExporter` + `DocumentCategory`:
+
+| Category | Folder |
+|----------|--------|
+| Invoices | `Invoices/` |
+| Bento reports | `Reports/` |
+| Tax bundles | `TaxBundles/` |
+
+Implement **publish** on **both** `AndroidDocumentExporter` and `IosDocumentExporter`.
+
+## Definition of done (agent)
+
+Before finishing a feature:
+
+- [ ] Listed new/changed `commonMain` APIs and both platform implementations.
+- [ ] No new iOS/Android-only business logic in platform source sets.
+- [ ] If PDF/export added: both engines/exporters wired; unique filenames via `InvoiceHammerExportNames`.
+- [ ] Mention in summary: *iOS compile on Mac:* `:shared:compileKotlinIosSimulatorArm64` (Windows cannot build iOS targets).
+
+## Module map
+
+```
+shared/commonMain     → domain, use cases, contracts, Room, Ktor
+shared/androidMain    → Android platform implementations
+shared/iosMain        → iOS platform implementations
+composeApp/commonMain → screens, ViewModels
+androidApp / iosApp     → app shells only
+```
+
+## Related rules (precise globs)
+
+| Rule file | Scope |
+|-----------|--------|
+| `kmp-shared-module.mdc` | `shared/**/*.kt` — domain/data boundaries, Room, Foreman |
+| `kmp-compose-ui.mdc` | `composeApp/**/*.kt` — pager navigation, ViewModels |

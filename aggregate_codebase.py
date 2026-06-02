@@ -1,84 +1,160 @@
-import os
+"""
+Regenerate CROSS_PLATFORM_AUDIT.md with the full KMP codebase aggregate.
+Run: python aggregate_codebase.py
+Deploy: adb push CROSS_PLATFORM_AUDIT.md /storage/emulated/0/
+"""
 
-root = r"C:\Users\Justin\AndroidStudioProjects\InvoiceApp"
-target = os.path.join(root, "CROSS_PLATFORM_AUDIT.md")
-# Use a marker system instead of a single-use placeholder
+from __future__ import annotations
+
+import os
+from datetime import datetime, timezone
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+TARGET = os.path.join(ROOT, "CROSS_PLATFORM_AUDIT.md")
 START_MARKER = "## 🏗️ CODEBASE AGGREGATE"
 END_MARKER = "<!-- END_AGGREGATE -->"
 
-if not os.path.exists(target):
-    with open(target, 'w', encoding='utf-8') as f:
-        f.write(f"# CROSS-PLATFORM ARCHITECTURAL AUDIT - INVOICE HAMMER\n\n{START_MARKER}\n[CODE_PLACEHOLDER]\n{END_MARKER}\n")
+SKIP_DIR_NAMES = {
+    "build",
+    ".gradle",
+    ".kotlin",
+    "intermediates",
+    "generated",
+    "schemas",
+    "node_modules",
+    ".git",
+    ".idea",
+    ".cursor",
+    "bundletool",
+    "tools",
+}
 
-with open(target, 'r', encoding='utf-8') as f:
-    content = f.read()
+SOURCE_EXTENSIONS = {
+    ".kt": "kotlin",
+    ".swift": "swift",
+    ".plist": "xml",
+    ".entitlements": "xml",
+    ".mdc": "markdown",
+}
 
-codebase = []
-
-def append_file(rel_path, lang):
-    full_path = os.path.join(root, rel_path)
-    if os.path.exists(full_path):
-        print(f"Appending: {rel_path}")
-        codebase.append(f"### {rel_path}")
-        codebase.append(f"```{lang}")
-        with open(full_path, 'r', encoding='utf-8') as f:
-            codebase.append(f.read())
-        codebase.append("```")
-        codebase.append("")
-
-# Root and App files
-append_file("build.gradle.kts", "kotlin-dsl")
-append_file("settings.gradle.kts", "kotlin-dsl")
-append_file("gradle/libs.versions.toml", "toml")
-append_file("app/build.gradle.kts", "kotlin-dsl")
-append_file("shared/build.gradle.kts", "kotlin-dsl")
-append_file("composeApp/build.gradle.kts", "kotlin-dsl")
-append_file("app/src/main/AndroidManifest.xml", "xml")
-append_file(".gitignore", "gitignore")
-
-# iOS build handoff + bootstrap artifacts (XcodeGen-driven one-command build for James)
-append_file("iosApp/project.yml", "yaml")
-append_file("iosApp/bootstrap_ios.sh", "bash")
-append_file("iosApp/READ_ME_FIRST_JAMES.md", "markdown")
-append_file("iosApp/IOS_BUILD_HANDOFF.md", "markdown")
-
-# Directories to scan for source code
-source_dirs = [
-    os.path.join(root, "app", "src", "main", "java", "com", "fordham", "toolbelt"),
-    os.path.join(root, "shared", "src"),
-    os.path.join(root, "composeApp", "src"),
-    os.path.join(root, "iosApp", "iosApp")
+ROOT_FILES = [
+    ("build.gradle.kts", "kotlin-dsl"),
+    ("settings.gradle.kts", "kotlin-dsl"),
+    ("gradle/libs.versions.toml", "toml"),
+    ("app/build.gradle.kts", "kotlin-dsl"),
+    ("shared/build.gradle.kts", "kotlin-dsl"),
+    ("composeApp/build.gradle.kts", "kotlin-dsl"),
+    ("app/src/main/AndroidManifest.xml", "xml"),
+    ("app/src/main/cpp/CMakeLists.txt", "cmake"),
+    ("local.properties.example", "properties"),
+    (".gitignore", "gitignore"),
+    ("iosApp/project.yml", "yaml"),
+    ("iosApp/bootstrap_ios.sh", "bash"),
+    ("iosApp/READ_ME_FIRST_JAMES.md", "markdown"),
+    ("iosApp/IOS_BUILD_HANDOFF.md", "markdown"),
 ]
 
-for d in source_dirs:
-    for dirpath, dirnames, filenames in os.walk(d):
-        for filename in filenames:
-            if (filename.endswith(".kt")
-                or filename.endswith(".swift")
-                or filename.endswith(".plist")
-                or filename.endswith(".entitlements")):
+CURSOR_RULE_FILES = [
+    ".cursor/rules/kmp-ios-parity.mdc",
+    ".cursor/rules/kmp-shared-module.mdc",
+    ".cursor/rules/kmp-compose-ui.mdc",
+]
+
+SOURCE_ROOTS = [
+    os.path.join("app", "src"),
+    os.path.join("shared", "src"),
+    os.path.join("composeApp", "src"),
+    os.path.join("iosApp", "iosApp"),
+]
+
+
+def should_skip_dir(dirname: str) -> bool:
+    return dirname in SKIP_DIR_NAMES or dirname.startswith(".")
+
+
+def append_file(codebase: list[str], rel_path: str, lang: str) -> None:
+    full_path = os.path.join(ROOT, rel_path)
+    if not os.path.isfile(full_path):
+        return
+    print(f"Appending: {rel_path}")
+    codebase.append(f"### {rel_path}")
+    codebase.append(f"```{lang}")
+    with open(full_path, encoding="utf-8", errors="replace") as handle:
+        codebase.append(handle.read())
+    codebase.append("```")
+    codebase.append("")
+
+
+def collect_source_files() -> list[tuple[str, str]]:
+    collected: list[tuple[str, str]] = []
+    for source_root in SOURCE_ROOTS:
+        abs_root = os.path.join(ROOT, source_root)
+        if not os.path.isdir(abs_root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(abs_root):
+            dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
+            for filename in sorted(filenames):
+                ext = os.path.splitext(filename)[1].lower()
+                lang = SOURCE_EXTENSIONS.get(ext)
+                if lang is None:
+                    continue
                 full_path = os.path.join(dirpath, filename)
-                rel_path = os.path.relpath(full_path, root)
+                rel_path = os.path.relpath(full_path, ROOT).replace("\\", "/")
+                collected.append((rel_path, lang))
+    collected.sort(key=lambda item: item[0].lower())
+    return collected
 
-                lang = "kotlin"
-                if filename.endswith(".swift"): lang = "swift"
-                elif filename.endswith(".plist") or filename.endswith(".entitlements"): lang = "xml"
 
-                append_file(rel_path, lang)
+def build_aggregate_section() -> str:
+    codebase: list[str] = []
+    generated_at = datetime.now(timezone.utc).astimezone().isoformat()
+    codebase.append(f"_Aggregate generated: {generated_at}_")
+    codebase.append("")
 
-new_code_section = "\n".join(codebase)
+    for rel_path, lang in ROOT_FILES:
+        append_file(codebase, rel_path, lang)
 
-if START_MARKER in content:
-    # If the file already has the aggregate section, replace it
-    header = content.split(START_MARKER)[0]
-    # We assume the file might have stuff after the aggregate too, but for this audit it's usually the end
-    footer = content.split(END_MARKER)[1] if END_MARKER in content else ""
-    final_content = f"{header}{START_MARKER}\n\n{new_code_section}\n{END_MARKER}{footer}"
-else:
-    # Fallback to the old placeholder if markers aren't there
-    final_content = content.replace("[CODE_PLACEHOLDER]", new_code_section)
+    for rel_path in CURSOR_RULE_FILES:
+        append_file(codebase, rel_path, "markdown")
 
-with open(target, 'w', encoding='utf-8') as f:
-    f.write(final_content)
+    for rel_path, lang in collect_source_files():
+        append_file(codebase, rel_path, lang)
 
-print(f"Successfully aggregated files into {target}")
+    return "\n".join(codebase)
+
+
+def ensure_target_template() -> str:
+    if os.path.exists(TARGET):
+        with open(TARGET, encoding="utf-8") as handle:
+            return handle.read()
+    header = (
+        "# CROSS-PLATFORM ARCHITECTURAL AUDIT - INVOICE HAMMER\n\n"
+        f"{START_MARKER}\n\n"
+        "[CODE_PLACEHOLDER]\n\n"
+        f"{END_MARKER}\n"
+    )
+    with open(TARGET, "w", encoding="utf-8") as handle:
+        handle.write(header)
+    return header
+
+
+def main() -> None:
+    content = ensure_target_template()
+    new_code_section = build_aggregate_section()
+
+    if START_MARKER in content:
+        header = content.split(START_MARKER)[0]
+        footer = content.split(END_MARKER)[1] if END_MARKER in content else ""
+        final_content = f"{header}{START_MARKER}\n\n{new_code_section}\n{END_MARKER}{footer}"
+    else:
+        final_content = content.replace("[CODE_PLACEHOLDER]", new_code_section)
+
+    with open(TARGET, "w", encoding="utf-8") as handle:
+        handle.write(final_content)
+
+    size_mb = os.path.getsize(TARGET) / (1024 * 1024)
+    print(f"Successfully aggregated into {TARGET} ({size_mb:.2f} MB)")
+
+
+if __name__ == "__main__":
+    main()

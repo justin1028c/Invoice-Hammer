@@ -1,0 +1,27 @@
+# Invoice Hammer — Supabase local config (CLI).
+# https://supabase.com/docs/guides/cli/config
+
+project_id = "invoice-hammer"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[functions]
+# Mobile app calls this with JSON body only (Firebase auth, not Supabase JWT).
+[functions.stripe-payment-api]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

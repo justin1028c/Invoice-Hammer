@@ -3,18 +3,17 @@ package com.fordham.toolbelt.util
 import android.content.Context
 
 class AndroidSecretProvider(private val context: Context) : SecretProvider {
-    override fun getGeminiApiKey(): String {
-        val key = NativeSecrets.getGeminiKey()
-        check(key.isNotBlank()) { "Gemini API Key is missing from NativeSecrets" }
-        return key
-    }
-
-    override fun getGeminiModelName(): String {
-        // Model name can be managed here or fetched via remote config
-        return "gemini-1.5-flash"
-    }
-
     override fun getGoogleClientId(): String {
-        return "716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com"
+        val clientId = try {
+            val clazz = Class.forName("${context.packageName}.BuildConfig")
+            clazz.getField("GOOGLE_CLIENT_ID").get(null) as? String ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+        check(clientId.isNotBlank()) {
+            "GOOGLE_CLIENT_ID BuildConfig field is missing or blank. " +
+                "Add buildConfigField(\"String\", \"GOOGLE_CLIENT_ID\", '\"<your-client-id>\"') to app/build.gradle.kts"
+        }
+        return clientId
     }
 }

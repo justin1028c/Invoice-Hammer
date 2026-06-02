@@ -27,13 +27,25 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GEMINI_MODEL", "\"gemini-3.1-flash-lite-preview\"")
+        buildConfigField("String", "GEMINI_AGENT_MODEL", "\"gemini-3.5-flash\"")
+        buildConfigField("String", "GEMINI_TASK_MODEL", "\"gemini-3.1-flash-lite\"")
+        buildConfigField(
+            "String",
+            "GOOGLE_CLIENT_ID",
+            "\"716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com\""
+        )
 
-        ndk {
-            abiFilters.add("arm64-v8a")
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("x86")
-            abiFilters.add("x86_64")
+    }
+
+    signingConfigs {
+        create("release") {
+            val storeFilePath = localProperties.getProperty("release.storeFile")
+            if (!storeFilePath.isNullOrBlank()) {
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = localProperties.getProperty("release.storePassword")
+                keyAlias = localProperties.getProperty("release.keyAlias")
+                keyPassword = localProperties.getProperty("release.keyPassword")
+            }
         }
     }
 
@@ -45,13 +57,19 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseStore = localProperties.getProperty("release.storeFile")
+            signingConfig = if (!releaseStore.isNullOrBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
+        // Obfuscated beta for testers: debug signing matches Firebase google-services.json today.
+        // Use release + beta keystore only after adding that SHA-1 in Firebase (see FIREBASE_GOOGLE_SIGNIN.md).
+        create("beta") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

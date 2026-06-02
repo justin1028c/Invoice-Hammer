@@ -8,6 +8,7 @@ import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.InvoiceId
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class RoomInvoiceRepository(
@@ -20,6 +21,7 @@ class RoomInvoiceRepository(
         invoiceDao.insertInvoice(invoice.toEntity())
         InvoiceOutcome.Success
     } catch (e: Exception) {
+        logRepositoryFailure("RoomInvoiceRepository", "repository", e)
         InvoiceOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to insert invoice"))
     }
     
@@ -27,6 +29,7 @@ class RoomInvoiceRepository(
         invoiceDao.insertInvoices(invoices.map { it.toEntity() })
         InvoiceOutcome.Success
     } catch (e: Exception) {
+    logRepositoryFailure("RoomInvoiceRepository", "repository", e)
         InvoiceOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to insert invoices"))
     }
 
@@ -34,6 +37,8 @@ class RoomInvoiceRepository(
         invoiceDao.updateInvoice(invoice.toEntity())
         InvoiceOutcome.Success
     } catch (e: Exception) {
+
+logRepositoryFailure("RoomInvoiceRepository", "repository", e)
         InvoiceOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to update invoice"))
     }
 
@@ -41,6 +46,7 @@ class RoomInvoiceRepository(
         invoiceDao.deleteInvoice(invoice.toEntity())
         InvoiceOutcome.Success
     } catch (e: Exception) {
+    logRepositoryFailure("RoomInvoiceRepository", "repository", e)
         InvoiceOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete invoice"))
     }
 
@@ -48,6 +54,7 @@ class RoomInvoiceRepository(
         invoiceDao.deleteAllInvoices()
         InvoiceOutcome.Success
     } catch (e: Exception) {
+        logRepositoryFailure("RoomInvoiceRepository", "repository", e)
         InvoiceOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed bulk database purge transaction"))
     }
 
@@ -56,4 +63,14 @@ class RoomInvoiceRepository(
 
     override fun getInvoicesByClient(clientName: String): Flow<List<Invoice>> =
         invoiceDao.getInvoicesByClient(clientName).map { list -> list.map { it.toDomain() } }
+
+    override suspend fun searchInvoices(query: String): List<Invoice> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
+            return allInvoices.first().take(25)
+        }
+        return invoiceDao.searchInvoices(trimmed).map { it.toDomain() }
+    }
 }
+
+private const val TAG = "RoomInvoiceRepository"

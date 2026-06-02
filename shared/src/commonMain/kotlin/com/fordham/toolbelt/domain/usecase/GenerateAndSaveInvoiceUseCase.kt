@@ -5,23 +5,24 @@ import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.repository.DocumentExporter
 import com.fordham.toolbelt.util.DateTimeUtil
 import com.fordham.toolbelt.util.randomUUID
+import com.fordham.toolbelt.util.AppLogger
 import kotlinx.datetime.Clock
 
 data class GenerateInvoiceRequest(
-    val clientName: String,
-    val clientAddress: String,
+    val clientName: ClientName,
+    val clientAddress: ClientAddress,
     val saveToClientDirectory: Boolean,
-    val taxRate: Double,
-    val deposit: Double,
+    val taxRate: TaxRatePercent,
+    val deposit: MoneyAmount,
     val lineItems: List<LineItem>,
-    val logoUriString: String?,
+    val logoUriString: MediaUri?,
     val businessSettings: BusinessSettings,
     val isEstimate: Boolean,
-    val elapsedSeconds: Long,
-    val capturedPhotos: List<String>,
-    val linkedReceiptIds: List<String>,
+    val elapsedSeconds: DurationSeconds,
+    val capturedPhotos: List<CapturedJobPhoto>,
+    val linkedReceiptIds: List<ReceiptId>,
     val availableReceipts: List<ReceiptItem>,
-    val onGenerated: (String) -> Unit
+    val onGenerated: (PdfFilePath) -> Unit
 )
 
 class GenerateAndSaveInvoiceUseCase(
@@ -35,42 +36,58 @@ class GenerateAndSaveInvoiceUseCase(
 ) {
     suspend operator fun invoke(request: GenerateInvoiceRequest): GenerateInvoiceOutcome {
         return try {
-            println("GENERATE_SAVE_USECASE: Step 1 - Saving client if saveToClientDirectory=${request.saveToClientDirectory} is true...")
+            AppLogger.d(LOG_TAG, " Step 1 - Saving client if saveToClientDirectory=${request.saveToClientDirectory} is true...")
             // 1. Save to Client Directory if requested
-            if (request.saveToClientDirectory && request.clientName.isNotEmpty()) {
-                clientRepository.insertClient(Client(id = ClientId(randomUUID()), name = request.clientName, address = request.clientAddress))
+            if (request.saveToClientDirectory && request.clientName.value.isNotEmpty()) {
+                clientRepository.insertClient(
+                    Client(
+                        id = ClientId(randomUUID()),
+                        name = request.clientName.value,
+                        address = request.clientAddress.value
+                    )
+                )
             }
 
-            println("GENERATE_SAVE_USECASE: Step 2 - Preparing data...")
-            // 2. Prepare Data
+            AppLogger.d(LOG_TAG, " Step 2 - Normalizing logo and job photos for PDF...")
+            val logoUri = request.logoUriString?.value ?: request.businessSettings.logoUri
+            val normalizedLogoUri = normalizeMediaUri(logoUri)
+
+            // Copy camera/content URIs to stable vault JPEGs before PDF embed (fixes HEIC + provider URIs).
+            val normalizedPhotos = request.capturedPhotos.map { captured ->
+                val vaultResult = storageRepository.saveUriToPictures(captured.uri, "JOB")
+                val stableUri = if (vaultResult is StorageOutcome.Success) vaultResult.path else captured.uri
+                captured.copy(uri = stableUri)
+            }
+
+            AppLogger.d(LOG_TAG, " Step 2b - Preparing data...")
             val date = DateTimeUtil.getNowFormatted()
             val subtotal = request.lineItems.sumOf { it.amount }
             val invoiceId = randomUUID()
-            
+
             val data = InvoiceData(
                 invoiceId = invoiceId,
-                clientName = request.clientName,
-                clientAddress = request.clientAddress,
+                clientName = request.clientName.value,
+                clientAddress = request.clientAddress.value,
                 items = request.lineItems,
-                taxRate = request.taxRate,
-                date = date, 
-                logoUriString = request.logoUriString,
+                taxRate = request.taxRate.value,
+                date = date,
+                logoUriString = normalizedLogoUri,
                 settings = request.businessSettings,
                 isEstimate = request.isEstimate,
-                deposit = request.deposit,
-                photoUris = request.capturedPhotos
+                deposit = request.deposit.value,
+                jobSitePhotos = normalizedPhotos
             )
 
-            println("GENERATE_SAVE_USECASE: Step 3 - Generating PDF...")
+            AppLogger.d(LOG_TAG, " Step 3 - Generating PDF...")
             // 3. Generate PDF
             val workingPath = engine.generatePdf(data)
             if (workingPath == null) {
-                println("GENERATE_SAVE_USECASE: PDF generation FAILED!")
+                AppLogger.e(LOG_TAG, " PDF generation FAILED!")
                 return GenerateInvoiceOutcome.Error(
                     GenerateInvoiceFailure.PdfGenerationFailure(FailureMessage("Failed to generate PDF"))
                 )
             }
-            println("GENERATE_SAVE_USECASE: PDF generated successfully at $workingPath")
+            AppLogger.d(LOG_TAG, " PDF generated successfully at $workingPath")
 
             // 3a. Publish a user-visible copy under Documents/InvoiceHammer/Invoices/.
             // We always keep `path` (used by FileProvider share + DB) as the shareable
@@ -80,26 +97,26 @@ class GenerateAndSaveInvoiceUseCase(
             val publishOutcome = documentExporter.publish(workingPath, DocumentCategory.Invoices, displayName)
             val path = when (publishOutcome) {
                 is DocumentExportOutcome.Success -> {
-                    println("GENERATE_SAVE_USECASE: Mirrored to user-visible ${publishOutcome.location.userVisiblePath}")
+                    AppLogger.d(LOG_TAG, " Mirrored to user-visible ${publishOutcome.location.userVisiblePath}")
                     publishOutcome.location.shareablePath
                 }
                 is DocumentExportOutcome.Failure -> {
-                    println("GENERATE_SAVE_USECASE: Publish to Documents/InvoiceHammer failed: ${publishOutcome.error.value}")
+                    AppLogger.e(LOG_TAG, " Publish to Documents/InvoiceHammer failed: ${publishOutcome.error.value}")
                     workingPath
                 }
             }
 
-            println("GENERATE_SAVE_USECASE: Step 4 - Saving Invoice to Database...")
+            AppLogger.d(LOG_TAG, " Step 4 - Saving Invoice to Database...")
             // 4. Save Invoice to Database
             val saveResult = saveInvoiceUseCase(
                 SaveInvoiceRequest(
                     clientName = request.clientName,
                     clientAddress = request.clientAddress,
-                    subtotal = subtotal,
+                    subtotal = MoneyAmount(subtotal),
                     taxRate = request.taxRate,
                     depositAmount = request.deposit,
-                    itemsSummary = request.lineItems.joinToString { it.description },
-                    pdfPath = path,
+                    itemsSummary = ItemsSummary(request.lineItems.joinToString { it.description }),
+                    pdfPath = PdfFilePath(path),
                     isEstimate = request.isEstimate,
                     durationSeconds = request.elapsedSeconds
                 )
@@ -107,12 +124,12 @@ class GenerateAndSaveInvoiceUseCase(
 
             if (saveResult is SaveInvoiceOutcome.Success) {
                 val savedInvoice = saveResult.invoice
-                println("GENERATE_SAVE_USECASE: Invoice saved to DB successfully with ID: ${savedInvoice.id}")
+                AppLogger.d(LOG_TAG, " Invoice saved to DB successfully with ID: ${savedInvoice.id}")
                 
-                println("GENERATE_SAVE_USECASE: Step 5 - Persisting Linked Receipts...")
+                AppLogger.d(LOG_TAG, " Step 5 - Persisting Linked Receipts...")
                 // 5. Persist Linked Receipts
                 request.linkedReceiptIds.forEach { receiptId ->
-                    val receipt = request.availableReceipts.find { it.id.value == receiptId }
+                    val receipt = request.availableReceipts.find { it.id == receiptId }
                     if (receipt != null) {
                         receiptRepository.updateItem(receipt.copy(
                             linkedInvoiceId = savedInvoice.id,
@@ -122,40 +139,36 @@ class GenerateAndSaveInvoiceUseCase(
                     }
                 }
 
-                println("GENERATE_SAVE_USECASE: Step 6 - Saving Job Photos...")
-                // 6. Save Photos
-                request.capturedPhotos.forEach { photoUri ->
-                    val vaultResult = storageRepository.saveUriToPictures(photoUri, "JOB")
-                    val finalUri = if (vaultResult is StorageOutcome.Success) vaultResult.path else photoUri
-                    
+                AppLogger.d(LOG_TAG, " Step 6 - Saving Job Photos...")
+                normalizedPhotos.forEach { captured ->
                     photoRepository.savePhoto(
                         JobPhoto(
                             id = PhotoId(randomUUID()),
                             invoiceId = savedInvoice.id,
-                            localUri = finalUri,
+                            localUri = captured.uri,
+                            phase = captured.phase,
                             timestamp = Clock.System.now().toEpochMilliseconds()
                         )
                     )
                 }
 
-                println("GENERATE_SAVE_USECASE: Step 7 - Triggering onGenerated callback...")
-                request.onGenerated(path)
-                println("GENERATE_SAVE_USECASE: Done!")
+                AppLogger.d(LOG_TAG, " Step 7 - Triggering onGenerated callback...")
+                request.onGenerated(PdfFilePath(path))
+                AppLogger.d(LOG_TAG, " Done!")
                 GenerateInvoiceOutcome.Success
             } else if (saveResult is SaveInvoiceOutcome.Error) {
-                println("GENERATE_SAVE_USECASE: SaveInvoiceUseCase FAILED: ${saveResult.message}")
+                AppLogger.e(LOG_TAG, " SaveInvoiceUseCase FAILED: ${saveResult.message}")
                 GenerateInvoiceOutcome.Error(
                     GenerateInvoiceFailure.PersistenceFailure(saveResult.failure.message)
                 )
             } else {
-                println("GENERATE_SAVE_USECASE: SaveInvoiceUseCase returned unknown state")
+                AppLogger.e(LOG_TAG, " SaveInvoiceUseCase returned unknown state")
                 GenerateInvoiceOutcome.Error(
                     GenerateInvoiceFailure.UnexpectedFailure(FailureMessage("Unknown error saving invoice"))
                 )
             }
         } catch (e: Exception) {
-            println("GENERATE_SAVE_USECASE: Exception caught: ${e.message}")
-            e.printStackTrace()
+            AppLogger.e(LOG_TAG, "Exception caught: ${e.message}", e)
             GenerateInvoiceOutcome.Error(
                 GenerateInvoiceFailure.UnexpectedFailure(
                     FailureMessage("Error saving ${if (request.isEstimate) "estimate" else "invoice"}: ${e.message}")
@@ -163,4 +176,14 @@ class GenerateAndSaveInvoiceUseCase(
             )
         }
     }
+
+    private suspend fun normalizeMediaUri(uri: String?): String? {
+        if (uri.isNullOrBlank()) return null
+        return when (val outcome = storageRepository.saveUriToPictures(uri, "MEDIA")) {
+            is StorageOutcome.Success -> outcome.path
+            is StorageOutcome.Failure -> uri
+        }
+    }
 }
+
+private const val LOG_TAG = "GenerateAndSaveInvoice"

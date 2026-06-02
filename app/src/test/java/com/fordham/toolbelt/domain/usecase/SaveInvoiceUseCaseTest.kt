@@ -1,8 +1,6 @@
 package com.fordham.toolbelt
 
-import com.fordham.toolbelt.domain.model.SaveInvoiceOutcome
-import com.fordham.toolbelt.domain.model.InvoiceOutcome
-import com.fordham.toolbelt.domain.model.Invoice
+import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.domain.usecase.SaveInvoiceRequest
 import com.fordham.toolbelt.domain.usecase.SaveInvoiceUseCase
@@ -25,7 +23,6 @@ class SaveInvoiceUseCaseTest {
         useCase = SaveInvoiceUseCase(invoiceRepository)
     }
 
-    // Helper to unwrap SaveInvoiceOutcome.Success or fail the test
     private fun SaveInvoiceOutcome.unwrap(): Invoice {
         if (this is SaveInvoiceOutcome.Error) {
             fail("Expected Success but got Error: ${this.message}")
@@ -45,15 +42,15 @@ class SaveInvoiceUseCaseTest {
         isEstimate: Boolean,
         durationSeconds: Long = 0L
     ) = SaveInvoiceRequest(
-        clientName = clientName,
-        clientAddress = clientAddress,
-        subtotal = subtotal,
-        taxRate = taxRate,
-        depositAmount = depositAmount,
-        itemsSummary = itemsSummary,
-        pdfPath = pdfPath,
+        clientName = ClientName(clientName),
+        clientAddress = ClientAddress(clientAddress),
+        subtotal = MoneyAmount(subtotal),
+        taxRate = TaxRatePercent(taxRate),
+        depositAmount = MoneyAmount(depositAmount),
+        itemsSummary = ItemsSummary(itemsSummary),
+        pdfPath = PdfFilePath(pdfPath),
         isEstimate = isEstimate,
-        durationSeconds = durationSeconds
+        durationSeconds = DurationSeconds(durationSeconds)
     )
 
     @Test
@@ -75,7 +72,6 @@ class SaveInvoiceUseCaseTest {
 
             val invoice = result.unwrap()
 
-            // Total = (1000 * (1 + 7/100)) - 200 = 870.0
             assertEquals(870.0, invoice.totalAmount, 0.01)
             assertEquals("John Smith", invoice.clientName)
             assertEquals("123 Main St", invoice.clientAddress)
@@ -149,7 +145,8 @@ class SaveInvoiceUseCaseTest {
 
             assertTrue(result is SaveInvoiceOutcome.Error)
             val errorMsg = (result as SaveInvoiceOutcome.Error).message
-            assertTrue("Expected message to contain 'DB failure' or 'invoice', but was '$errorMsg'",
+            assertTrue(
+                "Expected message to contain 'DB failure' or 'invoice', but was '$errorMsg'",
                 errorMsg.contains("DB failure") || errorMsg.contains("invoice")
             )
         } catch (t: Throwable) {

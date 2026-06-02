@@ -3,10 +3,7 @@ package com.fordham.toolbelt.data.implementation
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import com.fordham.toolbelt.domain.model.StorageOutcome
 import com.fordham.toolbelt.domain.model.StorageBytesOutcome
 import com.fordham.toolbelt.domain.repository.StorageRepository
@@ -44,24 +41,38 @@ class AndroidStorageRepository(
     override suspend fun getBytesFromUri(uriString: String): StorageBytesOutcome = withContext(ioDispatcher) {
         try {
             val uri = Uri.parse(uriString)
-            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val source = ImageDecoder.createSource(context.contentResolver, uri)
-                ImageDecoder.decodeBitmap(source)
-            } else {
-                context.contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it)
-                } ?: throw IllegalArgumentException("Failed to open input stream for URI")
-            }
-            val bytes = bitmap.let { bmp ->
-                ByteArrayOutputStream().use { stream ->
-                    bmp.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-                    stream.toByteArray()
-                }
-            }
+            val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+                decodeScaledJpegBytes(input)
+            } ?: throw IllegalArgumentException("Failed to open input stream for URI")
             StorageBytesOutcome.Success(bytes)
         } catch (e: Exception) {
-            StorageBytesOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to decode and retrieve image bytes from Uri"))
+            StorageBytesOutcome.Failure(
+                com.fordham.toolbelt.domain.model.FailureMessage(
+                    e.message ?: "Failed to decode and retrieve image bytes from Uri"
+                )
+            )
         }
+    }
+
+    /** Downscale camera photos to avoid OOM when loading full-resolution JPEGs into memory. */
+    private fun decodeScaledJpegBytes(input: java.io.InputStream, maxDimension: Int = 2048): ByteArray {
+        val raw = input.readBytes()
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
+        var sampleSize = 1
+        while (
+            bounds.outWidth / sampleSize > maxDimension ||
+            bounds.outHeight / sampleSize > maxDimension
+        ) {
+            sampleSize *= 2
+        }
+        val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        val bitmap = BitmapFactory.decodeByteArray(raw, 0, raw.size, decodeOpts)
+            ?: throw IllegalArgumentException("Failed to decode image")
+        return ByteArrayOutputStream().use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+            stream.toByteArray()
+        }.also { bitmap.recycle() }
     }
 
     override suspend fun saveUriToPictures(uriString: String, prefix: String): StorageOutcome = withContext(ioDispatcher) {

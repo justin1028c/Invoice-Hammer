@@ -11,6 +11,7 @@ interface SupplierRepository {
     fun getVisibleSuppliers(): Flow<SupplierListOutcome>
     fun getHiddenSuppliers(): Flow<SupplierListOutcome>
     suspend fun upsertSupplier(supplier: Supplier): SupplierOutcome
+    suspend fun replaceAllSuppliers(suppliers: List<Supplier>): SupplierOutcome
     suspend fun hideSupplier(id: SupplierId): SupplierOutcome
     suspend fun restoreSupplier(id: SupplierId): SupplierOutcome
     suspend fun updateOrder(id: SupplierId, newOrder: Int): SupplierOutcome

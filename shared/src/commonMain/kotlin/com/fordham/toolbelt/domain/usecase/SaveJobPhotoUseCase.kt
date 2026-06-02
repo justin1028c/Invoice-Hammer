@@ -11,11 +11,16 @@ import kotlinx.datetime.Clock
 class SaveJobPhotoUseCase(
     private val repository: PhotoRepository
 ) {
-    suspend operator fun invoke(uriString: String, invoiceId: String): PhotoOutcome {
+    suspend operator fun invoke(
+        uriString: String,
+        invoiceId: String,
+        phase: JobPhotoPhase = JobPhotoPhase.Before
+    ): PhotoOutcome {
         val photo = JobPhoto(
             id = PhotoId(randomUUID()),
             invoiceId = InvoiceId(invoiceId),
             localUri = uriString,
+            phase = phase,
             timestamp = Clock.System.now().toEpochMilliseconds()
         )
         return repository.savePhoto(photo)

@@ -1,20 +1,25 @@
 package com.fordham.toolbelt.ui.tabs.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.BusinessSettings
+import com.fordham.toolbelt.ui.components.BusinessLogoSection
 import com.fordham.toolbelt.ui.components.TacticalButton
 
 @Composable
 fun BusinessProfileDialog(
     businessSettings: BusinessSettings,
     onDismiss: () -> Unit,
-    onSave: (BusinessSettings) -> Unit
+    onSave: (BusinessSettings) -> Unit,
+    onPickLogo: () -> Unit,
+    onRemoveLogo: () -> Unit
 ) {
     var tempSettings by remember(businessSettings) { mutableStateOf(businessSettings) }
 
@@ -22,7 +27,17 @@ fun BusinessProfileDialog(
         onDismissRequest = { onDismiss() },
         title = { Text("BUSINESS PROFILE", fontWeight = FontWeight.Black) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                BusinessLogoSection(
+                    logoUri = tempSettings.logoUri,
+                    onPickLogo = onPickLogo,
+                    onRemoveLogo = onRemoveLogo,
+                    compact = true
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 OutlinedTextField(
                     value = tempSettings.businessName,
                     onValueChange = { tempSettings = tempSettings.copy(businessName = it) },
@@ -62,9 +77,9 @@ fun BusinessProfileDialog(
         },
         confirmButton = {
             TacticalButton(
-                onClick = { 
+                onClick = {
                     onSave(tempSettings)
-                    onDismiss() 
+                    onDismiss()
                 },
                 text = "SAVE"
             )

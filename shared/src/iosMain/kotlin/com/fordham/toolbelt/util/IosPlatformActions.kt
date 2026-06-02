@@ -4,15 +4,35 @@ import platform.Foundation.*
 import platform.UIKit.*
 import platform.AVFoundation.*
 import platform.LocalAuthentication.LAContext
+import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthentication
 import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthenticationWithBiometrics
 import platform.darwin.*
+import com.fordham.toolbelt.navigation.MainTabNavigation
 import platform.UserNotifications.*
 
 class IosPlatformActions : PlatformActions {
+    private var notificationsGranted: Boolean = false
+
+    init {
+        refreshNotificationPermissionStatus()
+    }
+
     private fun runOnMain(block: () -> Unit) {
         dispatch_async(dispatch_get_main_queue()) {
             block()
         }
+    }
+
+    private fun refreshNotificationPermissionStatus() {
+        UNUserNotificationCenter.currentNotificationCenter()
+            .getNotificationSettingsWithCompletionHandler { settings ->
+                notificationsGranted = when (settings.authorizationStatus) {
+                    UNAuthorizationStatusAuthorized,
+                    UNAuthorizationStatusProvisional,
+                    UNAuthorizationStatusEphemeral -> true
+                    else -> false
+                }
+            }
     }
 
     override fun openUrl(url: String) {
@@ -22,18 +42,48 @@ class IosPlatformActions : PlatformActions {
         }
     }
 
+    private fun getRootViewController(): UIViewController? {
+        val scenes = UIApplication.sharedApplication.connectedScenes
+        for (scene in scenes.allObjects) {
+            val windowScene = scene as? UIWindowScene
+            if (windowScene != null) {
+                for (window in windowScene.windows) {
+                    val uiWindow = window as? UIWindow
+                    if (uiWindow != null && uiWindow.isKeyWindow()) {
+                        return uiWindow.rootViewController
+                    }
+                }
+            }
+        }
+        @Suppress("DEPRECATION")
+        return UIApplication.sharedApplication.keyWindow?.rootViewController
+    }
+
     override fun shareFile(path: String, title: String) {
+        shareDocument(path, title)
+    }
+
+    override fun shareDocument(
+        path: String,
+        title: String,
+        mimeType: String,
+        recipientEmail: String,
+        recipientPhone: String,
+        subject: String,
+        body: String
+    ) {
         val url = NSURL.fileURLWithPath(path)
-        val activityViewController = UIActivityViewController(listOf(url), null)
-        val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
+        val items = mutableListOf<Any>(url)
+        if (body.isNotBlank()) items.add(body)
+        val activityViewController = UIActivityViewController(items, null)
+        val rootViewController = getRootViewController()
         rootViewController?.presentViewController(activityViewController, animated = true, completion = null)
     }
 
     override fun openPdf(path: String) {
-        // QuickLook would be better, but UIDocumentInteractionController is simpler for a bridge
         val url = NSURL.fileURLWithPath(path)
         val interactionController = UIDocumentInteractionController.interactionControllerWithURL(url)
-        val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
+        val rootViewController = getRootViewController()
         rootViewController?.let {
             interactionController.delegate = null // Simple case
             interactionController.presentPreviewAnimated(true)
@@ -60,6 +110,13 @@ class IosPlatformActions : PlatformActions {
                     if (granted) runOnMain(onGranted)
                 }
             }
+            Permission.POST_NOTIFICATIONS -> {
+                UNUserNotificationCenter.currentNotificationCenter()
+                    .requestAuthorizationWithOptions(UNAuthorizationOptionAlert or UNAuthorizationOptionSound) { granted, _ ->
+                        notificationsGranted = granted
+                        if (granted) runOnMain(onGranted)
+                    }
+            }
             else -> onGranted()
         }
     }
@@ -68,6 +125,10 @@ class IosPlatformActions : PlatformActions {
         return when (permission) {
             Permission.RECORD_AUDIO -> AVAudioSession.sharedInstance().recordPermission() == AVAudioSessionRecordPermissionGranted
             Permission.CAMERA -> AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeVideo) == AVAuthorizationStatusAuthorized
+            Permission.POST_NOTIFICATIONS -> {
+                refreshNotificationPermissionStatus()
+                notificationsGranted
+            }
             else -> true
         }
     }
@@ -75,7 +136,7 @@ class IosPlatformActions : PlatformActions {
     override fun showToast(message: String) {
         // iOS doesn't have "Toasts". Usually done with a temporary alert or a custom view.
         val alert = UIAlertController.alertControllerWithTitle(null, message, UIAlertControllerStyleAlert)
-        val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
+        val rootViewController = getRootViewController()
         rootViewController?.presentViewController(alert, animated = true) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2_000_000_000L), dispatch_get_main_queue()) {
                 alert.dismissViewControllerAnimated(true, null)
@@ -111,28 +172,35 @@ class IosPlatformActions : PlatformActions {
         onError: (String) -> Unit
     ) {
         val context = LAContext()
-        var error: NSError? = null
-        if (context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, error = null)) {
-            context.evaluatePolicy(
-                LAPolicyDeviceOwnerAuthenticationWithBiometrics,
-                localizedReason = title
-            ) { success, evalError ->
-                if (success) {
-                    runOnMain(onSuccess)
-                } else {
-                    runOnMain {
-                        onError(evalError?.localizedDescription ?: "Authentication failed")
-                    }
+        val policy = when {
+            context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, error = null) ->
+                LAPolicyDeviceOwnerAuthenticationWithBiometrics
+            context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, error = null) ->
+                LAPolicyDeviceOwnerAuthentication
+            else -> {
+                onError("Device authentication not available")
+                return
+            }
+        }
+
+        context.evaluatePolicy(
+            policy,
+            localizedReason = subtitle.ifBlank { title }
+        ) { success, evalError ->
+            if (success) {
+                runOnMain(onSuccess)
+            } else {
+                runOnMain {
+                    onError(evalError?.localizedDescription ?: "Authentication failed")
                 }
             }
-        } else {
-            onError("Biometrics not available")
         }
     }
 
     override fun isBiometricAvailable(): Boolean {
         val context = LAContext()
-        return context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, null)
+        return context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, null) ||
+            context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, null)
     }
 
     private var imagePickerDelegate: ImagePickerDelegate? = null
@@ -166,7 +234,7 @@ class IosPlatformActions : PlatformActions {
         
         picker.delegate = imagePickerDelegate
 
-        val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
+        val rootViewController = getRootViewController()
         if (rootViewController != null) {
             rootViewController.presentViewController(picker, animated = true, completion = null)
         } else {
@@ -177,22 +245,52 @@ class IosPlatformActions : PlatformActions {
     override fun scheduleNotification(id: String, title: String, body: String, delayMillis: Long) {
         val center = UNUserNotificationCenter.currentNotificationCenter()
         center.requestAuthorizationWithOptions(UNAuthorizationOptionAlert or UNAuthorizationOptionSound) { granted, _ ->
-            if (granted) {
+            notificationsGranted = granted
+            if (!granted) return@requestAuthorizationWithOptions
+
                 val content = UNMutableNotificationContent().apply {
                     setTitle(title)
                     setBody(body)
                     setSound(UNNotificationSound.defaultSound)
+                    if (id == UnpaidInvoiceReminders.WORK_ID) {
+                        setUserInfo(mapOf(MainTabNavigation.EXTRA_NAVIGATE_TO to MainTabNavigation.TARGET_HISTORY))
+                    }
                 }
 
-                val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(
-                    delayMillis.toDouble() / 1000.0,
+            if (id == UnpaidInvoiceReminders.WORK_ID) {
+                val firstDelay = maxOf(delayMillis.toDouble() / 1000.0, 60.0)
+                val firstTrigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(
+                    firstDelay,
                     repeats = false
                 )
+                val firstRequest = UNNotificationRequest.requestWithIdentifier(
+                    "$id:first",
+                    content,
+                    firstTrigger
+                )
+                center.addNotificationRequest(firstRequest, null)
 
+                val dailyInterval = UnpaidInvoiceReminders.REPEAT_INTERVAL_MS.toDouble() / 1000.0
+                val dailyTrigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(
+                    dailyInterval,
+                    repeats = true
+                )
+                val dailyRequest = UNNotificationRequest.requestWithIdentifier(id, content, dailyTrigger)
+                center.addNotificationRequest(dailyRequest, null)
+            } else {
+                val trigger = UNTimeIntervalNotificationTrigger.triggerWithTimeInterval(
+                    maxOf(delayMillis.toDouble() / 1000.0, 1.0),
+                    repeats = false
+                )
                 val request = UNNotificationRequest.requestWithIdentifier(id, content, trigger)
                 center.addNotificationRequest(request, null)
             }
         }
+    }
+
+    override fun cancelScheduledNotification(id: String) {
+        UNUserNotificationCenter.currentNotificationCenter()
+            .removePendingNotificationRequestsWithIdentifiers(listOf(id, "$id:first"))
     }
 }
 

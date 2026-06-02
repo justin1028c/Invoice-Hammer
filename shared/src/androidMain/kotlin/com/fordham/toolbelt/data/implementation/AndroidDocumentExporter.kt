@@ -52,8 +52,10 @@ class AndroidDocumentExporter(
                     put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                     put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativeFolder)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
-                val uri = resolver.insert(MediaStore.Files.getContentUri("external"), cv)
+                val collection = MediaStore.Files.getContentUri("external")
+                val uri = resolver.insert(collection, cv)
                     ?: return@withContext DocumentExportOutcome.Failure(
                         FailureMessage("MediaStore refused to register $userVisiblePath")
                     )
@@ -62,6 +64,10 @@ class AndroidDocumentExporter(
                 } ?: return@withContext DocumentExportOutcome.Failure(
                     FailureMessage("MediaStore output stream unavailable for $userVisiblePath")
                 )
+                cv.clear()
+                cv.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, cv, null, null)
+
                 DocumentExportOutcome.Success(
                     DocumentLocation(shareablePath = source.absolutePath, userVisiblePath = userVisiblePath)
                 )

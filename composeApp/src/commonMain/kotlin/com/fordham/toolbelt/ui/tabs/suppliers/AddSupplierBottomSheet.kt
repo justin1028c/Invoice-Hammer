@@ -23,7 +23,7 @@ import com.fordham.toolbelt.util.PlaceSuggestion
 @Composable
 fun AddSupplierBottomSheet(
     onDismiss: () -> Unit,
-    onSave: (String, SupplierCategory, String, String, String?) -> Unit,
+    onSave: (String, SupplierCategory, String, String, String, String?) -> Unit,
     onSnapPhoto: () -> Unit,
     photoUri: String?,
     suggestions: List<PlaceSuggestion>,
@@ -33,6 +33,7 @@ fun AddSupplierBottomSheet(
     var name by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
+    var webUrl by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(SupplierCategory.HARDWARE) }
     var showSuggestions by remember { mutableStateOf(false) }
 
@@ -107,6 +108,16 @@ fun AddSupplierBottomSheet(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = webUrl,
+                onValueChange = { webUrl = it },
+                label = { Text("Website URL (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
             Spacer(Modifier.height(24.dp))
 
             Text("CATEGORY", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
@@ -147,7 +158,7 @@ fun AddSupplierBottomSheet(
             Spacer(Modifier.height(32.dp))
 
             TacticalButton(
-                onClick = { onSave(name, category, address, phone, photoUri) },
+                onClick = { onSave(name, category, address, phone, webUrl, photoUri) },
                 text = "CREATE SUPPLIER",
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank()

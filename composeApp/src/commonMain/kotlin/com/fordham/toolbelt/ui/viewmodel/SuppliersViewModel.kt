@@ -134,7 +134,7 @@ class SuppliersViewModel(
         }
     }
 
-    fun addSupplier(name: String, category: SupplierCategory, address: String, phone: String, logoPath: String?) {
+    fun addSupplier(name: String, category: SupplierCategory, address: String, phone: String, webUrl: String, logoPath: String?) {
         viewModelScope.launch {
             val supplier = Supplier(
                 id = SupplierId(com.fordham.toolbelt.util.randomUUID()),
@@ -142,6 +142,7 @@ class SuppliersViewModel(
                 category = category,
                 address = address,
                 phone = PhoneNumber(phone),
+                webUrl = webUrl,
                 customLogoPath = logoPath,
                 displayOrder = 0
             )

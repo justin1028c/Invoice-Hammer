@@ -146,6 +146,10 @@ fun JobPhotoEntity.toDomain(): DomainJobPhoto = DomainJobPhoto(
     id = PhotoId(id),
     invoiceId = InvoiceId(invoiceId),
     localUri = localUri,
+    phase = when (phase.uppercase()) {
+        "AFTER" -> com.fordham.toolbelt.domain.model.JobPhotoPhase.After
+        else -> com.fordham.toolbelt.domain.model.JobPhotoPhase.Before
+    },
     timestamp = timestamp
 )
 
@@ -153,5 +157,76 @@ fun DomainJobPhoto.toEntity(): JobPhotoEntity = JobPhotoEntity(
     id = id.value,
     invoiceId = invoiceId.value,
     localUri = localUri,
+    phase = when (phase) {
+        com.fordham.toolbelt.domain.model.JobPhotoPhase.Before -> "BEFORE"
+        com.fordham.toolbelt.domain.model.JobPhotoPhase.After -> "AFTER"
+    },
     timestamp = timestamp
+)
+
+fun PaymentRequestEntity.toDomain(): InvoicePaymentRequest = InvoicePaymentRequest(
+    id = PaymentRequestId(id),
+    invoiceId = InvoiceId(invoiceId),
+    invoiceClientName = invoiceClientName,
+    type = when (type) {
+        "deposit" -> PaymentRequestType.Deposit
+        else -> PaymentRequestType.FullBalance
+    },
+    provider = when (provider) {
+        "google_pay" -> PaymentProviderType.GooglePay
+        "apple_pay" -> PaymentProviderType.ApplePay
+        "stellar_usdc" -> PaymentProviderType.StellarUsdc
+        "card_terminal" -> PaymentProviderType.CardTerminal
+        "tap_to_pay" -> PaymentProviderType.TapToPay
+        "bluetooth_reader" -> PaymentProviderType.BluetoothReader
+        else -> PaymentProviderType.CardLink
+    },
+    requestedAmount = MoneyAmount(requestedAmount),
+    status = when (status) {
+        "requested" -> InvoicePaymentStatus.Requested
+        "pending" -> InvoicePaymentStatus.Pending
+        "paid" -> InvoicePaymentStatus.Paid
+        "failed" -> InvoicePaymentStatus.Failed
+        "expired" -> InvoicePaymentStatus.Expired
+        else -> InvoicePaymentStatus.Pending
+    },
+    paymentLink = PaymentLinkUrl(paymentLink),
+    createdAtMillis = createdAtMillis,
+    paidAtMillis = paidAtMillis,
+    stellarTransactionHash = stellarTransactionHash?.let { StellarTransactionHash(it) },
+    stellarExplorerUrl = stellarExplorerUrl?.let { StellarExplorerUrl(it) },
+    assetCode = assetCode
+)
+
+fun InvoicePaymentRequest.toEntity(): PaymentRequestEntity = PaymentRequestEntity(
+    id = id.value,
+    invoiceId = invoiceId.value,
+    invoiceClientName = invoiceClientName,
+    type = when (type) {
+        PaymentRequestType.Deposit -> "deposit"
+        PaymentRequestType.FullBalance -> "full_balance"
+    },
+    provider = when (provider) {
+        PaymentProviderType.GooglePay -> "google_pay"
+        PaymentProviderType.ApplePay -> "apple_pay"
+        PaymentProviderType.StellarUsdc -> "stellar_usdc"
+        PaymentProviderType.CardLink -> "card_link"
+        PaymentProviderType.CardTerminal -> "card_terminal"
+        PaymentProviderType.TapToPay -> "tap_to_pay"
+        PaymentProviderType.BluetoothReader -> "bluetooth_reader"
+    },
+    requestedAmount = requestedAmount.value,
+    status = when (status) {
+        InvoicePaymentStatus.Requested -> "requested"
+        InvoicePaymentStatus.Pending -> "pending"
+        InvoicePaymentStatus.Paid -> "paid"
+        InvoicePaymentStatus.Failed -> "failed"
+        InvoicePaymentStatus.Expired -> "expired"
+    },
+    paymentLink = paymentLink.value,
+    createdAtMillis = createdAtMillis,
+    paidAtMillis = paidAtMillis,
+    stellarTransactionHash = stellarTransactionHash?.value,
+    stellarExplorerUrl = stellarExplorerUrl?.value,
+    assetCode = assetCode
 )

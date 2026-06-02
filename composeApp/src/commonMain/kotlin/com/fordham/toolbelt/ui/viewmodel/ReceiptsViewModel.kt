@@ -3,6 +3,8 @@ package com.fordham.toolbelt.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fordham.toolbelt.domain.model.Client
+import com.fordham.toolbelt.domain.model.ClientName
+import com.fordham.toolbelt.domain.model.ReceiptImagePayload
 import com.fordham.toolbelt.domain.model.ReceiptListOutcome
 import com.fordham.toolbelt.domain.model.ProcessReceiptOutcome
 import com.fordham.toolbelt.domain.model.StorageBytesOutcome
@@ -90,9 +92,16 @@ class ReceiptsViewModel(
 
     fun onReceiptUriSelected(uri: String) {
         viewModelScope.launch {
-            val result = storageRepository.getBytesFromUri(uri)
-            if (result is StorageBytesOutcome.Success) {
-                onReceiptImageCaptured(result.bytes)
+            when (val result = storageRepository.getBytesFromUri(uri)) {
+                is StorageBytesOutcome.Success -> onReceiptImageCaptured(result.bytes)
+                is StorageBytesOutcome.Failure -> {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = "Could not load photo: ${result.error.value}",
+                            capturedImageBytes = null
+                        )
+                    }
+                }
             }
         }
     }
@@ -128,8 +137,8 @@ class ReceiptsViewModel(
             
             val result = processReceiptUseCase(
                 ProcessReceiptRequest(
-                    imageBytes = imageBytes,
-                    clientName = selectedClient?.name
+                    imageBytes = ReceiptImagePayload(imageBytes),
+                    clientName = selectedClient?.name?.let { ClientName(it) }
                 )
             )
             when (result) {

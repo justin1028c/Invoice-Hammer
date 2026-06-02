@@ -32,6 +32,17 @@ object DateTimeUtil {
     }
 
     fun getNowFormatted(): String = formatEpoch(nowEpochMillis())
+
+    /** Filesystem-safe stamp for export filenames, e.g. `20260519_143052`. */
+    fun exportFileStamp(): String {
+        val dt = Instant.fromEpochMilliseconds(nowEpochMillis()).toLocalDateTime(TimeZone.currentSystemDefault())
+        val month = dt.monthNumber.toString().padStart(2, '0')
+        val day = dt.dayOfMonth.toString().padStart(2, '0')
+        val hour = dt.hour.toString().padStart(2, '0')
+        val minute = dt.minute.toString().padStart(2, '0')
+        val second = dt.second.toString().padStart(2, '0')
+        return "${dt.year}${month}${day}_${hour}${minute}${second}"
+    }
 }
 
 private fun Double.pow(n: Int): Double {

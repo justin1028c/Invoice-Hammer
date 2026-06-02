@@ -8,12 +8,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.Invoice
+import com.fordham.toolbelt.domain.model.JobPhotoPhase
 
 /**
  * Responsibility: Display a list of past invoices for the selected client.
@@ -22,7 +27,7 @@ import com.fordham.toolbelt.domain.model.Invoice
 fun ClientInvoicesSection(
     invoices: List<Invoice>,
     onInvoiceClick: (Invoice) -> Unit,
-    onAddPhotoClick: (Invoice) -> Unit
+    onAddPhotoClick: (Invoice, JobPhotoPhase) -> Unit
 ) {
     Column {
         Text("PAST INVOICES", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
@@ -48,8 +53,27 @@ fun ClientInvoicesSection(
                         Text(inv.itemsSummary.uppercase(), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { onAddPhotoClick(inv) }) {
-                            Icon(Icons.Default.AddAPhoto, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        var showPhotoMenu by remember(inv.id) { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showPhotoMenu = true }) {
+                                Icon(Icons.Default.AddAPhoto, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            }
+                            DropdownMenu(expanded = showPhotoMenu, onDismissRequest = { showPhotoMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("BEFORE", fontWeight = FontWeight.Black) },
+                                    onClick = {
+                                        showPhotoMenu = false
+                                        onAddPhotoClick(inv, JobPhotoPhase.Before)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("AFTER", fontWeight = FontWeight.Black) },
+                                    onClick = {
+                                        showPhotoMenu = false
+                                        onAddPhotoClick(inv, JobPhotoPhase.After)
+                                    }
+                                )
+                            }
                         }
                         Text(inv.formattedTotal, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     }

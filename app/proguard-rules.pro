@@ -42,6 +42,36 @@
 -keep class com.google.ai.client.generativeai.** { *; }
 -dontwarn com.google.ai.client.generativeai.**
 
+# SQLCipher: JNI reads field names — must not be stripped/renamed by R8
+-keep class net.zetetic.database.sqlcipher.** { *; }
+-keepclassmembers class net.zetetic.database.sqlcipher.** { *; }
+-keep class net.sqlcipher.** { *; }
+-keepclassmembers class net.sqlcipher.** { *; }
+-dontwarn net.zetetic.database.sqlcipher.**
+
+# Koin / app wiring (release DI)
+-keep class org.koin.** { *; }
+-keep class com.fordham.toolbelt.** { *; }
+-keep class com.fordham.toolbelt.di.** { *; }
+-keep class com.fordham.toolbelt.util.AndroidPlatformActions { *; }
+-keep class com.fordham.toolbelt.data.implementation.AndroidDriveAuthTokenProvider { *; }
+
+# Kotlin serialization
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+-keepclassmembers class kotlinx.serialization.** { *; }
+-keep @kotlinx.serialization.Serializable class * { *; }
+
+# Stripe / Firebase (reflection-heavy SDKs)
+-keep class com.stripe.** { *; }
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.stripe.**
+
+# Native libs loaded from Kotlin
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
 # Strip debug logs in production
 -assumenosideeffects class android.util.Log {
     public static *** d(...);

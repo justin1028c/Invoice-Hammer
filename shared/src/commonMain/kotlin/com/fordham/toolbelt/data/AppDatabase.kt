@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         JobPhotoEntity::class, 
         JobNoteEntity::class,
         SupplierEntity::class,
-        DraftInvoiceEntity::class
+        DraftInvoiceEntity::class,
+        PaymentRequestEntity::class
     ], 
-    version = 18,
+    version = 20,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,4 +25,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun jobNoteDao(): JobNoteDao
     abstract fun supplierDao(): SupplierDao
     abstract fun draftDao(): DraftDao
+    abstract fun paymentRequestDao(): PaymentRequestDao
 }

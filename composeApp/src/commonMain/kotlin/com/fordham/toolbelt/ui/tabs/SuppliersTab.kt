@@ -17,6 +17,7 @@ import com.fordham.toolbelt.domain.model.SupplierId
 import com.fordham.toolbelt.util.PlaceSuggestion
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,7 +40,7 @@ fun SuppliersTab(
     onHideSupplier: (SupplierId) -> Unit,
     onAddClick: () -> Unit,
     onDismissAdd: () -> Unit,
-    onAddSupplier: (String, SupplierCategory, String, String, String?) -> Unit,
+    onAddSupplier: (String, SupplierCategory, String, String, String, String?) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onClearSuggestions: () -> Unit,
     onToggleReorder: (Boolean, List<SupplierUiModel>) -> Unit,
@@ -108,7 +109,7 @@ fun SuppliersTab(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Sort, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.AutoMirrored.Filled.Sort, null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }

@@ -26,13 +26,28 @@ class RoomClientRepository(
         clientDao.insertClient(client.toEntity())
         ClientOutcome.Success
     } catch (e: Exception) {
+        logRepositoryFailure("RoomClientRepository", "repository", e)
         ClientOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to insert client"))
+    }
+
+    override suspend fun replaceAllClients(clients: List<Client>): ClientOutcome = try {
+        clientDao.deleteAllClients()
+        if (clients.isNotEmpty()) {
+            clientDao.insertClients(clients.map { it.toEntity() })
+        }
+        ClientOutcome.Success
+    } catch (e: Exception) {
+    logRepositoryFailure("RoomClientRepository", "repository", e)
+        ClientOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to restore clients"))
     }
 
     override suspend fun deleteClient(client: Client): ClientOutcome = try {
         clientDao.deleteClient(client.toEntity())
         ClientOutcome.Success
     } catch (e: Exception) {
+logRepositoryFailure("RoomClientRepository", "repository", e)
         ClientOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete client"))
     }
 }
+
+private const val TAG = "RoomClientRepository"
