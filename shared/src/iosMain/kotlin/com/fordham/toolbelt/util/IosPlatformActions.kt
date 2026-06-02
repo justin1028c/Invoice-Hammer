@@ -38,7 +38,7 @@ class IosPlatformActions : PlatformActions {
     override fun openUrl(url: String) {
         val nsUrl = NSURL.URLWithString(url)
         if (nsUrl != null) {
-            UIApplication.sharedApplication.openURL(nsUrl)
+            UIApplication.sharedApplication.openURL(nsUrl, options = emptyMap<Any?, Any?>(), completionHandler = null)
         }
     }
 
@@ -304,7 +304,7 @@ class ImagePickerDelegate(
     ) {
         val image = didFinishPickingMediaWithInfo[UIImagePickerControllerOriginalImage] as? UIImage
         if (image != null) {
-            val data = UIImageJPEGRepresentation(image, 0.8)
+            val data = image.jpegData(compressionQuality = 0.8)
             val tempDir = NSTemporaryDirectory()
             val fileName = NSUUID().UUIDString + ".jpg"
             val path = tempDir + fileName
