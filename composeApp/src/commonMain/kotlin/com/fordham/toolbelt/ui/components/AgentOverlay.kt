@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -191,7 +191,7 @@ fun AgentOverlay(
                                     onClick = onSendTypedCommand,
                                     enabled = typedCommand.isNotBlank() && !isProcessing
                                 ) {
-                                    Icon(Icons.Default.Send, contentDescription = "Send")
+                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                                 }
                             }
                         )
