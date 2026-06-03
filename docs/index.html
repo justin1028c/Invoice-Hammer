@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Hammer — Clean KMP Architecture & Stellar Settlement</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Marked.js (Markdown parser) & Mermaid.js (Diagrams) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0d0f12;
+            --card-bg: rgba(22, 28, 36, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-glow: #00e6c3;
+            --accent-secondary: #0070f3;
+            --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 230, 195, 0.03) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 112, 243, 0.05) 0%, transparent 40%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 840px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 3rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 30%, var(--accent-glow) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.03em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        a {
+            color: var(--accent-glow);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s ease, text-shadow 0.2s ease;
+        }
+
+        a:hover {
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(0, 230, 195, 0.4);
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: var(--border-color);
+            margin: 2.5rem 0;
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            color: #e5e7eb;
+        }
+
+        .mermaid {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        ul {
+            list-style-type: none;
+            margin-bottom: 1.5rem;
+        }
+
+        li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--accent-glow);
+            font-weight: bold;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.5rem;
+                border-radius: 16px;
+            }
+            h1 {
+                font-size: 2.25rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="content">
+        <!-- Content will be rendered here dynamically -->
+        <p style="text-align: center; color: var(--accent-glow);">Loading documentation...</p>
+    </div>
+
+    <script>
+        // Initialize mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            securityLevel: 'loose',
+            themeVariables: {
+                background: '#161c24',
+                primaryColor: '#1e293b',
+                primaryTextColor: '#f3f4f6',
+                lineColor: '#00e6c3',
+                signalColor: '#0070f3',
+                secondaryColor: '#0f172a'
+            }
+        });
+
+        // Fetch index.md and render it
+        fetch('index.md')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(markdown => {
+                // Parse markdown
+                const rawHtml = marked.parse(markdown);
+                document.getElementById('content').innerHTML = rawHtml;
+
+                // Render mermaid diagrams
+                mermaid.run();
+            })
+            .catch(error => {
+                console.error('Error loading Markdown:', error);
+                document.getElementById('content').innerHTML = `
+                    <h1>Invoice Hammer</h1>
+                    <p style="color: #ef4444;">Failed to load index.md. Verify that index.md exists in the same folder.</p>
+                `;
+            });
+    </script>
+</body>
+</html>
