@@ -3,6 +3,8 @@
 ## Project URL & Core Links
 * **Repository Link**: `https://gitlab.com/Justin1028c/invoice-hammer`
 * **Direct Submission File**: `https://gitlab.com/Justin1028c/invoice-hammer/-/blob/main/SCF_SUBMISSION.md`
+* **Live Hosted Spec**: `https://invoice-hammer-1f7efb.gitlab.io`
+
 
 
 ---

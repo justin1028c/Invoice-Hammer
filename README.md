@@ -18,6 +18,7 @@ Traditional payment processors charge contractors between 1.5% and 3.5% in trans
 ## 2. Live Proof & Project Demo
 
 * **Public Repository**: [Invoice Hammer KMP Repository](https://gitlab.com/Justin1028c/invoice-hammer)
+* **Live Hosted Spec Page**: [Stellar Invoice Hammer Specification Site](https://invoice-hammer-1f7efb.gitlab.io)
 
 
 ---
