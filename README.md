@@ -92,3 +92,9 @@ The project is structured into three discrete 30-day milestones (Tranches):
 
 * **Kotlin Multiplatform Expertise**: Built with strict adherence to Clean Architecture—enforcing a pure domain core containing zero platform dependencies, zero primitive obsession (using `@JvmInline value class` representation), and Swift-friendly sealed interface boundaries.
 * **Systems Engineering**: Comprehensive experience in embedded device cryptography, database security, and distributed settlement rails.
+
+---
+
+## 7. Open Source Alignment & Licensing
+Invoice Hammer is committed to the open-source ethos of the Stellar community. All codebase components, libraries, and platform bridging structures are fully open-source and licensed under the [MIT License](file:///c:/Users/Justin/AndroidStudioProjects/InvoiceApp/LICENSE). Reviewers and builders can inspect, compile, audit, or fork the project freely.
+

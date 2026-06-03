@@ -72,3 +72,9 @@ graph TD
 
 ## 5. Technical Background & Team Capability
 The development team consists of systems engineers specialized in high-performance Kotlin Multiplatform development, cryptographically secure storage patterns, and clean architecture enforcement. The repository strictly separates concerns to guarantee stability, testability, and multiplatform compile completeness for both Android and iOS targets.
+
+---
+
+## 6. Open Source Alignment & Licensing
+Invoice Hammer is committed to the open-source ethos of the Stellar community. All codebase components, libraries, and platform bridging structures are fully open-source and licensed under the [MIT License](file:///c:/Users/Justin/AndroidStudioProjects/InvoiceApp/LICENSE). Reviewers and builders can inspect, compile, audit, or fork the project freely.
+
