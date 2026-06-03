@@ -88,7 +88,7 @@ The project is structured into three discrete 30-day milestones (Tranches):
 
 ---
 
-## 6. Team & Technical Background
+## 6. Solo Developer & Technical Background
 
 * **Kotlin Multiplatform Expertise**: Built with strict adherence to Clean Architecture—enforcing a pure domain core containing zero platform dependencies, zero primitive obsession (using `@JvmInline value class` representation), and Swift-friendly sealed interface boundaries.
 * **Systems Engineering**: Comprehensive experience in embedded device cryptography, database security, and distributed settlement rails.

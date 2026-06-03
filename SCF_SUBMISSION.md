@@ -70,8 +70,9 @@ graph TD
 
 ---
 
-## 5. Technical Background & Team Capability
-The development team consists of systems engineers specialized in high-performance Kotlin Multiplatform development, cryptographically secure storage patterns, and clean architecture enforcement. The repository strictly separates concerns to guarantee stability, testability, and multiplatform compile completeness for both Android and iOS targets.
+## 5. Technical Background & Solo Developer Capability
+The developer is a systems engineer specialized in high-performance Kotlin Multiplatform development, cryptographically secure storage patterns, and clean architecture enforcement. The repository strictly separates concerns to guarantee stability, testability, and multiplatform compile completeness for both Android and iOS targets.
+
 
 ---
 
