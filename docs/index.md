@@ -54,4 +54,4 @@ graph TD
 
 ## Working Demo
 - **GitHub / GitLab Repository**: [Invoice Hammer Repository](https://gitlab.com/Justin1028c/invoice-hammer)
-- **60-Second Demo Video**: [Watch the App Staging & Settling an Invoice on Stellar](https://www.loom.com/share/demo-video-id)
+

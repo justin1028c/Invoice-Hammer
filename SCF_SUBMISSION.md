@@ -3,7 +3,7 @@
 ## Project URL & Core Links
 * **Repository Link**: `https://gitlab.com/Justin1028c/invoice-hammer`
 * **Direct Submission File**: `https://gitlab.com/Justin1028c/invoice-hammer/-/blob/main/SCF_SUBMISSION.md`
-* **Demo Video**: [Loom Demo Video (60 Seconds)](https://www.loom.com/share/demo-video-id)
+
 
 ---
 
