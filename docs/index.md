@@ -3,6 +3,11 @@
 ## The Hook
 Invoice Hammer delivers non-custodial invoice staging and automated settlement for independent contractors using the Stellar network. By bridging client payments to on-chain USDC settlement rails, contractors receive prompt, trustless payments while retaining full custody of their invoice history and ledger balances.
 
+## Key Innovation Features
+* **Pure Domain Boundary**: Zero platform-specific imports permitted inside the `commonMain` business core.
+* **Primitive Obsession Eradicated**: Representation of critical domain concepts (IDs, amounts, transaction hashes) via `@JvmInline value class` wrappers.
+* **Exhaustive Sealed Interop**: Operation outcomes use typed sealed interfaces ensuring Swift-safe interoperability without exceptions.
+
 ---
 
 ## Clean Architecture Boundary & Stellar Transaction Flow
