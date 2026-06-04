@@ -9,7 +9,7 @@ import platform.darwin.dispatch_async
 class IosVoiceAssistant : VoiceAssistant {
     private val synthesizer = AVSpeechSynthesizer()
     private val preferredVoice = IosTtsVoiceSelector.bestUsVoice()
-    private val speechRecognizer = SFSpeechRecognizer(NSLocale.localeWithLocaleIdentifier("en-US"))
+    private val speechRecognizer = SFSpeechRecognizer(locale = NSLocale.localeWithLocaleIdentifier("en-US"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
     private var recognitionTask: SFSpeechRecognitionTask? = null
     private val audioEngine = AVAudioEngine()
@@ -47,7 +47,7 @@ class IosVoiceAssistant : VoiceAssistant {
         onResult: (VoiceTranscriptMeta) -> Unit,
         onEnd: () -> Unit
     ) {
-        if (speechRecognizer?.isAvailable() == false) {
+        if (speechRecognizer?.isAvailable == false) {
             SFSpeechRecognizer.requestAuthorization { status ->
                 if (status == SFSpeechRecognizerAuthorizationStatusAuthorized) {
                     runOnMain {
@@ -88,16 +88,16 @@ class IosVoiceAssistant : VoiceAssistant {
                 } else {
                     emptyList()
                 }
-                if (result.isFinal()) {
+                if (result.isFinal) {
                     runOnMain {
                         onResult(VoiceTranscriptMeta(result.bestTranscription.formattedString, null, alternatives))
                     }
                 }
             }
             
-            if (error != null || (result?.isFinal() == true)) {
+            if (error != null || (result?.isFinal == true)) {
                 runOnMain {
-                    if (audioEngine.isRunning()) {
+                    if (audioEngine.isRunning) {
                         audioEngine.stop()
                         audioEngine.inputNode.removeTapOnBus(0u)
                     }
@@ -124,7 +124,7 @@ class IosVoiceAssistant : VoiceAssistant {
 
     override fun stopListening() {
         runOnMain {
-            if (audioEngine.isRunning()) {
+            if (audioEngine.isRunning) {
                 audioEngine.stop()
                 audioEngine.inputNode.removeTapOnBus(0u)
             }
@@ -135,7 +135,7 @@ class IosVoiceAssistant : VoiceAssistant {
     override fun destroy() {
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundaryImmediate)
         runOnMain {
-            if (audioEngine.isRunning()) {
+            if (audioEngine.isRunning) {
                 audioEngine.stop()
                 audioEngine.inputNode.removeTapOnBus(0u)
             }

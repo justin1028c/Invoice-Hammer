@@ -37,7 +37,8 @@ class IosStoreBillingGateway : StoreBillingGateway {
             ?: return StorePurchaseOutcome.Failure(
                 FailureMessage("App Store billing bridge is not registered on iOS.")
             )
-        return when (val result = bridge.purchase(productId)) {
+        val result = bridge.purchase(productId)
+        return when {
             result.cancelled -> StorePurchaseOutcome.Cancelled
             result.success -> StorePurchaseOutcome.Success(
                 StorePurchaseResult(

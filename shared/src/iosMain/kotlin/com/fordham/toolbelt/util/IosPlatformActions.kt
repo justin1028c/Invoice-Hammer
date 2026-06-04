@@ -49,7 +49,7 @@ class IosPlatformActions : PlatformActions {
             if (windowScene != null) {
                 for (window in windowScene.windows) {
                     val uiWindow = window as? UIWindow
-                    if (uiWindow != null && uiWindow.isKeyWindow()) {
+                    if (uiWindow != null && uiWindow.isKeyWindow) {
                         return uiWindow.rootViewController
                     }
                 }
@@ -306,7 +306,7 @@ class ImagePickerDelegate(
         if (image != null) {
             val data = image.jpegData(compressionQuality = 0.8)
             val tempDir = NSTemporaryDirectory()
-            val fileName = NSUUID().UUIDString + ".jpg"
+            val fileName = NSUUID().UUIDString() + ".jpg"
             val path = tempDir + fileName
             data?.writeToFile(path, atomically = true)
             onImagePicked(path)
