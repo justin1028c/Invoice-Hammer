@@ -90,13 +90,13 @@ Invoice Hammer integrates standard Stellar development primitives and aligns wit
 
 The project will be completed over a **6-month timeline** split into three distinct, milestone-based tranches. The requested budget is **$55,000 USD** (converted to XLM value upon tranche payout). To comply with the SCF handbook guidelines, **this budget is sized exclusively around the Stellar-specific components and dependencies of the application**.
 
-### Tranche 1: Local Stellar Cryptographic Vault & Transaction Builder (Months 1–2)
+### Tranche 1: Local Stellar Cryptographic Vault & Transaction Stager (Months 1–2)
 * **Budget:** $15,000
-* **Stellar-Specific Deliverables:**
-    * Implement a KMP cryptographic key generator utilizing BIP-39 mnemonic words to derive Stellar ed25519 public/private keys.
-    * Build the native security bridges (`expect`/`actual`) to lock derived private keys in the **iOS Keychain / Secure Enclave** and **Android Keystore** (with mandatory system PIN fallbacks).
-    * Develop a local Transaction Stager module to build raw Stellar transaction envelopes (`TransactionEnvelope` XDR format) specifying `PaymentOperation` structures for USDC asset transfers.
-    * Set up a Room database schema encrypted with **SQLCipher** specifically designed to index local staged transactions, signature weights, public address contacts, and on-chain payment link records.
+* **Reviewer-Verifiable Deliverables:**
+    * **Stellar Wallet Key Generation & Recovery:** Generate and recover Stellar wallets from BIP-39 mnemonics, verified via an automated test suite demonstrating key derivation parity across KMP platform sets.
+    * **Biometric Keychain Protection:** derivated ed25519 keys are locked in iOS Secure Enclave and Android Keystore, verifiable through automated unit tests verifying encryption states and cryptographic signature verification.
+    * **Offline Transaction Staging:** Build and stage raw unsigned Stellar transaction envelopes (XDR) specifying USDC payment operations on-device, verified by printing staged XDR codes directly in the debug console logs.
+    * **Encrypted Database Ledger:** Secure local transaction logs and payment request metadata in Room using SQLCipher, verified by a public database encryption integrity test suite.
 * **Verifiable Proof of Completion:**
     * Public GitHub/GitLab repository with clean architecture source code.
     * A recorded video demonstration showcasing successful BIP-39 key derivation, biometric/PIN prompt challenges, and raw XDR transaction envelopes generated on-device and displayed as system logs.
@@ -104,12 +104,12 @@ The project will be completed over a **6-month timeline** split into three disti
 
 ### Tranche 2: Horizon Node Connectivity & On-Chain Staging (Months 3–4)
 * **Budget:** $20,000
-* **Stellar-Specific Deliverables:**
-    * Build Ktor network clients to query Horizon Testnet nodes for ledger state, sequence numbers, and account balances.
-    * Implement local transaction signing routines to inject cryptographic signatures from the Secure Enclave / Keystore into the staged XDR envelopes.
-    * Build a Horizon broadcasting engine to submit signed transaction envelopes to the network.
-    * Implement Horizon event listeners to stream incoming ledger transactions, verify payment completion by parsing transaction memos, and confirm status transitions.
-    * Implement SEP-7 compliant QR code generation to support instant checkouts for third-party wallets.
+* **Reviewer-Verifiable Deliverables:**
+    * **Horizon Ledger Queries:** Query Horizon Testnet nodes for sequence numbers and balance validation, verifiable via automated Horizon API parser tests.
+    * **Secure Transaction Signing Demos:** Record an end-to-end demo showing transaction signing prompted through Android Keystore and iOS Secure Enclave biometric challenges.
+    * **On-Chain Broadcasting:** Broadcast signed USDC transactions to the Horizon Testnet, verified by returning and displaying active on-chain transaction hash links in the UI.
+    * **Horizon Event Streaming:** Parse Horizon event streams to verify transaction memo fields in real time, demonstrated by updating payment ledger statuses dynamically upon ledger settlement.
+    * **SEP-7 Wallet Link Checkouts:** Export checkouts as SEP-7 compliant links and QR codes, testable using third-party Stellar wallets (LOBSTR/Albedo) on the testnet.
 * **Verifiable Proof of Completion:**
     * Live Testnet transaction hashes verifying successful USDC payments staged, signed, and broadcasted natively by the app.
     * Public repository test suites verifying Horizon API parser logic and sequence number increment handling.
@@ -117,11 +117,11 @@ The project will be completed over a **6-month timeline** split into three disti
 
 ### Tranche 3: Mainnet Transition & Standards Compliance (Months 5–6)
 * **Budget:** $20,000
-* **Stellar-Specific Deliverables:**
-    * Migrate the Horizon endpoint configuration to Stellar Mainnet nodes.
-    * Implement SEP-10 Semantic Authentication pipelines on the client application to secure off-device metadata syncing.
-    * Build client-side handlers for SEP-24 / SEP-38 anchor protocols to prepare the integration path for direct USD ACH bank payouts.
-    * Implement resilient network retry and gas-price (base fee) fee-bump logic to prevent transaction drops during network congestion.
+* **Reviewer-Verifiable Deliverables:**
+    * **Mainnet Checkout Verification:** Stage and settle active mainnet USDC invoice payments, verified by submitting mainnet transaction hash logs.
+    * **SEP-10 Connection Handshakes:** Secure metadata syncing using client-side SEP-10 authentication challenges, verified by network traffic inspection logs showing signed cryptographic handshakes.
+    * **Anchor Integration Adapters:** Publish KMP client adapter code for planned SEP-24 / SEP-38 fiat anchors to prepare the direct USD payout path.
+    * **Gas-Price Resiliency:** Deploy automatic base fee adjustment rules, verified by automated unit tests simulating network congestion delays.
 * **Verifiable Proof of Completion:**
     * Mainnet transaction hashes documenting successful USDC transfers processed by the system.
     * App builds uploaded to TestFlight (iOS) and Google Play Console Internal Beta (Android) containing active mainnet payment pipes.
