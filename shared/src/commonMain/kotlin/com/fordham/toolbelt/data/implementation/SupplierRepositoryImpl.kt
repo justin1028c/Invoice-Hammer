@@ -107,7 +107,7 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
     }
 
     override suspend fun togglePin(id: SupplierId, isPinned: Boolean): SupplierOutcome = try {
-        val supplier = supplierDao.getVisibleSuppliers().first().find { it.id == id.value }
+        val supplier = supplierDao.getVisibleSuppliersOnce().find { it.id == id.value }
         supplier?.let {
             supplierDao.insertSupplier(it.copy(isPinned = isPinned))
         }
@@ -118,7 +118,7 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
     }
 
     override suspend fun seedDefaultSuppliers(): SupplierOutcome = try {
-        val suppliers = supplierDao.getVisibleSuppliers().first()
+        val suppliers = supplierDao.getVisibleSuppliersOnce()
         if (suppliers.isEmpty()) {
             supplierDao.insertSuppliers(com.fordham.toolbelt.data.defaultSupplierEntities())
         }

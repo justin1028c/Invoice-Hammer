@@ -8,6 +8,9 @@ interface InvoiceDao {
     @Query("SELECT * FROM invoices ORDER BY lastUpdated DESC")
     fun getAllInvoices(): Flow<List<InvoiceEntity>>
 
+    @Query("SELECT * FROM invoices ORDER BY lastUpdated DESC")
+    suspend fun getAllInvoicesOnce(): List<InvoiceEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInvoice(invoice: InvoiceEntity)
 

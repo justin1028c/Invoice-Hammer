@@ -67,7 +67,7 @@ logRepositoryFailure("RoomInvoiceRepository", "repository", e)
     override suspend fun searchInvoices(query: String): List<Invoice> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
-            return allInvoices.first().take(25)
+            return invoiceDao.getAllInvoicesOnce().take(25).map { it.toDomain() }
         }
         return invoiceDao.searchInvoices(trimmed).map { it.toDomain() }
     }
