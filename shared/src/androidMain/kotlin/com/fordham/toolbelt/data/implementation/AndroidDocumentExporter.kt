@@ -1,5 +1,6 @@
 package com.fordham.toolbelt.data.implementation
 
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
@@ -48,13 +49,33 @@ class AndroidDocumentExporter(
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val resolver = context.contentResolver
+                val collection = MediaStore.Files.getContentUri("external")
+
+                // Ensure relative folder ends with a slash for exact folder query match in MediaStore
+                val queryFolder = if (relativeFolder.endsWith("/")) relativeFolder else "$relativeFolder/"
+                val projection = arrayOf(MediaStore.MediaColumns._ID)
+                val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+                val selectionArgs = arrayOf(queryFolder, displayName)
+
+                resolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                        val id = cursor.getLong(idColumn)
+                        val existingUri = ContentUris.withAppendedId(collection, id)
+                        try {
+                            resolver.delete(existingUri, null, null)
+                        } catch (e: Exception) {
+                            com.fordham.toolbelt.util.AppLogger.e("AndroidDocumentExporter", "Failed to delete existing MediaStore entry: $existingUri", e)
+                        }
+                    }
+                }
+
                 val cv = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                     put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relativeFolder)
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
-                val collection = MediaStore.Files.getContentUri("external")
                 val uri = resolver.insert(collection, cv)
                     ?: return@withContext DocumentExportOutcome.Failure(
                         FailureMessage("MediaStore refused to register $userVisiblePath")
