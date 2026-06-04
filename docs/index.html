@@ -151,6 +151,33 @@
             font-weight: bold;
         }
 
+        blockquote {
+            background: rgba(0, 230, 195, 0.05);
+            border: 1px solid rgba(0, 230, 195, 0.15);
+            border-left: 4px solid var(--accent-glow);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+        }
+
+        blockquote p {
+            margin-bottom: 0;
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        blockquote a {
+            color: #ffffff;
+            text-decoration: underline;
+            text-decoration-color: var(--accent-glow);
+        }
+
+        blockquote a:hover {
+            color: var(--accent-glow);
+        }
+
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .container {
