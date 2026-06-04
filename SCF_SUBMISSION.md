@@ -19,25 +19,25 @@ The application is built using a strict Kotlin Multiplatform (KMP) Clean Archite
 
 ```mermaid
 graph TD
-    subgraph Client Device (iOS / Android)
-        subgraph UI Layer (composeApp)
+    subgraph clientDevice ["Client Device (iOS / Android)"]
+        subgraph uiLayer ["UI Layer (composeApp)"]
             VM[PaymentViewModel]
             UI[PaymentLedgerSheet]
         end
-        subgraph Pure Domain (commonMain)
-            RepoContract[PaymentRepository Interface]
-            Entities[Invoice & PaymentRequest Entities]
-            Outcomes[Sealed Payment Outcomes]
+        subgraph pureDomain ["Pure Domain (commonMain)"]
+            RepoContract["PaymentRepository Interface"]
+            Entities["Invoice & PaymentRequest Entities"]
+            Outcomes["Sealed Payment Outcomes"]
         end
-        subgraph Data & Platform Layers (shared)
+        subgraph dataPlatform ["Data & Platform Layers (shared)"]
             RepoImpl[MockPaymentRepository]
-            DB[Room KMP Database + SQLCipher]
-            Enclave[Secure Enclave / Keystore Bridge]
+            DB["Room KMP Database + SQLCipher"]
+            Enclave["Secure Enclave / Keystore Bridge"]
         end
     end
-    subgraph External Infrastructure
-        PP[PowerPay Gateway / Event Webhook]
-        Stellar((Stellar Network / USDC Ledger))
+    subgraph externalInfra ["External Infrastructure"]
+        PP["PowerPay Gateway / Event Webhook"]
+        Stellar(("Stellar Network / USDC Ledger"))
     end
 
     UI -->|Displays State| VM

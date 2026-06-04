@@ -15,27 +15,27 @@ Invoice Hammer is architected as a pure Kotlin Multiplatform (KMP) system. The c
 
 ```mermaid
 graph TD
-    subgraph UI & Presenters (composeApp)
+    subgraph uiPresenters ["UI & Presenters (composeApp)"]
         A[PaymentViewModel]
         B[PaymentLedgerSheet]
     end
 
-    subgraph Pure Domain (commonMain)
-        C[PaymentRepository Interface]
-        D[InvoicePaymentRequest Entity]
-        E[StellarTransactionHash Value Class]
-        F[PaymentRequestOutcome Sealed Interface]
+    subgraph pureDomain ["Pure Domain (commonMain)"]
+        C["PaymentRepository Interface"]
+        D["InvoicePaymentRequest Entity"]
+        E["StellarTransactionHash Value Class"]
+        F["PaymentRequestOutcome Sealed Interface"]
     end
 
-    subgraph Data & Infra (shared)
+    subgraph dataInfra ["Data & Infra (shared)"]
         G[MockPaymentRepository]
-        H[PowerPayClient Implementation]
-        I[PaymentRequestDao Room DB]
+        H["PowerPayClient Implementation"]
+        I["PaymentRequestDao Room DB"]
     end
 
-    subgraph Stellar Network Rails
-        J((Stellar Ledger / USDC Rail))
-        K[PowerPay Gateway / API]
+    subgraph stellarRails ["Stellar Network Rails"]
+        J(("Stellar Ledger / USDC Rail"))
+        K["PowerPay Gateway / API"]
     end
 
     A -->|Calls| C
