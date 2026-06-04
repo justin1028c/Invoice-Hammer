@@ -199,8 +199,14 @@ class KtorGeminiRepository(
         """.trimIndent()
         val response = callGemini(prompt, model = agentModelName, responseMimeType = "application/json")
         val resText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
-        val result = json.decodeFromString<AiInvoiceResultDto>(AiUtil.cleanJson(resText)).toDomain()
-        InvoiceTextOutcome.Success(result)
+        val cleaned = AiUtil.cleanJson(resText)
+        try {
+            val result = json.decodeFromString<AiInvoiceResultDto>(cleaned).toDomain()
+            InvoiceTextOutcome.Success(result)
+        } catch (e: Exception) {
+            AppLogger.e("KtorGeminiRepository", "Failed to parse invoice text JSON. Raw: $resText, Cleaned: $cleaned", e)
+            throw e
+        }
     } catch (e: Exception) {
         InvoiceTextOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process invoice text"))
     }
@@ -221,18 +227,23 @@ class KtorGeminiRepository(
         """.trimIndent()
         val response = callGemini(prompt, imageBytes = imageBytes, model = agentModelName, responseMimeType = "application/json")
         val resText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
-        
-        val aiResponse = json.decodeFromString<AiReceiptResponse>(AiUtil.cleanJson(resText))
-        val items = aiResponse.items.map { 
-            ReceiptItem(
-                id = ReceiptId(randomUUID()),
-                description = it.description,
-                totalPrice = it.totalPrice,
-                lastUpdated = DateTimeUtil.nowEpochMillis(),
-                clientName = ""
-            )
+        val cleaned = AiUtil.cleanJson(resText)
+        try {
+            val aiResponse = json.decodeFromString<AiReceiptResponse>(cleaned)
+            val items = aiResponse.items.map { 
+                ReceiptItem(
+                    id = ReceiptId(randomUUID()),
+                    description = it.description,
+                    totalPrice = it.totalPrice,
+                    lastUpdated = DateTimeUtil.nowEpochMillis(),
+                    clientName = ""
+                )
+            }
+            ReceiptImageOutcome.Success(items)
+        } catch (e: Exception) {
+            AppLogger.e("KtorGeminiRepository", "Failed to parse receipt image JSON. Raw: $resText, Cleaned: $cleaned", e)
+            throw e
         }
-        ReceiptImageOutcome.Success(items)
     } catch (e: Exception) {
         ReceiptImageOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process receipt image"))
     }
