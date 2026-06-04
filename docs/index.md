@@ -24,7 +24,16 @@ Invoice Hammer allows contractors to generate professional invoice PDFs in the f
 
 ---
 
-## 3. Technical Architecture & Custody Model
+## 3. How Invoice Hammer Boosts the Stellar Network
+Invoice Hammer acts as a direct onboarding funnel and utility accelerator for the Stellar ecosystem. Rather than offering speculative utility, it translates physical commercial trade directly into on-chain network metrics:
+* **USDC Circulation Velocity:** By moving standard invoicing (averaging $500 to $10,000 per transaction in the residential trade sector) onto the ledger, the application drives real-world utility and transaction volume for Stellar USDC.
+* **Active Wallet Expansion:** Onboarding contractors and their client networks generates self-custodial Stellar addresses directly, expanding the active, verified user base on-chain.
+* **Transaction Count Acceleration:** Every completed checkout stages and broadcasts a multiplatform signed payment operation, steadily generating transaction traffic directly on the Stellar mainnet.
+* **Real-World Asset Utility Integration:** Connects off-chain economic labor (plumbing, electrical work, HVAC installs) directly to the Stellar USDC network rails, building long-term utility that does not rely on speculation.
+
+---
+
+## 4. Technical Architecture & Custody Model
 The application is built using a strict Kotlin Multiplatform (KMP) Clean Architecture to separate domain business rules from platform dependencies.
 
 ```mermaid
@@ -46,7 +55,7 @@ graph TD
         end
     end
     subgraph externalInfra ["External Infrastructure"]
-        PP["PowerPay Gateway / Event Webhook"]
+        HorizonNode["Stellar Horizon Node / API"]
         Stellar(("Stellar Network / USDC Ledger"))
     end
 
@@ -55,10 +64,10 @@ graph TD
     RepoImpl -.->|Implements| RepoContract
     RepoImpl -->|Reads/Writes| DB
     RepoImpl -->|Requests Signature| Enclave
-    RepoImpl -->|Dispatches Staged Tx| PP
-    PP -->|Submits Tx & Relays Hash| Stellar
-    Stellar -.->|Confirms Transaction| PP
-    PP -.->|Triggers Webhook Event| RepoImpl
+    RepoImpl -->|Submits Tx & Relays Hash| HorizonNode
+    HorizonNode -->|Publishes| Stellar
+    Stellar -.->|Confirms Transaction| HorizonNode
+    HorizonNode -.->|Returns Transaction Proof| RepoImpl
 ```
 
 ### Custody and Security Specifications
@@ -68,16 +77,16 @@ graph TD
 
 ---
 
-## 4. Stellar Ecosystem Standards & Integration Roadmap
+## 5. Stellar Ecosystem Standards & Integration Roadmap
 Invoice Hammer integrates standard Stellar development primitives and aligns with Ecosystem SEPs:
 * **Stellar USDC Rails:** Native USDC asset transfers are used for core invoice settlement.
 * **SEP-7 (URI Scheme for Payment Requests):** Formats QR code generation according to SEP-7 standards, allowing clients with third-party wallets (like LOBSTR or Albedo) to scan and sign checkouts immediately.
-* **SEP-10 (Semantic Authentication):** Challenge-response authentication to securely connect client devices to our backup/webhook server.
+* **SEP-10 (Semantic Authentication):** Challenge-response authentication to securely connect client devices to localized node configurations.
 * **SEP-24 & SEP-38 (Fiat Anchor Integrations):** Roadmap integration to link localized off-ramps (e.g., standard bank ACH/SEPA anchors) so contractors can directly convert their settled USDC back to local fiat currency.
 
 ---
 
-## 5. Detailed Tranche Roadmap & Budget Breakdown
+## 6. Detailed Tranche Roadmap & Budget Breakdown
 
 The project will be completed over a **6-month timeline** split into three distinct, milestone-based tranches. The requested budget is **$55,000 USD** (converted to XLM value upon tranche payout). To comply with the SCF handbook guidelines, **this budget is sized exclusively around the Stellar-specific components and dependencies of the application**.
 
@@ -120,5 +129,5 @@ The project will be completed over a **6-month timeline** split into three disti
 
 ---
 
-## 6. Open Source Alignment & Licensing
+## 7. Open Source Alignment & Licensing
 Invoice Hammer is fully committed to the open-source community. All core modules, database abstractions, and platform bridges are published under the **MIT License**. Reviewers, developers, and ecosystem builders can audit, compile, and extend the project freely.
