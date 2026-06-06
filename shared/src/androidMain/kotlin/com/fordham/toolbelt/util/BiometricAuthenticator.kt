@@ -13,7 +13,9 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
 
     fun isBiometricAvailable(): Boolean {
         val biometricManager = BiometricManager.from(activity)
-        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
+        return when (biometricManager.canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        )) {
             BiometricManager.BIOMETRIC_SUCCESS -> true
             else -> false
         }
@@ -26,17 +28,35 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle(subtitle)
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            .setNegativeButtonText("Cancel")
-            .build()
+        val promptInfo = BiometricPrompt.PromptInfo.Builder().apply {
+            setTitle(title)
+            setSubtitle(subtitle)
+            if (cipher != null) {
+                setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                setNegativeButtonText("Cancel")
+            } else {
+                setAllowedAuthenticators(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                )
+            }
+        }.build()
 
         val biometricPrompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
-                onSuccess()
+                val authenticatedCipher = result.cryptoObject?.cipher
+                if (cipher != null && authenticatedCipher == null) {
+                    onError("Cryptographic authentication failed")
+                    return
+                }
+                try {
+                    // Hardware check: attempt to encrypt a dummy token to ensure the key is unlocked
+                    authenticatedCipher?.doFinal("verify_auth".toByteArray())
+                    onSuccess()
+                } catch (e: Exception) {
+                    AppLogger.e("BiometricAuthenticator", "Mock encryption verification failed", e)
+                    onError("Biometric verification failed: ${e.message}")
+                }
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -46,7 +66,6 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
 
             override fun onAuthenticationFailed() {
                 super.onAuthenticationFailed()
-                // Not a terminal error, just a failed attempt
             }
         })
 

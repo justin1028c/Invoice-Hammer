@@ -34,6 +34,8 @@ import com.fordham.toolbelt.stripe.IosBluetoothCardReaderGateway
 import com.fordham.toolbelt.stripe.IosStripePaymentSheetGateway
 import com.fordham.toolbelt.stripe.IosTapToPayGateway
 import com.fordham.toolbelt.util.IosSecurityServiceProvider
+import com.fordham.toolbelt.util.SecurityGateway
+import com.fordham.toolbelt.util.IosSecurityGateway
 import com.fordham.toolbelt.util.currentPlatformTarget
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +67,7 @@ actual fun platformModule(): Module = module {
     single<com.fordham.toolbelt.domain.repository.InvoiceEngine> { IosInvoiceEngine() }
     single<BentoReportGenerator> { IosBentoReportGenerator() }
     single<com.fordham.toolbelt.util.TaxExporter> { com.fordham.toolbelt.util.IosTaxExporter(get(), get()) }
+    single<SecurityGateway> { IosSecurityGateway() }
     single<RoomDatabase.Builder<AppDatabase>> {
         val passphrase = IosSecurityServiceProvider.bridge?.getDatabasePassphrase()
         check(passphrase != null) { "iOS Security Bridge/Keychain is NOT initialized" }

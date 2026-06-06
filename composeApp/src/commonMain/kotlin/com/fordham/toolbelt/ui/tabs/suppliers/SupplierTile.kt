@@ -1,7 +1,6 @@
 package com.fordham.toolbelt.ui.tabs.suppliers
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,8 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.util.PlatformActions
-import invoicehammer.composeapp.generated.resources.*
-import org.jetbrains.compose.resources.painterResource
 
 /**
  * Responsibility: Display a single supplier in a high-fidelity tile with action menu.
@@ -70,15 +67,19 @@ fun SupplierTile(
                 ) {
                     Surface(
                         modifier = Modifier
-                            .size(68.dp)
-                            .clip(RoundedCornerShape(16.dp)),
-                        color = Color.White.copy(alpha = 0.96f),
-                        shape = RoundedCornerShape(16.dp)
+                            .size(60.dp)
+                            .clip(RoundedCornerShape(14.dp)),
+                        color = Color.White.copy(alpha = 0.12f),
+                        border = BorderStroke(
+                            1.5.dp, 
+                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.1f))
+                            )
+                        ),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(2.dp),
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             if (supplier.customLogoPath != null) {
@@ -89,41 +90,80 @@ fun SupplierTile(
                                     contentScale = ContentScale.Crop
                                 )
                             } else if (supplier.logoResName != null) {
-                                val logoRes = when(supplier.logoResName) {
-                                    "logo_home_depot" -> Res.drawable.logo_home_depot
-                                    "logo_lowes" -> Res.drawable.logo_lowes
-                                    "logo_ace" -> Res.drawable.logo_ace
-                                    "logo_menards" -> Res.drawable.logo_menards
-                                    "logo_ferguson" -> Res.drawable.logo_ferguson
-                                    "logo_sherwin" -> Res.drawable.logo_sherwin
-                                    "logo_grainger" -> Res.drawable.logo_grainger
-                                    "logo_abc" -> Res.drawable.logo_abc
-                                    "logo_graybar" -> Res.drawable.logo_graybar
-                                    "logo_siteone" -> Res.drawable.logo_siteone
-                                    "logo_amazon" -> Res.drawable.logo_amazon
-                                    "logo_northern" -> Res.drawable.logo_northern
-                                    "logo_sunbelt" -> Res.drawable.logo_sunbelt
-                                    "logo_hilti" -> Res.drawable.logo_hilti
-                                    "logo_mcmaster" -> Res.drawable.logo_mcmaster
-                                    else -> null
+                                val initials = remember(supplier.name) {
+                                    val words = supplier.name.split(" ", "-", "_")
+                                    if (words.size >= 2) {
+                                        "${words[0].firstOrNull() ?: ""}${words[1].firstOrNull() ?: ""}"
+                                    } else {
+                                        supplier.name.take(2)
+                                    }.uppercase()
                                 }
-                                
-                                if (logoRes != null) {
-                                    Image(
-                                        painter = painterResource(logoRes),
-                                        contentDescription = supplier.name,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Fit
+                                val gradientColors = remember(supplier.logoResName) {
+                                    when (supplier.logoResName) {
+                                        "logo_home_depot" -> listOf(Color(0xFFF97316), Color(0xFFEA580C))
+                                        "logo_lowes" -> listOf(Color(0xFF3B82F6), Color(0xFF2563EB))
+                                        "logo_ace" -> listOf(Color(0xFFEF4444), Color(0xFFDC2626))
+                                        "logo_menards" -> listOf(Color(0xFF10B981), Color(0xFF059669))
+                                        "logo_ferguson" -> listOf(Color(0xFF14B8A6), Color(0xFF0D9488))
+                                        "logo_sherwin" -> listOf(Color(0xFF06B6D4), Color(0xFF0891B2))
+                                        "logo_grainger" -> listOf(Color(0xFFEF4444), Color(0xFF991B1B))
+                                        "logo_abc" -> listOf(Color(0xFF64748B), Color(0xFF475569))
+                                        "logo_graybar" -> listOf(Color(0xFFF59E0B), Color(0xFFD97706))
+                                        "logo_siteone" -> listOf(Color(0xFF10B981), Color(0xFF047857))
+                                        "logo_amazon" -> listOf(Color(0xFFFF9900), Color(0xFF141923))
+                                        "logo_northern" -> listOf(Color(0xFFEF4444), Color(0xFF475569))
+                                        "logo_sunbelt" -> listOf(Color(0xFFEAB308), Color(0xFFCA8A04))
+                                        "logo_hilti" -> listOf(Color(0xFFEF4444), Color(0xFFB91C1C))
+                                        "logo_mcmaster" -> listOf(Color(0xFFFFEB3B), Color(0xFFFF9800))
+                                        else -> listOf(Color(0xFF6B7280), Color(0xFF374151))
+                                    }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                                colors = gradientColors,
+                                                start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                                end = androidx.compose.ui.geometry.Offset(120f, 120f)
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Subtle diagonal gloss shine
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.White.copy(alpha = 0.15f),
+                                                        Color.White.copy(alpha = 0.05f),
+                                                        Color.Transparent,
+                                                        Color.Transparent
+                                                    ),
+                                                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                                    end = androidx.compose.ui.geometry.Offset(90f, 90f)
+                                                )
+                                            )
                                     )
-                                } else {
-                                    Icon(Icons.Default.Storefront, null, tint = MaterialTheme.colorScheme.primary)
+                                    Text(
+                                        text = initials,
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            letterSpacing = 1.5.sp
+                                        ),
+                                        modifier = Modifier.padding(bottom = 1.dp)
+                                    )
                                 }
                             } else {
                                 Icon(
                                     Icons.Default.Storefront, 
                                     null, 
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
                         }

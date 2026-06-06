@@ -165,8 +165,17 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
         onError: (String) -> Unit
     ) {
         activity?.let {
+            val securityManager = runCatching {
+                org.koin.core.context.GlobalContext.get().get<SecurityManager>()
+            }.getOrNull()
+            val cipher = try {
+                securityManager?.getBiometricCipher()
+            } catch (e: Exception) {
+                AppLogger.e("AndroidPlatformActions", "Failed to retrieve biometric cipher", e)
+                null
+            }
             val authenticator = BiometricAuthenticator(it)
-            authenticator.promptAuthenticate(title, subtitle, null, onSuccess, onError)
+            authenticator.promptAuthenticate(title, subtitle, cipher, onSuccess, onError)
         } ?: onError("No active activity context")
     }
 

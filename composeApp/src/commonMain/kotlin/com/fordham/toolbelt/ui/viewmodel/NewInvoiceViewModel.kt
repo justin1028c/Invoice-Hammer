@@ -32,9 +32,9 @@ class NewInvoiceViewModel(
         NewInvoiceUiState(
             clientName = transient.clientName ?: draft.clientName,
             clientAddress = transient.clientAddress ?: draft.clientAddress,
-            taxText = transient.taxText ?: draft.taxRate.toString(),
-            depositCollected = transient.depositCollected ?: draft.deposit.toString(),
-            hourlyRate = transient.hourlyRate ?: draft.hourlyRate.toString(),
+            taxText = transient.taxText ?: if (draft.taxRate == 0.0) "" else draft.taxRate.toString(),
+            depositCollected = transient.depositCollected ?: if (draft.deposit == 0.0) "" else draft.deposit.toString(),
+            hourlyRate = transient.hourlyRate ?: if (draft.hourlyRate == 0.0) "" else draft.hourlyRate.toString(),
             logoUri = effectiveLogo,
             businessLogoSaved = !settings.logoUri.isNullOrBlank(),
             lineItems = draft.lineItems,
@@ -81,14 +81,36 @@ class NewInvoiceViewModel(
                 draftEditor.updateDraft { it.copy(logoUri = settings.logoUri) }
             }
             
+            if (initialDraft.timerRunning) {
+                viewModelScope.launch {
+                    draftEditor.resumeTimerLoop()
+                }
+            }
+            
             draftEditor.draft.collect { draft ->
                 _transientState.update { state ->
+                    val nextTaxText = if ((state.taxText?.toDoubleOrNull() ?: 0.0) != draft.taxRate) {
+                        if (draft.taxRate == 0.0) "" else draft.taxRate.toString()
+                    } else {
+                        state.taxText
+                    }
+                    val nextDepositCollected = if ((state.depositCollected?.toDoubleOrNull() ?: 0.0) != draft.deposit) {
+                        if (draft.deposit == 0.0) "" else draft.deposit.toString()
+                    } else {
+                        state.depositCollected
+                    }
+                    val nextHourlyRate = if ((state.hourlyRate?.toDoubleOrNull() ?: 0.0) != draft.hourlyRate) {
+                        if (draft.hourlyRate == 0.0) "" else draft.hourlyRate.toString()
+                    } else {
+                        state.hourlyRate
+                    }
+
                     state.copy(
                         clientName = if (state.clientName != draft.clientName) draft.clientName else state.clientName,
                         clientAddress = if (state.clientAddress != draft.clientAddress) draft.clientAddress else state.clientAddress,
-                        taxText = if (state.taxText != draft.taxRate.toString()) draft.taxRate.toString() else state.taxText,
-                        depositCollected = if (state.depositCollected != draft.deposit.toString()) draft.deposit.toString() else state.depositCollected,
-                        hourlyRate = if (state.hourlyRate != draft.hourlyRate.toString()) draft.hourlyRate.toString() else state.hourlyRate,
+                        taxText = nextTaxText,
+                        depositCollected = nextDepositCollected,
+                        hourlyRate = nextHourlyRate,
                         itemDesc = if (state.itemDesc != draft.itemDesc) draft.itemDesc else state.itemDesc,
                         itemAmt = if (state.itemAmt != draft.itemAmt) draft.itemAmt else state.itemAmt
                     )

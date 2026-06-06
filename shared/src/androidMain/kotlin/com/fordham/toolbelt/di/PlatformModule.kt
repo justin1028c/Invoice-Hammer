@@ -48,6 +48,7 @@ actual fun platformModule(): Module = module {
     single<VoiceAssistant> { AndroidVoiceAssistant(get()) }
     single { PlacesService() }
     single { SecurityManager(get()) }
+    single<SecurityGateway> { get<SecurityManager>() }
     single { createDataStore { get<Context>().filesDir.resolve(DATASTORE_FILE_NAME).absolutePath } }
     single<SettingsRepository> { DataStoreSettingsRepository(get()) }
     single<com.fordham.toolbelt.domain.repository.StorageRepository> { AndroidStorageRepository(get(), get()) }

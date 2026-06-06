@@ -1,10 +1,7 @@
 package com.fordham.toolbelt.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,7 +33,9 @@ fun TacticalButton(
     icon: (@Composable () -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = Color.White, // Defaulting to White for contrast against BrandOrange
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    fontSize: androidx.compose.ui.unit.TextUnit = 14.sp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -56,7 +55,7 @@ fun TacticalButton(
         enabled = enabled,
         interactionSource = interactionSource,
         modifier = modifier
-            .height(56.dp)
+            .defaultMinSize(minHeight = 56.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -67,6 +66,7 @@ fun TacticalButton(
             disabledContainerColor = containerColor.copy(alpha = 0.5f),
             disabledContentColor = contentColor.copy(alpha = 0.5f)
         ),
+        contentPadding = contentPadding,
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(borderWidth, borderColor)
     ) {
@@ -81,8 +81,8 @@ fun TacticalButton(
                 Text(
                     text.uppercase(), // Force uppercase for tactical feel
                     fontWeight = FontWeight.Black, 
-                    fontSize = 14.sp, 
-                    letterSpacing = 1.sp
+                    fontSize = fontSize, 
+                    letterSpacing = 0.5.sp
                 )
             }
         }

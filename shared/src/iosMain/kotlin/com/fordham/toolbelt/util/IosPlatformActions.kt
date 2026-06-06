@@ -172,15 +172,11 @@ class IosPlatformActions : PlatformActions {
         onError: (String) -> Unit
     ) {
         val context = LAContext()
-        val policy = when {
-            context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, error = null) ->
-                LAPolicyDeviceOwnerAuthenticationWithBiometrics
-            context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, error = null) ->
-                LAPolicyDeviceOwnerAuthentication
-            else -> {
-                onError("Device authentication not available")
-                return
-            }
+        val policy = LAPolicyDeviceOwnerAuthentication
+
+        if (!context.canEvaluatePolicy(policy, error = null)) {
+            onError("Device authentication not available")
+            return
         }
 
         context.evaluatePolicy(
@@ -199,8 +195,7 @@ class IosPlatformActions : PlatformActions {
 
     override fun isBiometricAvailable(): Boolean {
         val context = LAContext()
-        return context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, null) ||
-            context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, null)
+        return context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, null)
     }
 
     private var imagePickerDelegate: ImagePickerDelegate? = null

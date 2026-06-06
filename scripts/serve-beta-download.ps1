@@ -14,7 +14,7 @@ if (-not (Test-Path $apk)) {
 }
 
 $ip = (Get-NetIPAddress -AddressFamily IPv4 |
-    Where-Object { $_.IPAddress -notlike '127.*' -and $_.PrefixOrigin -ne 'WellKnown' } |
+    Where-Object { $_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -ne "WellKnown" } |
     Select-Object -First 1 -ExpandProperty IPAddress)
 
 if (-not $ip) { $ip = "127.0.0.1" }

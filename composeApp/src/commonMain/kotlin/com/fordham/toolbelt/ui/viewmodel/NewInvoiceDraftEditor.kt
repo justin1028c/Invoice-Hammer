@@ -20,10 +20,31 @@ internal class NewInvoiceDraftEditor(
         draftRepository.saveDraft(update(currentDraft()))
     }
 
+    private var isLoopRunning = false
+
+    suspend fun resumeTimerLoop() {
+        if (isLoopRunning) return
+        isLoopRunning = true
+        try {
+            while (true) {
+                val draft = currentDraft()
+                if (!draft.timerRunning) break
+
+                val elapsedSeconds = (Clock.System.now().toEpochMilliseconds() - draft.startTime) / 1000
+                draftRepository.saveDraft(draft.copy(elapsedSeconds = elapsedSeconds))
+                delay(1000)
+            }
+        } finally {
+            isLoopRunning = false
+        }
+    }
+
     suspend fun toggleTimer() {
         val current = currentDraft()
         if (current.timerRunning) {
-            draftRepository.saveDraft(current.copy(timerRunning = false))
+            val now = Clock.System.now().toEpochMilliseconds()
+            val elapsed = maxOf(0L, (now - current.startTime) / 1000)
+            draftRepository.saveDraft(current.copy(timerRunning = false, elapsedSeconds = elapsed))
             return
         }
 
@@ -34,7 +55,7 @@ internal class NewInvoiceDraftEditor(
             now
         }
         draftRepository.saveDraft(current.copy(timerRunning = true, startTime = start))
-        runTimerLoop()
+        resumeTimerLoop()
     }
 
     suspend fun addManualItem(): Boolean {
@@ -73,14 +94,4 @@ internal class NewInvoiceDraftEditor(
         draftRepository.clearDraft()
     }
 
-    private suspend fun runTimerLoop() {
-        while (true) {
-            val draft = currentDraft()
-            if (!draft.timerRunning) break
-
-            val elapsedSeconds = (Clock.System.now().toEpochMilliseconds() - draft.startTime) / 1000
-            draftRepository.saveDraft(draft.copy(elapsedSeconds = elapsedSeconds))
-            delay(1000)
-        }
-    }
 }

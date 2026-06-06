@@ -12,3 +12,12 @@ interface IosSecurityBridge {
 object IosSecurityServiceProvider {
     var bridge: IosSecurityBridge? = null
 }
+
+class IosSecurityGateway : SecurityGateway {
+    override fun getDatabasePassphrase(): String {
+        val passphrase = IosSecurityServiceProvider.bridge?.getDatabasePassphrase()
+        check(passphrase != null) { "iOS Security Bridge/Keychain is NOT initialized" }
+        return passphrase
+    }
+}
+

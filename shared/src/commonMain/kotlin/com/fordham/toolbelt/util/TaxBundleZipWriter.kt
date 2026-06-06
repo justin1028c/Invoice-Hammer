@@ -97,14 +97,16 @@ private fun buildLocalFileHeader(entry: ZipEntryPayload, offset: Long): ByteArra
     val size = entry.bytes.size.toLong()
     val header = ByteArray(30 + nameBytes.size)
     header.writeUInt32LE(0, LOCAL_FILE_HEADER_SIGNATURE.toLong())
-    header.writeUInt16LE(4, 10)
-    header.writeUInt16LE(6, 0)
-    header.writeUInt16LE(8, 0)
-    header.writeUInt32LE(10, crc)
-    header.writeUInt32LE(14, size)
-    header.writeUInt32LE(18, size)
-    header.writeUInt16LE(22, nameBytes.size)
-    header.writeUInt16LE(24, 0)
+    header.writeUInt16LE(4, 10)  // Version needed (1.0)
+    header.writeUInt16LE(6, 0)   // Flags
+    header.writeUInt16LE(8, 0)   // Compression (0 = STORED)
+    header.writeUInt16LE(10, 0)  // Mod time
+    header.writeUInt16LE(12, 0)  // Mod date
+    header.writeUInt32LE(14, crc) // CRC-32
+    header.writeUInt32LE(18, size) // Compressed size
+    header.writeUInt32LE(22, size) // Uncompressed size
+    header.writeUInt16LE(26, nameBytes.size) // File name length
+    header.writeUInt16LE(28, 0)  // Extra field length
     nameBytes.copyInto(header, destinationOffset = 30)
     return header
 }
@@ -119,20 +121,22 @@ private fun buildCentralDirectory(
         val size = entry.bytes.size.toLong()
         val header = ByteArray(46 + nameBytes.size)
         header.writeUInt32LE(0, CENTRAL_DIRECTORY_SIGNATURE.toLong())
-        header.writeUInt16LE(4, 20)
-        header.writeUInt16LE(6, 10)
-        header.writeUInt16LE(8, 0)
-        header.writeUInt16LE(10, 0)
-        header.writeUInt32LE(12, crc)
-        header.writeUInt32LE(16, size)
-        header.writeUInt32LE(20, size)
-        header.writeUInt16LE(24, nameBytes.size)
-        header.writeUInt16LE(26, 0)
-        header.writeUInt16LE(28, 0)
-        header.writeUInt16LE(30, 0)
-        header.writeUInt16LE(32, 0)
-        header.writeUInt32LE(34, 0)
-        header.writeUInt32LE(38, localOffsets[index])
+        header.writeUInt16LE(4, 20)  // Version made by (2.0)
+        header.writeUInt16LE(6, 10)  // Version needed (1.0)
+        header.writeUInt16LE(8, 0)   // Flags
+        header.writeUInt16LE(10, 0)  // Compression (0 = STORED)
+        header.writeUInt16LE(12, 0)  // Mod time
+        header.writeUInt16LE(14, 0)  // Mod date
+        header.writeUInt32LE(16, crc) // CRC-32
+        header.writeUInt32LE(20, size) // Compressed size
+        header.writeUInt32LE(24, size) // Uncompressed size
+        header.writeUInt16LE(28, nameBytes.size) // File name length
+        header.writeUInt16LE(30, 0)  // Extra field length
+        header.writeUInt16LE(32, 0)  // Comment length
+        header.writeUInt16LE(34, 0)  // Disk number start
+        header.writeUInt16LE(36, 0)  // Internal attributes
+        header.writeUInt32LE(38, 0)  // External attributes
+        header.writeUInt32LE(42, localOffsets[index]) // Relative offset of local header
         nameBytes.copyInto(header, destinationOffset = 46)
         header
     }

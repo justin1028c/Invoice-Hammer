@@ -126,15 +126,19 @@ fun HistoryItemCard(
                 TacticalButton(
                     onClick = { onRequestDeposit(invoice) },
                     text = "REQUEST DEPOSIT",
-                    modifier = Modifier.height(40.dp).weight(1f),
+                    modifier = Modifier.heightIn(min = 40.dp).weight(1f),
                     containerColor = MaterialTheme.colorScheme.primary,
-                    icon = { Icon(Icons.Default.Link, null) }
+                    icon = { Icon(Icons.Default.Link, null) },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    fontSize = 11.sp
                 )
                 TacticalButton(
                     onClick = { onRequestFullPayment(invoice) },
                     text = "PAY LINK",
-                    modifier = Modifier.height(40.dp).weight(1f),
-                    containerColor = MaterialTheme.colorScheme.secondary
+                    modifier = Modifier.heightIn(min = 40.dp).weight(1f),
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    fontSize = 11.sp
                 )
             }
 
@@ -159,8 +163,10 @@ fun HistoryItemCard(
                     TacticalButton(
                         onClick = { onConvert(invoice) }, 
                         text = "FINALIZE INVOICE", 
-                        modifier = Modifier.height(40.dp).weight(1f),
-                        containerColor = MaterialTheme.colorScheme.primary
+                        modifier = Modifier.heightIn(min = 40.dp).weight(1f),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 12.sp
                     )
                 }
                 

@@ -14,7 +14,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import java.util.*
 
-class SecurityManager(context: Context) {
+class SecurityManager(context: Context) : SecurityGateway {
 
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -35,7 +35,7 @@ class SecurityManager(context: Context) {
      * This passphrase is stored in EncryptedSharedPreferences which is 
      * backed by the hardware-protected Android Keystore.
      */
-    fun getDatabasePassphrase(): String {
+    override fun getDatabasePassphrase(): String {
         var passphrase = encryptedPrefs.getString(KEY_DB_PASSPHRASE, null)
         if (passphrase == null) {
             passphrase = generateSecurePassphrase()
@@ -61,26 +61,48 @@ class SecurityManager(context: Context) {
     fun getBiometricCipher(): Cipher {
         val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         
-        if (!keyStore.containsAlias(BIOMETRIC_KEY_ALIAS)) {
-            val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-            val spec = KeyGenParameterSpec.Builder(
-                BIOMETRIC_KEY_ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-                .setUserAuthenticationRequired(true)
-                .setInvalidatedByBiometricEnrollment(true)
-                .build()
-            
-            keyGenerator.init(spec)
-            keyGenerator.generateKey()
+        val key = try {
+            if (!keyStore.containsAlias(BIOMETRIC_KEY_ALIAS)) {
+                generateBiometricKey()
+            }
+            keyStore.getKey(BIOMETRIC_KEY_ALIAS, null) as SecretKey
+        } catch (e: java.security.UnrecoverableKeyException) {
+            AppLogger.e("SecurityManager", "Key unrecoverable (invalidated/corrupted). Re-generating key.", e)
+            keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS)
+            generateBiometricKey()
         }
 
-        val key = keyStore.getKey(BIOMETRIC_KEY_ALIAS, null) as SecretKey
         val cipher = Cipher.getInstance("${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_CBC}/${KeyProperties.ENCRYPTION_PADDING_PKCS7}")
-        cipher.init(Cipher.ENCRYPT_MODE, key)
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+        } catch (e: android.security.keystore.KeyPermanentlyInvalidatedException) {
+            AppLogger.e("SecurityManager", "Key permanently invalidated due to biometric enrollment changes. Re-generating key.", e)
+            keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS)
+            val newKey = generateBiometricKey()
+            cipher.init(Cipher.ENCRYPT_MODE, newKey)
+        } catch (e: java.security.UnrecoverableKeyException) {
+            AppLogger.e("SecurityManager", "Key unrecoverable during cipher init. Re-generating key.", e)
+            keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS)
+            val newKey = generateBiometricKey()
+            cipher.init(Cipher.ENCRYPT_MODE, newKey)
+        }
         return cipher
+    }
+
+    private fun generateBiometricKey(): SecretKey {
+        val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        val spec = KeyGenParameterSpec.Builder(
+            BIOMETRIC_KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+            .setUserAuthenticationRequired(true)
+            .setInvalidatedByBiometricEnrollment(true)
+            .build()
+        
+        keyGenerator.init(spec)
+        return keyGenerator.generateKey()
     }
 
     companion object {
