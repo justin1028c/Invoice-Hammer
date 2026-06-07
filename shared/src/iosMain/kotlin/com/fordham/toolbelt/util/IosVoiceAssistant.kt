@@ -2,17 +2,40 @@ package com.fordham.toolbelt.util
 
 import platform.AVFoundation.*
 import platform.Foundation.*
-import platform.Speech.*
 import platform.darwin.dispatch_get_main_queue
 import platform.darwin.dispatch_async
+import com.fordham.toolbelt.domain.repository.GeminiRepository
+import com.fordham.toolbelt.domain.model.GeminiOutcome
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import platform.posix.memcpy
+import platform.CoreAudio.kAudioFormatMPEG4AAC
 
-class IosVoiceAssistant : VoiceAssistant {
+@OptIn(ExperimentalForeignApi::class)
+private fun NSData.toByteArray(): ByteArray {
+    val size = this.length.toInt()
+    val bytes = ByteArray(size)
+    if (size > 0) {
+        bytes.usePinned { pinned ->
+            memcpy(pinned.addressOf(0), this.bytes, this.length)
+        }
+    }
+    return bytes
+}
+
+class IosVoiceAssistant(
+    private val geminiRepository: GeminiRepository
+) : VoiceAssistant {
     private val synthesizer = AVSpeechSynthesizer()
     private val preferredVoice = IosTtsVoiceSelector.bestUsVoice()
-    private val speechRecognizer = SFSpeechRecognizer(locale = NSLocale.localeWithLocaleIdentifier("en-US"))
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
-    private var recognitionTask: SFSpeechRecognitionTask? = null
-    private val audioEngine = AVAudioEngine()
+    private var audioRecorder: AVAudioRecorder? = null
+    private var onResultCallback: ((VoiceTranscriptMeta) -> Unit)? = null
+    private var onEndCallback: (() -> Unit)? = null
+    private val scope = CoroutineScope(Dispatchers.Default)
 
     private fun runOnMain(block: () -> Unit) {
         dispatch_async(dispatch_get_main_queue()) {
@@ -51,103 +74,109 @@ class IosVoiceAssistant : VoiceAssistant {
         onResult: (VoiceTranscriptMeta) -> Unit,
         onEnd: () -> Unit
     ) {
-        if (speechRecognizer?.isAvailable == false) {
-            SFSpeechRecognizer.requestAuthorization { status ->
-                if (status == SFSpeechRecognizerAuthorizationStatusAuthorized) {
-                    runOnMain {
-                        startListeningWithMeta(onResult, onEnd)
-                    }
-                } else {
-                    runOnMain(onEnd)
+        AVAudioSession.sharedInstance().requestRecordPermission { granted ->
+            if (granted) {
+                runOnMain {
+                    startRecordingFlow(onResult, onEnd)
                 }
+            } else {
+                runOnMain(onEnd)
             }
-            return
         }
+    }
 
-        if (recognitionTask != null) {
-            recognitionTask?.cancel()
-            recognitionTask = null
-        }
+    private fun startRecordingFlow(
+        onResult: (VoiceTranscriptMeta) -> Unit,
+        onEnd: () -> Unit
+    ) {
+        stopListening()
+        onResultCallback = onResult
+        onEndCallback = onEnd
 
         val audioSession = AVAudioSession.sharedInstance()
         try {
             audioSession.setCategory(AVAudioSessionCategoryPlayAndRecord, withOptions = AVAudioSessionCategoryOptionDefaultToSpeaker, error = null)
-            audioSession.setMode(AVAudioSessionModeMeasurement, error = null)
+            // Strategy B: Hardware noise-suppression and voice pre-processing
+            audioSession.setMode(AVAudioSessionModeVoiceChat, error = null)
             audioSession.setActive(true, withOptions = AVAudioSessionCategoryOptionNotifyOthersOnDeactivation, error = null)
         } catch (e: Exception) {
             onEnd()
             return
         }
 
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest().apply {
-            shouldReportPartialResults = false
-        }
-        val inputNode = audioEngine.inputNode
-        
-        recognitionTask = speechRecognizer?.recognitionTaskWithRequest(recognitionRequest!!) { result, error ->
-            if (result != null) {
-                val transcriptions = result.transcriptions
-                val alternatives = if (transcriptions.size > 1) {
-                    transcriptions.drop(1).map { (it as SFTranscription).formattedString }
-                } else {
-                    emptyList()
-                }
-                if (result.isFinal) {
-                    runOnMain {
-                        onResult(VoiceTranscriptMeta(result.bestTranscription.formattedString, null, alternatives))
-                    }
-                }
-            }
-            
-            if (error != null || (result?.isFinal == true)) {
-                runOnMain {
-                    if (audioEngine.isRunning) {
-                        audioEngine.stop()
-                        audioEngine.inputNode.removeTapOnBus(0u)
-                    }
-                    recognitionTask = null
-                    recognitionRequest = null
-                    onEnd()
-                }
-            }
+        val tempDir = NSTemporaryDirectory()
+        val filePath = tempDir + "voice_command.m4a"
+        val url = NSURL.fileURLWithPath(filePath)
+
+        val fileManager = NSFileManager.defaultManager
+        if (fileManager.fileExistsAtPath(filePath)) {
+            fileManager.removeItemAtPath(filePath, error = null)
         }
 
-        val recordingFormat = inputNode.outputFormatForBus(0u)
-        inputNode.removeTapOnBus(0u) // Defensive
-        inputNode.installTapOnBus(0u, bufferSize = 1024u, format = recordingFormat) { buffer, _ ->
-            recognitionRequest?.appendAudioPCMBuffer(buffer!!)
-        }
+        val settings = mapOf<Any?, Any?>(
+            AVFormatIDKey to kAudioFormatMPEG4AAC.toLong(),
+            AVSampleRateKey to 44100.0,
+            AVNumberOfChannelsKey to 1,
+            AVEncoderAudioQualityKey to AVAudioQualityHigh.toLong()
+        )
 
-        audioEngine.prepare()
         try {
-            audioEngine.startAndReturnError(null)
+            val recorder = AVAudioRecorder(URL = url, settings = settings as Map<Any?, *>, error = null)
+            audioRecorder = recorder
+            recorder.prepareToRecord()
+            recorder.record()
         } catch (e: Exception) {
+            audioRecorder = null
             onEnd()
         }
     }
 
     override fun stopListening() {
-        runOnMain {
-            if (audioEngine.isRunning) {
-                audioEngine.stop()
-                audioEngine.inputNode.removeTapOnBus(0u)
+        val recorder = audioRecorder ?: return
+        audioRecorder = null
+        try {
+            recorder.stop()
+        } catch (e: Exception) {
+            // Ignore stop issues
+        }
+
+        val tempDir = NSTemporaryDirectory()
+        val filePath = tempDir + "voice_command.m4a"
+        val fileData = NSData.dataWithContentsOfFile(filePath)
+        if (fileData != null) {
+            scope.launch {
+                val bytes = fileData.toByteArray()
+                // Strategy C: Multi-modal cloud audio processing
+                when (val outcome = geminiRepository.transcribeAudio(bytes, "audio/mp4")) {
+                    is GeminiOutcome.Success -> {
+                        val transcript = outcome.text
+                        runOnMain {
+                            onResultCallback?.invoke(VoiceTranscriptMeta(transcript, 1.0f))
+                        }
+                    }
+                    is GeminiOutcome.Failure -> {
+                        // Fail silently or log
+                    }
+                }
+                runOnMain {
+                    onEndCallback?.invoke()
+                }
             }
-            recognitionRequest?.endAudio()
+        } else {
+            onEndCallback?.invoke()
         }
     }
 
     override fun destroy() {
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundaryImmediate)
-        runOnMain {
-            if (audioEngine.isRunning) {
-                audioEngine.stop()
-                audioEngine.inputNode.removeTapOnBus(0u)
+        val recorder = audioRecorder
+        audioRecorder = null
+        if (recorder != null) {
+            try {
+                recorder.stop()
+            } catch (e: Exception) {
+                // Ignore
             }
-            recognitionRequest?.endAudio()
-            recognitionTask?.cancel()
-            recognitionTask = null
-            recognitionRequest = null
         }
     }
 }
-

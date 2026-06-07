@@ -114,9 +114,25 @@ class AndroidPdfInvoiceEngine(
         canvas1.drawText("BILLED TO", 65f, cardTop + 20f, paint)
         
         paint.color = charcoalColor
-        paint.textSize = 12f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        canvas1.drawText(data.clientName.uppercase(), 65f, cardTop + 38f, paint)
+        val nameText = data.clientName.uppercase()
+        val maxNameWidth = 210f
+        var currentTextSize = 12f
+        paint.textSize = currentTextSize
+        while (paint.measureText(nameText) > maxNameWidth && currentTextSize > 8f) {
+            currentTextSize -= 0.5f
+            paint.textSize = currentTextSize
+        }
+        val finalNameText = if (paint.measureText(nameText) > maxNameWidth) {
+            var truncated = nameText
+            while (paint.measureText(truncated + "...") > maxNameWidth && truncated.isNotEmpty()) {
+                truncated = truncated.dropLast(1)
+            }
+            truncated + "..."
+        } else {
+            nameText
+        }
+        canvas1.drawText(finalNameText, 65f, cardTop + 38f, paint)
         
         paint.color = grayColor
         paint.textSize = 9f

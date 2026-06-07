@@ -114,17 +114,39 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSFontAttributeName to UIFont.boldSystemFontOfSize(9.0),
                 NSForegroundColorAttributeName to orangeColor
             )
-            val boldBodyAttributes = mapOf(
-                NSFontAttributeName to UIFont.boldSystemFontOfSize(12.0),
-                NSForegroundColorAttributeName to charcoalColor
-            )
             val normalBodyAttributes = mapOf(
                 NSFontAttributeName to UIFont.systemFontOfSize(9.0),
                 NSForegroundColorAttributeName to grayColor
             )
             
             ("BILLED TO" as NSString).drawAtPoint(CGPointMake(65.0, cardTop + 10.0), withAttributes = sectionHeaderAttributes as Map<Any?, *>)
-            (data.clientName.uppercase() as NSString).drawAtPoint(CGPointMake(65.0, cardTop + 26.0), withAttributes = boldBodyAttributes as Map<Any?, *>)
+
+            val nameText = data.clientName.uppercase()
+            val maxNameWidth = 210.0
+            var nameFontSize = 12.0
+            var nameAttributes = mapOf<Any?, Any?>(
+                NSFontAttributeName to UIFont.boldSystemFontOfSize(nameFontSize),
+                NSForegroundColorAttributeName to charcoalColor
+            )
+            while ((nameText as NSString).sizeWithAttributes(nameAttributes as Map<Any?, *>).useContents { width } > maxNameWidth && nameFontSize > 8.0) {
+                nameFontSize -= 0.5
+                nameAttributes = mapOf<Any?, Any?>(
+                    NSFontAttributeName to UIFont.boldSystemFontOfSize(nameFontSize),
+                    NSForegroundColorAttributeName to charcoalColor
+                )
+            }
+            val finalNameNSString = if ((nameText as NSString).sizeWithAttributes(nameAttributes as Map<Any?, *>).useContents { width } > maxNameWidth) {
+                var truncated = nameText
+                var truncatedNSString = "$truncated..." as NSString
+                while (truncatedNSString.sizeWithAttributes(nameAttributes as Map<Any?, *>).useContents { width } > maxNameWidth && truncated.isNotEmpty()) {
+                    truncated = truncated.dropLast(1)
+                    truncatedNSString = "$truncated..." as NSString
+                }
+                truncatedNSString
+            } else {
+                nameText as NSString
+            }
+            finalNameNSString.drawAtPoint(CGPointMake(65.0, cardTop + 26.0), withAttributes = nameAttributes as Map<Any?, *>)
             
             val clientAddressText = data.clientAddress.ifBlank { "No Job Address Provided" }
             val truncatedClientAddress = if (clientAddressText.length > 38) clientAddressText.take(35) + "..." else clientAddressText

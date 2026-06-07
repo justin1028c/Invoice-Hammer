@@ -35,14 +35,17 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.koin.core)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.kotlinx.coroutines.core)
+            api(libs.kotlinx.coroutines.core)
             
             // Room
-            implementation(libs.androidx.room.runtime)
+            api(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled) // KMP SQLite
             
             // DataStore
             implementation(libs.androidx.datastore.preferences)
+        }
+        commonMain.configure {
+            kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
         }
         
         androidMain.dependencies {
@@ -113,6 +116,7 @@ android {
 }
 
 dependencies {
+    add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)

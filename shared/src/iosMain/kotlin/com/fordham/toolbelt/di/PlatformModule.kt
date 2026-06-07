@@ -50,7 +50,7 @@ actual fun platformModule(): Module = module {
     single<PlatformGeofenceManager> { IosPlatformGeofenceManager() }
     single<PlatformNotificationManager> { IosPlatformNotificationManager() }
     single<KmpOcrEngine> { IosOcrEngine() }
-    single<com.fordham.toolbelt.util.VoiceAssistant> { com.fordham.toolbelt.util.IosVoiceAssistant() }
+    single<com.fordham.toolbelt.util.VoiceAssistant> { com.fordham.toolbelt.util.IosVoiceAssistant(get()) }
     single { com.fordham.toolbelt.util.PlacesService() }
     single<AuthRepository> { IosAuthRepository(lazy { get<com.fordham.toolbelt.domain.repository.SubscriptionRepository>() }) }
     single { 

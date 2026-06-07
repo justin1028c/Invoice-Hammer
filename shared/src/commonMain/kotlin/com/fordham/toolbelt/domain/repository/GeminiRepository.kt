@@ -24,4 +24,7 @@ interface GeminiRepository {
     
     // OCR capability for Raw Text Extraction
     suspend fun processOcrImage(imageBytes: ByteArray): GeminiOutcome
+    
+    // Audio Transcription
+    suspend fun transcribeAudio(audioBytes: ByteArray, mimeType: String): GeminiOutcome
 }

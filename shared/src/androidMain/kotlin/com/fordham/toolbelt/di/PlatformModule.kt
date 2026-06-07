@@ -45,7 +45,7 @@ actual fun platformModule(): Module = module {
         AndroidDriveAuthTokenProvider(get(), get<PlatformActions>() as AndroidPlatformActions)
     }
     single<AuthRepository> { FirebaseAuthRepository(get(), lazy { get<com.fordham.toolbelt.domain.repository.SubscriptionRepository>() }) }
-    single<VoiceAssistant> { AndroidVoiceAssistant(get()) }
+    single<VoiceAssistant> { AndroidVoiceAssistant(get(), get()) }
     single { PlacesService() }
     single { SecurityManager(get()) }
     single<SecurityGateway> { get<SecurityManager>() }

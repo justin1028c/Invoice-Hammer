@@ -385,6 +385,8 @@ class KtorGeminiRepository(
         model: String = agentModelName,
         history: List<GeminiContent> = emptyList(),
         imageBytes: ByteArray? = null,
+        audioBytes: ByteArray? = null,
+        audioMimeType: String? = null,
         responseMimeType: String? = null,
         systemInstruction: String? = null,
         tools: GeminiTools? = null,
@@ -399,6 +401,11 @@ class KtorGeminiRepository(
                 GeminiPart(text = prompt),
                 imageBytes?.let {
                     GeminiPart(inlineData = GeminiInlineData("image/jpeg", encodeBase64(it)))
+                },
+                audioBytes?.let {
+                    if (audioMimeType != null) {
+                        GeminiPart(inlineData = GeminiInlineData(audioMimeType, encodeBase64(it)))
+                    } else null
                 }
             )
         )
@@ -474,5 +481,19 @@ class KtorGeminiRepository(
             }
         }
         throw lastException ?: Exception("Foreman Gemini request failed after retries.")
+    }
+
+    override suspend fun transcribeAudio(audioBytes: ByteArray, mimeType: String): GeminiOutcome = try {
+        val prompt = "Transcribe the audio exactly. Output only the verbatim transcription. No descriptions, no comments, no meta-text. If there is background noise, chatter, or music, focus solely on the primary speaker's voice and ignore the noise."
+        val response = callGemini(
+            prompt = prompt,
+            audioBytes = audioBytes,
+            audioMimeType = mimeType,
+            temperature = 0.0f
+        )
+        val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
+        GeminiOutcome.Success(text.trim())
+    } catch (e: Exception) {
+        GeminiOutcome.Failure(FailureMessage(e.message ?: "Failed to transcribe audio"))
     }
 }
