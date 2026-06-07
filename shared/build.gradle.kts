@@ -45,9 +45,7 @@ kotlin {
             // DataStore
             implementation(libs.androidx.datastore.preferences)
         }
-        commonMain.configure {
-            kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
-        }
+
         
         androidMain.dependencies {
             implementation(libs.play.billing)
