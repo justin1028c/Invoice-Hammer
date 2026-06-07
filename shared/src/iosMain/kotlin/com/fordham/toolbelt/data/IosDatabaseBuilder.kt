@@ -3,7 +3,7 @@ package com.fordham.toolbelt.data
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.driver.NativeSQLiteDriver
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import platform.Foundation.NSHomeDirectory
@@ -16,8 +16,7 @@ fun getIosDatabaseBuilder(passphrase: String): RoomDatabase.Builder<AppDatabase>
     val escapedPassphrase = passphrase.replace("'", "''")
     return Room.databaseBuilder<AppDatabase>(
         name = dbFile,
-        factory =  { AppDatabase::class.instantiateImpl() }
-    ).setDriver(NativeSQLiteDriver())
+    ).setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .addMigrations(MIGRATION_19_20)
         .addCallback(object : RoomDatabase.Callback() {

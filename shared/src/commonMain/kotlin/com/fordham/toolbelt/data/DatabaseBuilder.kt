@@ -1,6 +1,7 @@
 package com.fordham.toolbelt.data
 
 import androidx.room.RoomDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -14,6 +15,7 @@ fun getRoomDatabase(
     queryDispatcher: CoroutineDispatcher = Dispatchers.IO
 ): AppDatabase {
     return builder
+        .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(queryDispatcher)
         .build()
 }

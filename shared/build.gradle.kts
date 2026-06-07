@@ -6,6 +6,7 @@ plugins {
     id("com.android.library")
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -67,7 +68,6 @@ kotlin {
         
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
-            implementation("androidx.sqlite:sqlite:2.5.0-alpha13") // For NativeSQLiteDriver
         }
     }
 }
@@ -115,8 +115,11 @@ android {
     }
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
-    add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)

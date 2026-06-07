@@ -1,7 +1,9 @@
 package com.fordham.toolbelt.data
 
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 
 @Database(
     entities = [
@@ -17,6 +19,7 @@ import androidx.room.RoomDatabase
     version = 20,
     exportSchema = true
 )
+@ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun receiptDao(): ReceiptDao
     abstract fun invoiceDao(): InvoiceDao
@@ -27,3 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun draftDao(): DraftDao
     abstract fun paymentRequestDao(): PaymentRequestDao
 }
+
+// Room KSP generates the actual implementations for each platform target automatically.
+@Suppress("NO_ACTUAL_FOR_EXPECT")
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase>
