@@ -30,8 +30,14 @@ class ProcessReceiptUseCase(
                         } else {
                             result.items
                         }
-                        receiptRepository.insertItems(items)
-                        ProcessReceiptOutcome.Success(items)
+                        if (items.isEmpty()) {
+                            ProcessReceiptOutcome.Failure(
+                                FailureMessage("No items could be extracted from this receipt. Please ensure the image is clear and contains readable text.")
+                            )
+                        } else {
+                            receiptRepository.insertItems(items)
+                            ProcessReceiptOutcome.Success(items)
+                        }
                     }
                     is ReceiptImageOutcome.Failure -> {
                         ProcessReceiptOutcome.Failure(result.error)

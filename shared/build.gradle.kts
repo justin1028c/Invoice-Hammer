@@ -35,6 +35,7 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.koin.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.coroutines.core)
             
             // Room
             implementation(libs.androidx.room.runtime)

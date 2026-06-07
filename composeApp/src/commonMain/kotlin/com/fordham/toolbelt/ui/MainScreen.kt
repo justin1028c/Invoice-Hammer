@@ -232,6 +232,7 @@ fun MainScreen(
     }
 
     val startAgentListening = {
+        voiceAssistant.stopSpeaking()
         if (platformActions.isPermissionGranted(Permission.RECORD_AUDIO)) {
             agentViewModel.setListening(true)
             voiceAssistant.startListeningWithMeta(
@@ -256,6 +257,7 @@ fun MainScreen(
     val stopAgentListening = {
         agentViewModel.setListening(false)
         voiceAssistant.stopListening()
+        voiceAssistant.stopSpeaking()
     }
 
     val toggleAgentListening = {

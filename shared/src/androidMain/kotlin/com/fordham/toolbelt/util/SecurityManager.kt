@@ -76,10 +76,8 @@ class SecurityManager(context: Context) : SecurityGateway {
         try {
             cipher.init(Cipher.ENCRYPT_MODE, key)
         } catch (e: android.security.keystore.KeyPermanentlyInvalidatedException) {
-            AppLogger.e("SecurityManager", "Key permanently invalidated due to biometric enrollment changes. Re-generating key.", e)
-            keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS)
-            val newKey = generateBiometricKey()
-            cipher.init(Cipher.ENCRYPT_MODE, newKey)
+            AppLogger.e("SecurityManager", "Key permanently invalidated due to biometric enrollment changes.", e)
+            throw e
         } catch (e: java.security.UnrecoverableKeyException) {
             AppLogger.e("SecurityManager", "Key unrecoverable during cipher init. Re-generating key.", e)
             keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS)

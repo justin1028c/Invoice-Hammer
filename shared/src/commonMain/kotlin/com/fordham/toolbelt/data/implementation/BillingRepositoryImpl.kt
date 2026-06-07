@@ -54,10 +54,10 @@ class BillingRepositoryImpl(
         ) { settings, entitlement ->
             val isPro = entitlement.isPro || settings.isPremium
             val foremanAgentTokens = if (isPro) {
-                val remainingQuota = (200 - settings.aiActionsUsedThisMonth).coerceAtLeast(0)
-                if (remainingQuota > 0) remainingQuota else settings.hammerCredits
+                val remainingQuota = (500 - settings.aiActionsUsedThisMonth).coerceAtLeast(0)
+                if (remainingQuota > 0) remainingQuota else settings.hammerCredits / 2
             } else {
-                settings.hammerCredits
+                settings.hammerCredits / 2
             }
             mapOf(
                 PremiumFeature.AI_RECEIPT_SCAN to TokenCount(settings.hammerCredits),
@@ -186,17 +186,17 @@ class BillingRepositoryImpl(
         if (isPro) {
             when (feature) {
                 PremiumFeature.FOREMAN_AGENT -> {
-                    return if (settings.aiActionsUsedThisMonth < 200) {
+                    return if (settings.aiActionsUsedThisMonth < 500) {
                         val updated = settings.copy(aiActionsUsedThisMonth = settings.aiActionsUsedThisMonth + 1)
                         settingsRepository.saveBusinessSettings(updated)
                         reconcileTokens()
-                        TokenConsumptionOutcome.Success(TokenCount((200 - updated.aiActionsUsedThisMonth).coerceAtLeast(0)))
+                        TokenConsumptionOutcome.Success(TokenCount((500 - updated.aiActionsUsedThisMonth).coerceAtLeast(0)))
                     } else {
-                        // Beyond monthly cap, consume from hammerCredits
-                        if (settings.hammerCredits <= 0) {
+                        // Beyond monthly cap, consume from hammerCredits (cost = 2 credits)
+                        if (settings.hammerCredits < 2) {
                             TokenConsumptionOutcome.InsufficientTokens(feature)
                         } else {
-                            val updated = settings.copy(hammerCredits = settings.hammerCredits - 1)
+                            val updated = settings.copy(hammerCredits = settings.hammerCredits - 2)
                             settingsRepository.saveBusinessSettings(updated)
                             reconcileTokens()
                             TokenConsumptionOutcome.Success(TokenCount(updated.hammerCredits))
@@ -215,10 +215,11 @@ class BillingRepositoryImpl(
             }
         } else {
             // Casual user: consumes from hammerCredits
-            if (settings.hammerCredits <= 0) {
+            val cost = if (feature == PremiumFeature.FOREMAN_AGENT) 2 else 1
+            if (settings.hammerCredits < cost) {
                 return TokenConsumptionOutcome.InsufficientTokens(feature)
             }
-            val updated = settings.copy(hammerCredits = settings.hammerCredits - 1)
+            val updated = settings.copy(hammerCredits = settings.hammerCredits - cost)
             settingsRepository.saveBusinessSettings(updated)
             reconcileTokens()
             return TokenConsumptionOutcome.Success(TokenCount(updated.hammerCredits))
@@ -229,10 +230,10 @@ class BillingRepositoryImpl(
         val settings = settingsRepository.getBusinessSettings()
         val isPro = _entitlement.value.isPro || settings.isPremium
         val foremanAgentTokens = if (isPro) {
-            val remainingQuota = (200 - settings.aiActionsUsedThisMonth).coerceAtLeast(0)
-            if (remainingQuota > 0) remainingQuota else settings.hammerCredits
+            val remainingQuota = (500 - settings.aiActionsUsedThisMonth).coerceAtLeast(0)
+            if (remainingQuota > 0) remainingQuota else settings.hammerCredits / 2
         } else {
-            settings.hammerCredits
+            settings.hammerCredits / 2
         }
         val balances = mapOf(
             PremiumFeature.AI_RECEIPT_SCAN to TokenCount(settings.hammerCredits),
@@ -263,9 +264,9 @@ class BillingRepositoryImpl(
             }
             PremiumFeature.FOREMAN_AGENT -> {
                 if (isPro) {
-                    settings.aiActionsUsedThisMonth < 200 || settings.hammerCredits > 0
+                    settings.aiActionsUsedThisMonth < 500 || settings.hammerCredits >= 2
                 } else {
-                    settings.hammerCredits > 0
+                    settings.hammerCredits >= 2
                 }
             }
             PremiumFeature.CLOUD_SYNC,
@@ -337,7 +338,7 @@ class BillingRepositoryImpl(
             val amount = when (productId) {
                 "hammer_credit_pack_50" -> 50
                 "hammer_credit_pack_150" -> 150
-                "hammer_credit_pack_400" -> 400
+                "hammer_credit_pack_400" -> 350
                 else -> 0
             }
             return ServerVerificationResult.Success(amount)

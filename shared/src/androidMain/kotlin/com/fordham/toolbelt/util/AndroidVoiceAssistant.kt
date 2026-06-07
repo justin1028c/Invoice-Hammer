@@ -42,6 +42,12 @@ class AndroidVoiceAssistant(private val context: Context) : TextToSpeech.OnInitL
         }
     }
 
+    override fun stopSpeaking() {
+        if (isTtsReady) {
+            tts?.stop()
+        }
+    }
+
     override fun startListening(onResult: (String) -> Unit, onEnd: () -> Unit) {
         startListeningWithMeta(
             onResult = { meta -> onResult(meta.text) },

@@ -332,11 +332,9 @@ object QrCodeMatrixEngine {
             } else if (i < 8) {
                 setModule(i + 1, 8, bit, reserve = false)
             } else if (i == 8) {
-                setModule(7, 8, bit, reserve = false)
-            } else if (i < 11) {
-                setModule(8, 14 - i, bit, reserve = false)
+                setModule(8, 7, bit, reserve = false)
             } else {
-                setModule(8, 15 - i, bit, reserve = false)
+                setModule(8, 14 - i, bit, reserve = false)
             }
 
             // High regions

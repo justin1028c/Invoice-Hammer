@@ -36,6 +36,10 @@ class IosVoiceAssistant : VoiceAssistant {
         synthesizer.speakUtterance(utterance)
     }
 
+    override fun stopSpeaking() {
+        synthesizer.stopSpeakingAtBoundary(AVSpeechBoundaryImmediate)
+    }
+
     override fun startListening(onResult: (String) -> Unit, onEnd: () -> Unit) {
         startListeningWithMeta(
             onResult = { meta -> onResult(meta.text) },

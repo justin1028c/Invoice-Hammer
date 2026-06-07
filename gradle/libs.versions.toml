@@ -10,6 +10,7 @@ activityCompose = "1.9.3"
 kotlin = "2.1.10"
 kotlinSerialization = "1.6.3"
 kotlinxDatetime = "0.6.1"
+kotlinxCoroutines = "1.10.1"
 composeBom = "2026.04.01"
 composeMultiplatform = "1.7.3"
 room = "2.7.0-alpha13"
@@ -52,6 +53,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version = "2.8.5" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinSerialization" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 
 # WorkManager
 androidx-work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }

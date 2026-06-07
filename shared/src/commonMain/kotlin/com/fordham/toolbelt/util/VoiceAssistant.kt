@@ -8,6 +8,7 @@ data class VoiceTranscriptMeta(
 
 interface VoiceAssistant {
     fun speak(text: String)
+    fun stopSpeaking()
     fun startListening(onResult: (String) -> Unit, onEnd: () -> Unit)
     
     // Metadata-aware listening for advanced cross-turn phonetic resolution

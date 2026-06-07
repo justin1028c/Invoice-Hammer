@@ -23,14 +23,19 @@ import com.fordham.toolbelt.util.PlatformActions
 import com.fordham.toolbelt.util.VoiceAssistant
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import kotlinx.coroutines.launch
+import com.fordham.toolbelt.domain.repository.AuthRepository
 
 @Composable
 fun App(initialTab: AppTab? = null) {
     val platformActions: PlatformActions = koinInject()
     val syncUnpaidInvoiceReminders: SyncUnpaidInvoiceRemindersUseCase = koinInject()
     val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository = koinInject()
+    val authRepository: AuthRepository = koinInject()
+    val coroutineScope = rememberCoroutineScope()
     var isAuthenticated by remember { mutableStateOf(false) }
     var isCheckingBiometrics by remember { mutableStateOf(true) }
+    var showBiometricChangedDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val settings = settingsRepository.getBusinessSettings()
@@ -39,7 +44,12 @@ fun App(initialTab: AppTab? = null) {
                 title = "Vault Locked",
                 subtitle = "Authenticate to access Invoice Hammer",
                 onSuccess = { isAuthenticated = true; isCheckingBiometrics = false },
-                onError = { isCheckingBiometrics = false }
+                onError = { error ->
+                    if (error == "BIOMETRIC_LOCK_INVALIDATED") {
+                        showBiometricChangedDialog = true
+                    }
+                    isCheckingBiometrics = false
+                }
             )
         } else {
             isAuthenticated = true
@@ -115,7 +125,11 @@ fun App(initialTab: AppTab? = null) {
                                 title = "Vault Locked",
                                 subtitle = "Authenticate to access",
                                 onSuccess = { isAuthenticated = true },
-                                onError = {}
+                                onError = { error ->
+                                    if (error == "BIOMETRIC_LOCK_INVALIDATED") {
+                                        showBiometricChangedDialog = true
+                                    }
+                                }
                             )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE)),
@@ -125,6 +139,39 @@ fun App(initialTab: AppTab? = null) {
                     }
                 }
             }
+        }
+
+        if (showBiometricChangedDialog) {
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Biometrics Changed", fontWeight = FontWeight.Bold, color = Color.White) },
+                text = {
+                    Text(
+                        "Your device's biometric configuration (e.g. fingerprint or face) has changed. " +
+                        "For security reasons, biometric lock has been disabled and your session will be signed out. " +
+                        "Please log in using your account credentials to re-enable.",
+                        color = Color.LightGray
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                val currentSettings = settingsRepository.getBusinessSettings()
+                                settingsRepository.saveBusinessSettings(
+                                    currentSettings.copy(biometricLockEnabled = false)
+                                )
+                                authRepository.signOut()
+                                isAuthenticated = false
+                                isCheckingBiometrics = false
+                                showBiometricChangedDialog = false
+                            }
+                        }
+                    ) {
+                        Text("OK", color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
         }
     }
 }

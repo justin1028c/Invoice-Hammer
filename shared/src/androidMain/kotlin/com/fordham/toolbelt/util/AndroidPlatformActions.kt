@@ -170,6 +170,10 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
             }.getOrNull()
             val cipher = try {
                 securityManager?.getBiometricCipher()
+            } catch (e: android.security.keystore.KeyPermanentlyInvalidatedException) {
+                AppLogger.e("AndroidPlatformActions", "Biometrics changed or invalidated", e)
+                onError("BIOMETRIC_LOCK_INVALIDATED")
+                return
             } catch (e: Exception) {
                 AppLogger.e("AndroidPlatformActions", "Failed to retrieve biometric cipher", e)
                 null

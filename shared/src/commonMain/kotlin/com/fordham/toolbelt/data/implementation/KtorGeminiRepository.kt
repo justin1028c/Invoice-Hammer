@@ -28,6 +28,52 @@ class KtorGeminiRepository(
     private val agentModelName = geminiConfig.agentModelName.also { check(it.isNotBlank()) { "Gemini agent model name is blank" } }
     private val taskModelName  = geminiConfig.taskModelName.ifBlank { geminiConfig.agentModelName }
 
+    private val summarizeSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "summary" to GeminiSchema(type = "STRING", description = "Concise 1-2 sentence description of work performed.")
+        ),
+        required = listOf("summary")
+    )
+
+    private val generateSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "subject" to GeminiSchema(type = "STRING", description = "Subject line of reminder"),
+            "body" to GeminiSchema(type = "STRING", description = "Message body of reminder (2-3 sentences max).")
+        ),
+        required = listOf("subject", "body")
+    )
+
+    private val voiceFragmentSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "customerName" to GeminiSchema(type = "STRING", description = "Full name of the client. null if not stated."),
+            "operationalAddress" to GeminiSchema(type = "STRING", description = "Job site address. null if not stated."),
+            "serviceScope" to GeminiSchema(type = "STRING", description = "Verbatim work description. null if not stated."),
+            "amountDollars" to GeminiSchema(type = "NUMBER", description = "Total charge in USD as a decimal. null if not stated."),
+            "confidence" to GeminiSchema(type = "NUMBER", description = "Overall extraction confidence 0.0-1.0")
+        ),
+        required = listOf("confidence")
+    )
+
+    private val receiptItemSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "description" to GeminiSchema(type = "STRING", description = "verbatim item name or description"),
+            "totalPrice" to GeminiSchema(type = "NUMBER", description = "item total price/cost as a decimal")
+        ),
+        required = listOf("description", "totalPrice")
+    )
+
+    private val receiptResponseSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "items" to GeminiSchema(type = "ARRAY", items = receiptItemSchema, description = "list of line items found on the receipt")
+        ),
+        required = listOf("items")
+    )
+
     override suspend fun processTask(type: TaskType, data: String): GeminiOutcome = try {
         val contextString = if (type == TaskType.PARSE_VOICE_FRAGMENT) {
             ""
@@ -37,45 +83,32 @@ class KtorGeminiRepository(
             context.joinToString("\n") { it.text }
         }
 
-        val (taskInstruction, outputSchema) = when (type) {
-            TaskType.SUMMARIZE -> Pair(
+        val (taskInstruction, outputSchema, schemaObj) = when (type) {
+            TaskType.SUMMARIZE -> Triple(
                 "You are a concise job-summary writer for a contractor app.",
-                """Return a JSON object: {"summary": "string"}
-                   The summary is 1-2 sentences describing the work performed. Plain text only."""
+                "Return a JSON object with the summary description.",
+                summarizeSchema
             )
-            TaskType.GENERATE -> Pair(
+            TaskType.GENERATE -> Triple(
                 "You are a professional billing reminder composer for a contractor app.",
-                """Return a JSON object: {"subject": "string", "body": "string"}
-                   The subject is the email/text subject line. The body is a short, professional
-                   plain-text reminder (2-3 sentences max). No HTML. No markdown."""
+                "Return a JSON object with the subject and body.",
+                generateSchema
             )
-            TaskType.PARSE_VOICE_FRAGMENT -> Pair(
+            TaskType.PARSE_VOICE_FRAGMENT -> Triple(
                 "You are a field invoice data extraction engine for a contractor app. " +
                 "Extract structured invoice fields from a spoken voice transcript. " +
                 "You must be conservative: only populate a field if you are confident. " +
-                "Never invent data that is not present in the transcript.",
-                """
-                Return ONLY a raw JSON object — no markdown, no explanation, no preamble.
-                Schema:
-                {
-                  "customerName":        string | null,   // Full name of the client. null if not stated.
-                  "operationalAddress":  string | null,   // Job site address. null if not stated.
-                  "serviceScope":        string | null,   // Description of work performed. null if not stated.
-                  "amountDollars":       number | null,   // Total charge in US dollars as a decimal (e.g. 150.0). null if not stated.
-                  "confidence":          number           // Your overall extraction confidence 0.0–1.0
-                }
-                Rules:
-                - customerName: extract only if preceded by "for", "invoice", "bill", "charge", or a clear name signal.
-                - operationalAddress: only populate if the fragment contains a street number + street type OR city/state.
-                - serviceScope: the work description verbatim from the transcript.
-                - amountDollars: convert spoken numbers to decimal dollars. "sixty five fifty" = 65.50. "$800" = 800.0.
-                  "a hundred and twenty" = 120.0. Do NOT scale dollar amounts down.
-                - If you are not confident a field is present, return null for that field.
-                """.trimIndent()
+                "Never invent data that is not present in the transcript.\n\n" +
+                "EXAMPLE:\n" +
+                "Input: \"charge eighty five fifty to john doe at twelve main street for drywall repair\"\n" +
+                "Output: {\"customerName\": \"John Doe\", \"operationalAddress\": \"12 Main Street\", \"serviceScope\": \"Drywall repair\", \"amountDollars\": 85.50, \"confidence\": 1.0}\n\n",
+                "Extract customerName, operationalAddress, serviceScope, amountDollars, and confidence.",
+                voiceFragmentSchema
             )
-            else -> Pair(
+            else -> Triple(
                 "You are a helpful contractor assistant.",
-                """Return a JSON object: {"result": "string"} with a concise plain-text answer."""
+                "Return a concise plain-text answer in a JSON object.",
+                null
             )
         }
 
@@ -91,7 +124,7 @@ class KtorGeminiRepository(
                 
                 OUTPUT CONTRACT — CRITICAL:
                 $outputSchema
-                Return ONLY raw JSON. No explanation. No markdown fences. No preamble.
+                Return ONLY raw JSON matching the schema. No explanation. No markdown fences. No preamble.
             """.trimIndent()
         } else {
             """
@@ -102,14 +135,16 @@ class KtorGeminiRepository(
                 
                 OUTPUT CONTRACT — CRITICAL:
                 $outputSchema
-                Return ONLY raw JSON. No explanation. No markdown fences. No preamble.
+                Return ONLY raw JSON matching the schema. No explanation. No markdown fences. No preamble.
             """.trimIndent()
         }
 
         val response = callGemini(
             prompt = prompt,
             model = taskModelName,
-            responseMimeType = "application/json"
+            responseMimeType = "application/json",
+            temperature = 0.0f,
+            responseSchema = schemaObj
         )
         val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?.let { AiUtil.cleanJson(it) }
@@ -225,7 +260,14 @@ class KtorGeminiRepository(
             }
             CRITICAL: Return ONLY raw JSON matching this schema. No explanation or code fences.
         """.trimIndent()
-        val response = callGemini(prompt, imageBytes = imageBytes, model = agentModelName, responseMimeType = "application/json")
+        val response = callGemini(
+            prompt = prompt,
+            imageBytes = imageBytes,
+            model = agentModelName,
+            responseMimeType = "application/json",
+            temperature = 0.0f,
+            responseSchema = receiptResponseSchema
+        )
         val resText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
         val cleaned = AiUtil.cleanJson(resText)
         try {
@@ -318,7 +360,8 @@ class KtorGeminiRepository(
             tools = ForemanGeminiTools.buildTools(functions),
             toolConfig = GeminiToolConfig(
                 functionCallingConfig = GeminiFunctionCallingConfig(mode = toolCallingMode.apiValue)
-            )
+            ),
+            temperature = 0.0f
         )
         val part = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()
         val functionCall = part?.functionCall
@@ -346,7 +389,9 @@ class KtorGeminiRepository(
         systemInstruction: String? = null,
         tools: GeminiTools? = null,
         toolConfig: GeminiToolConfig? = null,
-        maxOutputTokens: Int? = null
+        maxOutputTokens: Int? = null,
+        temperature: Float? = null,
+        responseSchema: GeminiSchema? = null
     ): GeminiResponse {
         val currentUserTurn = GeminiContent(
             role = "user",
@@ -364,7 +409,14 @@ class KtorGeminiRepository(
             },
             tools = tools?.let { listOf(it) },
             toolConfig = toolConfig,
-            generationConfig = responseMimeType?.let { GeminiGenerationConfig(it, maxOutputTokens) }
+            generationConfig = if (responseMimeType != null || maxOutputTokens != null || temperature != null || responseSchema != null) {
+                GeminiGenerationConfig(
+                    responseMimeType = responseMimeType,
+                    maxOutputTokens = maxOutputTokens,
+                    temperature = temperature,
+                    responseSchema = responseSchema
+                )
+            } else null
         )
 
         check(geminiConfig.isReady) {

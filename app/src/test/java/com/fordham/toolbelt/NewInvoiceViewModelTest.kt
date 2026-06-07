@@ -144,6 +144,7 @@ class NewInvoiceViewModelTest {
 
         // Has items AND client -> can save
         viewModel.onIntent(NewInvoiceIntent.OnClientNameChange("Client"))
+        viewModel.onIntent(NewInvoiceIntent.OnClientAddressChange("Address"))
         viewModel.uiState.test {
             assertTrue(awaitItem().canSave)
         }

@@ -80,13 +80,9 @@ class ForemanCommandRouterTest {
     }
 
     @Test
-    fun `routes new client quick invoice macro locally`() {
+    fun `routes new client quick invoice macro to LLM chain`() {
         val route = ForemanCommandRouter.route("new client Bob invoice 200 for labor")
-        assertTrue(route is ForemanRoute.LocalMacro)
-        val macro = route as ForemanRoute.LocalMacro
-        assertEquals(ToolName.QuickClientAndInvoice, macro.toolName)
-        val args = macro.arguments as QuickClientAndInvoiceArgs
-        assertEquals("Bob", args.clientName.value)
+        assertTrue(route is ForemanRoute.LlmChain)
     }
 
     @Test

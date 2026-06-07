@@ -138,7 +138,7 @@ fun PaywallSheet(
 
             CreditPackCard(
                 title = "Contractor Pack",
-                credits = "400 Credits",
+                credits = "350 Credits",
                 price = "$19.99",
                 description = "Best Value. Complete enterprise utility access.",
                 badgeText = "Best Value",
@@ -292,7 +292,7 @@ private fun SubscriptionValueComparisonCard() {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Active contractors run 450+ actions monthly (scans, invoices, tax bundles, and Foreman AI assistant).",
+                "Active contractors run 500+ actions monthly (scans, invoices, tax bundles, and Foreman AI assistant).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -305,17 +305,17 @@ private fun SubscriptionValueComparisonCard() {
                 // Credit Pack Cost Column
                 Column(modifier = Modifier.weight(1f)) {
                     Text("PAY-AS-YOU-GO PACKS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Text("450 actions / mo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("500 actions / mo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
-                    Text("$24.98 / mo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
+                    Text("$59.96 / mo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(2.dp))
-                    Text("Consumes credits for every scan & invoice", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                    Text("Consumes credits for scans, invoices & assistant turns", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
 
                 // Pro Subscription Cost Column
                 Column(modifier = Modifier.weight(1f)) {
                     Text("PRO SUBSCRIPTION", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Text("UNLIMITED + 200 AI / mo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("UNLIMITED + 500 AI / mo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(4.dp))
                     Text("$19.99 / mo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(2.dp))
@@ -330,7 +330,7 @@ private fun SubscriptionValueComparisonCard() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "🎉 SAVE UP TO 46% MONTHLY WITH PRO YEARLY",
+                    "🎉 SAVE UP TO 77% MONTHLY WITH PRO YEARLY",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onPrimary,

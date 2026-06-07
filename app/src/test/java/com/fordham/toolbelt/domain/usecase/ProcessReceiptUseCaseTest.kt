@@ -87,4 +87,17 @@ class ProcessReceiptUseCaseTest {
 
         assertTrue(result is ProcessReceiptOutcome.Failure)
     }
+
+    @Test
+    fun `invoke returns failure when AI returns empty items`() = runTest {
+        every { hasSubscriptionFeature(SubscriptionFeature.ReceiptOcr) } returns true
+        coEvery { geminiRepository.processReceiptImage(testImageBytes) } returns ReceiptImageOutcome.Success(emptyList())
+
+        val result = useCase(request("Client"))
+
+        assertTrue(result is ProcessReceiptOutcome.Failure)
+        val error = result as ProcessReceiptOutcome.Failure
+        assertTrue(error.error.value.contains("No items could be extracted"))
+        coVerify(exactly = 0) { receiptRepository.insertItems(any()) }
+    }
 }

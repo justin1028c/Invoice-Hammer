@@ -683,7 +683,6 @@ class RunForemanAgentUseCase(
     }
 
     private suspend fun foremanAccessFailure(): AgentOutcome.Failure? {
-        if (hasSubscriptionFeature(SubscriptionFeature.ForemanAgent)) return null
         return when (val outcome = consumeToken(PremiumFeature.FOREMAN_AGENT)) {
             is TokenConsumptionOutcome.Success -> null
             is TokenConsumptionOutcome.InsufficientTokens ->

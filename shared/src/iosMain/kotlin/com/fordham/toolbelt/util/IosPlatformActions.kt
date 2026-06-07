@@ -173,9 +173,27 @@ class IosPlatformActions : PlatformActions {
     ) {
         val context = LAContext()
         val policy = LAPolicyDeviceOwnerAuthentication
+        val biometricPolicy = LAPolicyDeviceOwnerAuthenticationWithBiometrics
+
+        val isBiometricReady = context.canEvaluatePolicy(biometricPolicy, error = null)
+        if (isBiometricReady) {
+            val currentDomainState = context.evaluatedPolicyDomainState
+            if (currentDomainState != null) {
+                val savedData = NSUserDefaults.standardUserDefaults.dataForKey("biometric_policy_domain_state")
+                if (savedData != null && savedData != currentDomainState) {
+                    AppLogger.e("IosPlatformActions", "Biometrics enrolled state changed on iOS.")
+                    runOnMain {
+                        onError("BIOMETRIC_LOCK_INVALIDATED")
+                    }
+                    return
+                }
+            }
+        }
 
         if (!context.canEvaluatePolicy(policy, error = null)) {
-            onError("Device authentication not available")
+            runOnMain {
+                onError("Device authentication not available")
+            }
             return
         }
 
@@ -184,6 +202,14 @@ class IosPlatformActions : PlatformActions {
             localizedReason = subtitle.ifBlank { title }
         ) { success, evalError ->
             if (success) {
+                if (isBiometricReady) {
+                    val finalContext = LAContext()
+                    finalContext.canEvaluatePolicy(biometricPolicy, error = null)
+                    val stateToSave = finalContext.evaluatedPolicyDomainState
+                    if (stateToSave != null) {
+                        NSUserDefaults.standardUserDefaults.setObject(stateToSave, forKey = "biometric_policy_domain_state")
+                    }
+                }
                 runOnMain(onSuccess)
             } else {
                 runOnMain {
