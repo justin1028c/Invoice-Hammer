@@ -13,7 +13,7 @@ android-build:
   script:
     - ./gradlew clean
     - ./gradlew :shared:compileKotlinMetadata
-    - ./gradlew :shared:compileKotlinAndroid
+    - ./gradlew :shared:compileDebugKotlinAndroid
     - ./gradlew :androidApp:assembleDebug
   artifacts:
     name: "android-debug-apk"

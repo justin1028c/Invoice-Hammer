@@ -19,7 +19,7 @@ interface VoiceAssistant {
         startListening({ text -> onResult(VoiceTranscriptMeta(text, null)) }, onEnd)
     }
 
-    fun stopListening()
+    fun stopListening(discard: Boolean = false)
     fun destroy()
 }
 

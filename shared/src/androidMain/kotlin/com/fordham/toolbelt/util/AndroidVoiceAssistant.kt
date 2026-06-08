@@ -67,7 +67,7 @@ class AndroidVoiceAssistant(
         onResult: (VoiceTranscriptMeta) -> Unit,
         onEnd: () -> Unit
     ) {
-        stopListening()
+        stopListening(discard = true)
         onResultCallback = onResult
         onEndCallback = onEnd
 
@@ -95,7 +95,7 @@ class AndroidVoiceAssistant(
         }
     }
 
-    override fun stopListening() {
+    override fun stopListening(discard: Boolean) {
         val recorder = mediaRecorder ?: return
         mediaRecorder = null
         try {
@@ -103,6 +103,12 @@ class AndroidVoiceAssistant(
             recorder.release()
         } catch (e: Exception) {
             Log.e("VoiceAssistant", "Failed to stop MediaRecorder", e)
+        }
+
+        if (discard) {
+            outputFile?.delete()
+            onEndCallback?.invoke()
+            return
         }
 
         val file = outputFile ?: return
@@ -127,7 +133,7 @@ class AndroidVoiceAssistant(
     }
 
     override fun destroy() {
-        stopListening()
+        stopListening(discard = true)
         tts?.stop()
         tts?.shutdown()
         tts = null

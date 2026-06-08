@@ -89,7 +89,7 @@ class IosVoiceAssistant(
         onResult: (VoiceTranscriptMeta) -> Unit,
         onEnd: () -> Unit
     ) {
-        stopListening()
+        stopListening(discard = true)
         onResultCallback = onResult
         onEndCallback = onEnd
 
@@ -131,13 +131,23 @@ class IosVoiceAssistant(
         }
     }
 
-    override fun stopListening() {
+    override fun stopListening(discard: Boolean) {
         val recorder = audioRecorder ?: return
         audioRecorder = null
         try {
             recorder.stop()
         } catch (e: Exception) {
             // Ignore stop issues
+        }
+
+        if (discard) {
+            val tempDir = NSTemporaryDirectory()
+            val filePath = tempDir + "voice_command.m4a"
+            NSFileManager.defaultManager.removeItemAtPath(filePath, error = null)
+            runOnMain {
+                onEndCallback?.invoke()
+            }
+            return
         }
 
         val tempDir = NSTemporaryDirectory()

@@ -234,6 +234,8 @@ fun MainScreen(
     val startAgentListening = {
         voiceAssistant.stopSpeaking()
         if (platformActions.isPermissionGranted(Permission.RECORD_AUDIO)) {
+            agentViewModel.clearAgentResponse()
+            agentViewModel.setAgentActive(true)
             agentViewModel.setListening(true)
             voiceAssistant.startListeningWithMeta(
                 onResult = { meta ->
@@ -254,15 +256,15 @@ fun MainScreen(
         }
     }
 
-    val stopAgentListening = {
+    val stopAgentListening: (Boolean) -> Unit = { discard ->
         agentViewModel.setListening(false)
-        voiceAssistant.stopListening()
+        voiceAssistant.stopListening(discard = discard)
         voiceAssistant.stopSpeaking()
     }
 
     val toggleAgentListening = {
         if (agentState.isListening) {
-            stopAgentListening()
+            stopAgentListening(false)
         } else {
             startAgentListening()
         }
@@ -294,12 +296,10 @@ fun MainScreen(
                     isListening = agentState.isListening,
                     isPremium = canUseForeman,
                     onStartListening = {
-                        agentViewModel.setAgentActive(true)
                         startAgentListening()
                     },
                     onStopListening = {
-                        agentViewModel.setAgentActive(false)
-                        stopAgentListening()
+                        stopAgentListening(false)
                     },
                     onPremiumRequired = {
                         if (subscriptionUiState.entitlement?.hasFeature(
@@ -395,7 +395,7 @@ fun MainScreen(
                     agentViewModel = agentViewModel,
                     agentState = agentState,
                     onDismissAgent = {
-                        stopAgentListening()
+                        stopAgentListening(true)
                         agentViewModel.clearAgentResponse()
                     },
                     onStartAgentListening = toggleAgentListening,

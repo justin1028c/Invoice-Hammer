@@ -7,6 +7,7 @@ import com.fordham.toolbelt.domain.model.agent.*
 import com.fordham.toolbelt.domain.usecase.ForemanOrchestrator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 data class AgentUiState(
     val isActive: Boolean = false,
@@ -34,6 +35,8 @@ class AgentViewModel(
     private val _uiState = MutableStateFlow(AgentUiState())
     val uiState: StateFlow<AgentUiState> = _uiState.asStateFlow()
 
+    private var activeCommandJob: Job? = null
+
     fun executeAgentCommand(
         command: String,
         appContext: ForemanAppContextBundle,
@@ -43,7 +46,8 @@ class AgentViewModel(
         val trimmed = command.trim()
         if (trimmed.isBlank()) return
 
-        viewModelScope.launch {
+        activeCommandJob?.cancel()
+        activeCommandJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isProcessing = true,
@@ -88,7 +92,8 @@ class AgentViewModel(
         onEffect: (AgentUiEffect) -> Unit
     ) {
         val pending = _uiState.value.pendingApproval ?: return
-        viewModelScope.launch {
+        activeCommandJob?.cancel()
+        activeCommandJob = viewModelScope.launch {
             _uiState.update { it.copy(isProcessing = true, pendingApproval = null) }
             val run = orchestrator.continueAfterApproval(pending, appContext.runtime)
             deliverRun(run, onIntent, onEffect)
@@ -101,7 +106,8 @@ class AgentViewModel(
         onIntent: (AiAgentIntent) -> Unit,
         onEffect: (AgentUiEffect) -> Unit
     ) {
-        viewModelScope.launch {
+        activeCommandJob?.cancel()
+        activeCommandJob = viewModelScope.launch {
             _uiState.update { it.copy(isProcessing = true, clientChoices = emptyList()) }
             val run = orchestrator.continueAfterClientPick(clientId, appContext.runtime)
             deliverRun(run, onIntent, onEffect)
@@ -114,7 +120,8 @@ class AgentViewModel(
         onEffect: (AgentUiEffect) -> Unit
     ) {
         val pending = _uiState.value.pendingSaveApproval ?: return
-        viewModelScope.launch {
+        activeCommandJob?.cancel()
+        activeCommandJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(isProcessing = true, savePreview = null, pendingSaveApproval = null)
             }
@@ -140,6 +147,8 @@ class AgentViewModel(
     }
 
     fun clearAgentResponse() {
+        activeCommandJob?.cancel()
+        activeCommandJob = null
         orchestrator.resetSession()
         _uiState.update { AgentUiState() }
     }
