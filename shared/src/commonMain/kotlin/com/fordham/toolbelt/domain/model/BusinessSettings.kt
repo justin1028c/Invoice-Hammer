@@ -15,6 +15,7 @@ data class BusinessSettings(
     val notificationsEnabled: Boolean = true,
     val biometricLockEnabled: Boolean = false,
     val hammerCredits: Int = 0,
-    val aiActionsUsedThisMonth: Int = 0
+    val aiActionsUsedThisMonth: Int = 0,
+    val autoSaveVoiceInvoices: Boolean = false
 )
 

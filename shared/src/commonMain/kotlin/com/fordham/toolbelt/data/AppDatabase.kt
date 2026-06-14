@@ -31,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun paymentRequestDao(): PaymentRequestDao
 }
 
-// Room KSP generates the actual implementations for each platform target automatically.
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase>
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
+}

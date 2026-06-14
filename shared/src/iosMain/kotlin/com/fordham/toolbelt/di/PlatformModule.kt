@@ -1,6 +1,13 @@
 package com.fordham.toolbelt.di
 
 import androidx.room.RoomDatabase
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+import io.ktor.client.request.HttpRequestPipeline
+import io.ktor.http.URLProtocol
 import com.fordham.toolbelt.data.AppDatabase
 import com.fordham.toolbelt.data.implementation.IosAuthRepository
 import com.fordham.toolbelt.data.implementation.IosDocumentExporter
@@ -81,3 +88,31 @@ actual fun platformModule(): Module = module {
     single<TapToPayGateway> { IosTapToPayGateway(get()) }
     single<BluetoothCardReaderGateway> { IosBluetoothCardReaderGateway() }
 }
+
+actual fun platformHttpClient(): HttpClient {
+    val client = HttpClient(io.ktor.client.engine.darwin.Darwin) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                coerceInputValues = true
+            })
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 60_000
+            connectTimeoutMillis = 30_000
+            socketTimeoutMillis = 30_000
+        }
+        engine {
+            configureSession {
+                TLSMinimumSupportedProtocolVersion = platform.Security.kTLSProtocol13
+            }
+        }
+    }
+    client.requestPipeline.intercept(HttpRequestPipeline.Before) {
+        if (context.url.protocol == URLProtocol.HTTP) {
+            context.url.protocol = URLProtocol.HTTPS
+        }
+    }
+    return client
+}
+

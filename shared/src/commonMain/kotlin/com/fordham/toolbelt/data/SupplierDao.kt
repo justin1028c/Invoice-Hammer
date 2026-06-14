@@ -8,6 +8,9 @@ interface SupplierDao {
     @Query("SELECT * FROM suppliers WHERE isHidden = 0 ORDER BY isPinned DESC, displayOrder ASC")
     fun getVisibleSuppliers(): Flow<List<SupplierEntity>>
 
+    @Query("SELECT * FROM suppliers WHERE id = :id")
+    suspend fun getSupplierById(id: String): SupplierEntity?
+
     @Query("SELECT * FROM suppliers WHERE isHidden = 0 ORDER BY isPinned DESC, displayOrder ASC")
     suspend fun getVisibleSuppliersOnce(): List<SupplierEntity>
 

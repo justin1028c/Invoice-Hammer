@@ -6,7 +6,7 @@ enum class ForemanToolCallingMode(val apiValue: String) {
 }
 
 object ForemanToolCallingPolicy {
-    private const val AUTO_AFTER_TOOL_STEPS = 4
+    private const val AUTO_AFTER_TOOL_STEPS = 1
 
     fun forSession(session: ForemanSession): ForemanToolCallingMode {
         val lastUserIdx = session.history.indexOfLast { it.role == AgentRole.User }

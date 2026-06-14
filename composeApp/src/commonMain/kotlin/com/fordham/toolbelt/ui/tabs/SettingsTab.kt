@@ -195,6 +195,56 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
+        // AI ASSISTANT SECTION
+        SettingsSection(title = "AI ASSISTANT") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Direct Invoice Saving",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "When enabled, voice commands to create an invoice will automatically prompt to approve and save it, skipping the draft staging area.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Precautions: Ensure your voice commands contain all required details (client, description, pricing) to avoid saving incomplete invoices.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Switch(
+                    checked = tempSettings.autoSaveVoiceInvoices,
+                    onCheckedChange = { enabled ->
+                        val newSettings = tempSettings.copy(autoSaveVoiceInvoices = enabled)
+                        tempSettings = newSettings
+                        onSaveSettings(newSettings)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = BrandOrange,
+                        checkedBorderColor = BrandOrange,
+                        uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.White,
+                        uncheckedTrackColor = if (isDarkMode) Color(0xFF222222) else Color(0xFFCCCCCC),
+                        uncheckedBorderColor = if (isDarkMode) Color(0xFF444444) else Color(0xFF999999)
+                    )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
         // APPEARANCE SECTION
         SettingsSection(title = "APPEARANCE") {
             Row(

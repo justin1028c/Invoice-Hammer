@@ -11,11 +11,13 @@ import com.fordham.toolbelt.domain.model.agent.NaturalLanguage
 import com.fordham.toolbelt.domain.repository.AgentLlmGateway
 import com.fordham.toolbelt.domain.repository.ForemanJobMemoryPort
 import com.fordham.toolbelt.domain.repository.GeminiRepository
+import com.fordham.toolbelt.domain.repository.SettingsRepository
 
 class GeminiAgentLlmGateway(
     private val geminiRepository: GeminiRepository,
     private val jobMemory: ForemanJobMemoryPort,
-    private val toolCallMapper: ForemanToolCallMapper
+    private val toolCallMapper: ForemanToolCallMapper,
+    private val settingsRepository: SettingsRepository
 ) : AgentLlmGateway {
 
     override suspend fun prompt(
@@ -29,10 +31,12 @@ class GeminiAgentLlmGateway(
             )
         }
 
+        val autoSaveEnabled = settingsRepository.getBusinessSettings().autoSaveVoiceInvoices
         val planner = ForemanPromptComposer.compose(
             systemPrompt = systemPrompt,
             session = session,
-            jobMemory = jobMemory
+            jobMemory = jobMemory,
+            autoSaveEnabled = autoSaveEnabled
         )
         if (planner.userInput.isBlank()) {
             return AgentOutcome.Failure(FailureMessage("Agent command cannot be blank."))

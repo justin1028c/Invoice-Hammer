@@ -38,6 +38,7 @@ import com.fordham.toolbelt.domain.repository.AgentLlmGateway
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
 import com.fordham.toolbelt.domain.repository.ToolRegistry
+import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.usecase.subscription.ConsumeTokenUseCase
 import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
 import com.fordham.toolbelt.util.PlatformActions
@@ -54,7 +55,8 @@ class RunForemanAgentUseCase(
     private val dispatchers: ForemanAgentDispatchers,
     private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase,
     private val consumeToken: ConsumeTokenUseCase,
-    private val platformActions: PlatformActions
+    private val platformActions: PlatformActions,
+    private val settingsRepository: SettingsRepository
 ) {
     suspend operator fun invoke(
         command: NaturalLanguage,
@@ -74,7 +76,8 @@ class RunForemanAgentUseCase(
         val workingSession = session.append(
             ForemanTurn(role = AgentRole.User, content = command, timestamp = timestamp)
         )
-        when (val route = ForemanCommandRouter.route(command.value)) {
+        val autoSaveEnabled = settingsRepository.getBusinessSettings().autoSaveVoiceInvoices
+        when (val route = ForemanCommandRouter.route(command.value, autoSaveEnabled)) {
             is ForemanRoute.LocalTab -> return@withContext runNavigationFastPath(
                 workingSession,
                 route.tab,
@@ -318,13 +321,16 @@ class RunForemanAgentUseCase(
                 session = sessionAfter
             )
         }
-        if (toolName == ToolName.QuickInvoice ||
-            toolName == ToolName.QuickClientAndInvoice ||
-            toolName == ToolName.QuickInvoiceFromUnbilledReceipts ||
-            toolName == ToolName.DuplicateLastInvoice ||
-            toolName == ToolName.SaveInvoiceFromDraft ||
-            toolName == ToolName.UpdateDraftInvoice ||
-            toolName == ToolName.AppendDraftLines
+        val autoSaveEnabled = settingsRepository.getBusinessSettings().autoSaveVoiceInvoices
+        if (toolName == ToolName.SaveInvoiceFromDraft ||
+            !autoSaveEnabled && (
+                toolName == ToolName.QuickInvoice ||
+                toolName == ToolName.QuickClientAndInvoice ||
+                toolName == ToolName.QuickInvoiceFromUnbilledReceipts ||
+                toolName == ToolName.DuplicateLastInvoice ||
+                toolName == ToolName.UpdateDraftInvoice ||
+                toolName == ToolName.AppendDraftLines
+            )
         ) {
             return ForemanAgentRun(
                 outcome = AgentOutcome.ToolChainExecuted(
@@ -346,6 +352,7 @@ class RunForemanAgentUseCase(
         var workingSession = initialSession
         var iterations = 0
         var pendingRetryTool: ToolName? = null
+        val executedCalls = mutableListOf<Pair<ToolName, ToolArguments>>()
 
         while (iterations < ForemanChainLimits.MAX_SAFE_STEPS_PER_COMMAND) {
             iterations++
@@ -412,6 +419,21 @@ class RunForemanAgentUseCase(
                     if (validationFailure != null) {
                         return ForemanAgentRun(validationFailure, workingSession)
                     }
+
+                    val callKey = Pair(outcome.toolName, outcome.arguments)
+                    if (executedCalls.count { it == callKey } >= 2) {
+                        return ForemanAgentRun(
+                            outcome = AgentOutcome.ToolChainExecuted(
+                                steps = completedSteps.toList(),
+                                finalMessage = NaturalLanguage(
+                                    "Detected a tool loop. Stopping execution to prevent runaway costs. " +
+                                    ForemanToolResultSummarizer.toUserSummary(completedSteps).value
+                                )
+                            ),
+                            session = workingSession
+                        )
+                    }
+                    executedCalls.add(callKey)
 
                     when (ForemanToolPolicy.safetyFor(outcome.toolName)) {
                         ToolSafety.RequiresApproval -> {
@@ -533,13 +555,16 @@ class RunForemanAgentUseCase(
                             workingSession = recordToolStep(
                                 workingSession, outcome, result, timestamp
                             )
-                            if (outcome.toolName == ToolName.QuickInvoice ||
-                                outcome.toolName == ToolName.QuickClientAndInvoice ||
-                                outcome.toolName == ToolName.QuickInvoiceFromUnbilledReceipts ||
-                                outcome.toolName == ToolName.DuplicateLastInvoice ||
-                                outcome.toolName == ToolName.SaveInvoiceFromDraft ||
-                                outcome.toolName == ToolName.UpdateDraftInvoice ||
-                                outcome.toolName == ToolName.AppendDraftLines
+                            val autoSaveEnabled = settingsRepository.getBusinessSettings().autoSaveVoiceInvoices
+                            if (outcome.toolName == ToolName.SaveInvoiceFromDraft ||
+                                !autoSaveEnabled && (
+                                    outcome.toolName == ToolName.QuickInvoice ||
+                                    outcome.toolName == ToolName.QuickClientAndInvoice ||
+                                    outcome.toolName == ToolName.QuickInvoiceFromUnbilledReceipts ||
+                                    outcome.toolName == ToolName.DuplicateLastInvoice ||
+                                    outcome.toolName == ToolName.UpdateDraftInvoice ||
+                                    outcome.toolName == ToolName.AppendDraftLines
+                                )
                             ) {
                                 return ForemanAgentRun(
                                     outcome = AgentOutcome.ToolChainExecuted(

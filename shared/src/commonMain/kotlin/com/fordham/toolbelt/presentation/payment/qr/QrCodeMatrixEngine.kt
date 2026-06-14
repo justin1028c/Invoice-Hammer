@@ -269,7 +269,7 @@ object QrCodeMatrixEngine {
         for (i in 0 until numBlocks) {
             val blockSize = shortBlockDataSize + (if (i >= numBlocks - numLongBlocks) 1 else 0)
             val subData = ByteArray(blockSize)
-            System.arraycopy(dataBytes, byteOffset, subData, 0, blockSize)
+            dataBytes.copyInto(destination = subData, destinationOffset = 0, startIndex = byteOffset, endIndex = byteOffset + blockSize)
             byteOffset += blockSize
 
             blockData[i] = subData

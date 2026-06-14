@@ -30,7 +30,9 @@ import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.repository.SubscriptionRepository
 import com.fordham.toolbelt.domain.repository.BillingRepository
+import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.repository.ToolRegistry
+import com.fordham.toolbelt.domain.model.BusinessSettings
 import com.fordham.toolbelt.domain.model.DraftInvoice
 import kotlinx.coroutines.flow.flowOf
 import com.fordham.toolbelt.domain.usecase.subscription.ConsumeTokenUseCase
@@ -58,9 +60,11 @@ class RunForemanAgentUseCaseTest {
     private val hasSubscriptionFeature = HasSubscriptionFeatureUseCase(subscriptionRepository)
     private val consumeToken = ConsumeTokenUseCase(billingRepository)
     private val platformActions = mockk<PlatformActions>(relaxed = true)
+    private val settingsRepository = mockk<SettingsRepository>(relaxed = true)
 
     init {
         coEvery { draftRepository.getDraft() } returns flowOf(DraftInvoice())
+        coEvery { settingsRepository.getBusinessSettings() } returns BusinessSettings()
     }
 
     private fun foremanUseCase(
@@ -78,7 +82,8 @@ class RunForemanAgentUseCaseTest {
             dispatchers,
             hasSubscriptionFeature,
             consumeToken,
-            platformActions
+            platformActions,
+            settingsRepository
         )
     }
 

@@ -98,7 +98,8 @@ object AgentSkillClassifier {
         // treat as Finance even if an address or contact keyword also appears.
         val hasFinanceIntent = query.containsAny(
             "invoice", "bill ", "charge", "estimate", "receipt", "draft",
-            "line item", "tax", "deposit", "send invoice", "same as last"
+            "line item", "tax", "deposit", "send invoice", "same as last",
+            "job site", "billing address", "invoice address", "client address"
         )
         if (hasFinanceIntent) return AgentSkill.FinanceSkills
 

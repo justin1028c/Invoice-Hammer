@@ -9,6 +9,8 @@ import com.fordham.toolbelt.domain.repository.GeminiRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 class AndroidVoiceAssistant(
     private val context: Context,
@@ -20,6 +22,8 @@ class AndroidVoiceAssistant(
     private var onResultCallback: ((VoiceTranscriptMeta) -> Unit)? = null
     private var onEndCallback: (() -> Unit)? = null
     private val scope = CoroutineScope(Dispatchers.Default)
+    private var currentSessionId = 0
+    private var silenceJob: Job? = null
 
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
@@ -67,13 +71,17 @@ class AndroidVoiceAssistant(
         onResult: (VoiceTranscriptMeta) -> Unit,
         onEnd: () -> Unit
     ) {
+        onResultCallback = null
+        onEndCallback = null
         stopListening(discard = true)
+
+        currentSessionId++
         onResultCallback = onResult
         onEndCallback = onEnd
 
         outputFile = File(context.cacheDir, "voice_command.m4a")
         try {
-            mediaRecorder = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            val recorder = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 MediaRecorder(context)
             } else {
                 @Suppress("DEPRECATION")
@@ -89,6 +97,34 @@ class AndroidVoiceAssistant(
                 prepare()
                 start()
             }
+            mediaRecorder = recorder
+
+            silenceJob = scope.launch(Dispatchers.Main) {
+                val silenceThreshold = 1200
+                val checkIntervalMs = 200L
+                val requiredSilenceDurationMs = 2500L
+                var consecutiveSilenceMs = 0L
+
+                delay(1500)
+
+                while (mediaRecorder != null) {
+                    delay(checkIntervalMs)
+                    val amplitude = try {
+                        mediaRecorder?.maxAmplitude ?: 0
+                    } catch (e: Exception) {
+                        0
+                    }
+                    if (amplitude < silenceThreshold) {
+                        consecutiveSilenceMs += checkIntervalMs
+                        if (consecutiveSilenceMs >= requiredSilenceDurationMs) {
+                            stopListening(discard = false)
+                            break
+                        }
+                    } else {
+                        consecutiveSilenceMs = 0L
+                    }
+                }
+            }
         } catch (e: Exception) {
             Log.e("VoiceAssistant", "Failed to start MediaRecorder", e)
             onEnd()
@@ -96,8 +132,29 @@ class AndroidVoiceAssistant(
     }
 
     override fun stopListening(discard: Boolean) {
-        val recorder = mediaRecorder ?: return
+        silenceJob?.cancel()
+        silenceJob = null
+
+        if (discard) {
+            currentSessionId++
+        }
+        val recorder = mediaRecorder
+        if (recorder == null) {
+            if (discard) {
+                onResultCallback = null
+                onEndCallback = null
+            }
+            return
+        }
         mediaRecorder = null
+
+        val sessionId = currentSessionId
+        val localResultCallback = onResultCallback
+        val localEndCallback = onEndCallback
+
+        onResultCallback = null
+        onEndCallback = null
+
         try {
             recorder.stop()
             recorder.release()
@@ -107,7 +164,7 @@ class AndroidVoiceAssistant(
 
         if (discard) {
             outputFile?.delete()
-            onEndCallback?.invoke()
+            localEndCallback?.invoke()
             return
         }
 
@@ -119,20 +176,28 @@ class AndroidVoiceAssistant(
                 when (val outcome = geminiRepository.transcribeAudio(bytes, "audio/mp4")) {
                     is com.fordham.toolbelt.domain.model.GeminiOutcome.Success -> {
                         val transcript = outcome.text
-                        onResultCallback?.invoke(VoiceTranscriptMeta(transcript, 1.0f))
+                        if (sessionId == currentSessionId) {
+                            localResultCallback?.invoke(VoiceTranscriptMeta(transcript, 1.0f))
+                        }
                     }
                     is com.fordham.toolbelt.domain.model.GeminiOutcome.Failure -> {
                         Log.e("VoiceAssistant", "Gemini transcription failed: ${outcome.error.value}")
                     }
                 }
-                onEndCallback?.invoke()
+                if (sessionId == currentSessionId) {
+                    localEndCallback?.invoke()
+                }
             }
         } else {
-            onEndCallback?.invoke()
+            if (sessionId == currentSessionId) {
+                localEndCallback?.invoke()
+            }
         }
     }
 
     override fun destroy() {
+        silenceJob?.cancel()
+        silenceJob = null
         stopListening(discard = true)
         tts?.stop()
         tts?.shutdown()

@@ -24,7 +24,7 @@ class KtorGeminiRepository(
     private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository
 ) : GeminiRepository {
 
-    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
     private val agentModelName = geminiConfig.agentModelName.also { check(it.isNotBlank()) { "Gemini agent model name is blank" } }
     private val taskModelName  = geminiConfig.taskModelName.ifBlank { geminiConfig.agentModelName }
 
@@ -72,6 +72,26 @@ class KtorGeminiRepository(
             "items" to GeminiSchema(type = "ARRAY", items = receiptItemSchema, description = "list of line items found on the receipt")
         ),
         required = listOf("items")
+    )
+
+    private val lineItemSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "description" to GeminiSchema(type = "STRING", description = "the service or product description"),
+            "amount" to GeminiSchema(type = "NUMBER", description = "the cost/amount of this line item"),
+            "category" to GeminiSchema(type = "STRING", description = "either 'Labor', 'Materials', or 'Service'")
+        ),
+        required = listOf("description", "amount", "category")
+    )
+
+    private val invoiceResponseSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "clientName" to GeminiSchema(type = "STRING", description = "the name of the client/customer"),
+            "clientAddress" to GeminiSchema(type = "STRING", description = "the billing address of the client"),
+            "items" to GeminiSchema(type = "ARRAY", items = lineItemSchema, description = "list of line items or charges")
+        ),
+        required = listOf("clientName", "clientAddress", "items")
     )
 
     override suspend fun processTask(type: TaskType, data: String): GeminiOutcome = try {
@@ -232,7 +252,13 @@ class KtorGeminiRepository(
 
             CRITICAL: Return ONLY raw JSON matching this schema. No explanation or code fences.
         """.trimIndent()
-        val response = callGemini(prompt, model = agentModelName, responseMimeType = "application/json")
+        val response = callGemini(
+            prompt = prompt,
+            model = agentModelName,
+            responseMimeType = "application/json",
+            temperature = 0.0f,
+            responseSchema = invoiceResponseSchema
+        )
         val resText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
         val cleaned = AiUtil.cleanJson(resText)
         try {

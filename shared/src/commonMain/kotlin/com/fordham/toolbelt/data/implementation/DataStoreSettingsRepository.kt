@@ -27,7 +27,8 @@ class DataStoreSettingsRepository(
             notificationsEnabled = prefs[NOTIFICATIONS] ?: true,
             biometricLockEnabled = prefs[BIOMETRIC_LOCK] ?: false,
             hammerCredits = prefs[HAMMER_CREDITS] ?: 0,
-            aiActionsUsedThisMonth = prefs[AI_ACTIONS_USED] ?: 0
+            aiActionsUsedThisMonth = prefs[AI_ACTIONS_USED] ?: 0,
+            autoSaveVoiceInvoices = prefs[AUTO_SAVE_VOICE_INVOICES] ?: false
         )
     }
 
@@ -50,6 +51,7 @@ class DataStoreSettingsRepository(
             prefs[BIOMETRIC_LOCK] = settings.biometricLockEnabled
             prefs[HAMMER_CREDITS] = settings.hammerCredits
             prefs[AI_ACTIONS_USED] = settings.aiActionsUsedThisMonth
+            prefs[AUTO_SAVE_VOICE_INVOICES] = settings.autoSaveVoiceInvoices
             settings.logoUri?.let { prefs[LOGO_URI] = it } ?: prefs.remove(LOGO_URI)
         }
 
@@ -74,6 +76,7 @@ class DataStoreSettingsRepository(
         private val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock_enabled")
         private val HAMMER_CREDITS = intPreferencesKey("hammer_credits")
         private val AI_ACTIONS_USED = intPreferencesKey("ai_actions_used_this_month")
+        private val AUTO_SAVE_VOICE_INVOICES = booleanPreferencesKey("auto_save_voice_invoices")
     }
 }
 

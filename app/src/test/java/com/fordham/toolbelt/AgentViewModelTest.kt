@@ -21,6 +21,7 @@ import com.fordham.toolbelt.domain.repository.BillingRepository
 import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.repository.SubscriptionRepository
+import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.model.DraftInvoice
 import kotlinx.coroutines.flow.flowOf
 import com.fordham.toolbelt.domain.repository.ToolRegistry
@@ -77,7 +78,9 @@ class AgentViewModelTest {
         val subscriptionRepository = mockk<SubscriptionRepository>(relaxed = true)
         val billingRepository = mockk<BillingRepository>(relaxed = true)
         val draftRepository = mockk<DraftRepository>(relaxed = true)
+        val settingsRepository = mockk<SettingsRepository>(relaxed = true)
         every { subscriptionRepository.hasFeature(SubscriptionFeature.ForemanAgent) } returns true
+        coEvery { settingsRepository.getBusinessSettings() } returns BusinessSettings()
         coEvery { billingRepository.consumeToken(PremiumFeature.FOREMAN_AGENT) } returns
             TokenConsumptionOutcome.Success(TokenCount(5))
         coEvery { draftRepository.getDraft() } returns flowOf(DraftInvoice())
@@ -89,7 +92,8 @@ class AgentViewModelTest {
             dispatchers = TestForemanAgentDispatchers(testDispatcher),
             hasSubscriptionFeature = HasSubscriptionFeatureUseCase(subscriptionRepository),
             consumeToken = ConsumeTokenUseCase(billingRepository),
-            platformActions = platformActions
+            platformActions = platformActions,
+            settingsRepository = settingsRepository
         )
         return AgentViewModel(
             ForemanOrchestrator(

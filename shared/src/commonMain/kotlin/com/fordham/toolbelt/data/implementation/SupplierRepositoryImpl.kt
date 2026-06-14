@@ -107,7 +107,7 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
     }
 
     override suspend fun togglePin(id: SupplierId, isPinned: Boolean): SupplierOutcome = try {
-        val supplier = supplierDao.getVisibleSuppliersOnce().find { it.id == id.value }
+        val supplier = supplierDao.getSupplierById(id.value)
         supplier?.let {
             supplierDao.insertSupplier(it.copy(isPinned = isPinned))
         }

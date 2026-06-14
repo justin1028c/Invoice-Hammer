@@ -27,14 +27,30 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GEMINI_AGENT_MODEL", "\"gemini-3.5-flash\"")
-        buildConfigField("String", "GEMINI_TASK_MODEL", "\"gemini-3.1-flash-lite\"")
-        buildConfigField(
-            "String",
-            "GOOGLE_CLIENT_ID",
-            "\"716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com\""
-        )
-
+        fun quotedProperty(key: String, fallback: String = ""): String {
+            val raw = localProperties.getProperty(key, fallback)
+            return "\"${raw.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+        }
+        buildConfigField("String", "GOOGLE_CLIENT_ID", quotedProperty("google.client.id", "716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com"))
+        buildConfigField("String", "POWERPAY_BASE_URL", quotedProperty("powerpay.base.url"))
+        buildConfigField("String", "POWERPAY_APP_ID", quotedProperty("powerpay.app.id"))
+        buildConfigField("String", "POWERPAY_PUBLIC_KEY", quotedProperty("powerpay.public.key"))
+        buildConfigField("String", "POWERPAY_SIGNING_SECRET", quotedProperty("powerpay.signing.secret"))
+        buildConfigField("String", "POWERPAY_ENV", quotedProperty("powerpay.env", "sandbox"))
+        buildConfigField("String", "POWERPAY_API_VARIANT", quotedProperty("powerpay.api.variant", "sdk"))
+        buildConfigField("String", "SUPABASE_URL", quotedProperty("supabase.url"))
+        buildConfigField("String", "SUPABASE_ANON_KEY", quotedProperty("supabase.anon.key"))
+        buildConfigField("String", "SUPABASE_SCHEMA", quotedProperty("supabase.schema", "public"))
+        buildConfigField("String", "STRIPE_PUBLISHABLE_KEY", quotedProperty("stripe.publishable.key"))
+        buildConfigField("String", "STRIPE_PAYMENT_BACKEND_URL", quotedProperty("stripe.payment.backend.url"))
+        buildConfigField("String", "STRIPE_CONNECT_ONBOARDING_URL", quotedProperty("stripe.connect.onboarding.url"))
+        buildConfigField("String", "STRIPE_BACKEND_API_KEY", quotedProperty("stripe.backend.api.key"))
+        buildConfigField("String", "STRIPE_APPLICATION_FEE_BPS", quotedProperty("stripe.application.fee.bps", "100"))
+        val geminiModelOverride = localProperties.getProperty("gemini.model.name", "gemini-3.5-flash")
+        buildConfigField("String", "FOREMAN_GEMINI_BACKEND_URL", quotedProperty("foreman.gemini.backend.url"))
+        buildConfigField("String", "FOREMAN_BACKEND_API_KEY", quotedProperty("foreman.backend.api.key"))
+        buildConfigField("String", "GEMINI_AGENT_MODEL_NAME", quotedProperty("gemini.agent.model.name", geminiModelOverride))
+        buildConfigField("String", "GEMINI_TASK_MODEL_NAME", quotedProperty("gemini.task.model.name", "gemini-3.1-flash-lite"))
     }
 
     signingConfigs {

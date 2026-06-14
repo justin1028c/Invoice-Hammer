@@ -51,21 +51,7 @@ fun initKoin(
 
 val dataModule = module {
     // Network
-    single {
-        HttpClient {
-            install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true
-                    coerceInputValues = true
-                })
-            }
-            install(HttpTimeout) {
-                requestTimeoutMillis = 60_000
-                connectTimeoutMillis = 30_000
-                socketTimeoutMillis = 30_000
-            }
-        }
-    }
+    single { platformHttpClient() }
 
     // Database & DAOs
     single { getRoomDatabase(get()) }
@@ -87,17 +73,24 @@ val dataModule = module {
     single<PhotoRepository> { RoomPhotoRepository(get()) }
     single<DraftRepository> { RoomDraftRepository(get()) }
     single<OcrRepository> { GeminiOcrRepository(get()) }
-    single { createDefaultForemanGeminiConfig() }
+    single { createDefaultForemanGeminiConfig(get()) }
     single<GeminiRepository> { KtorGeminiRepository(get(), get(), get(), get()) }
     single<ForemanJobMemoryPort> { RoomForemanJobMemoryAdapter(get()) }
     single { ForemanToolCallMapper(get(), get()) }
-    single<AgentLlmGateway> { GeminiAgentLlmGateway(get(), get(), get()) }
+    single<AgentLlmGateway> {
+        GeminiAgentLlmGateway(
+            geminiRepository = get(),
+            jobMemory = get(),
+            toolCallMapper = get(),
+            settingsRepository = get()
+        )
+    }
     single<ToolRegistry> {
         RepositoryToolRegistry(get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
     }
-    single { createDefaultPowerPayConfig() }
-    single { createDefaultSupabaseConfig() }
-    single { createDefaultStripeConfig() }
+    single { createDefaultPowerPayConfig(get()) }
+    single { createDefaultSupabaseConfig(get()) }
+    single { createDefaultStripeConfig(get()) }
     single<StripePaymentBackendClient> {
         val config = get<StripeConfig>()
         if (config.isBackendConfigured) {
@@ -130,7 +123,7 @@ val dataModule = module {
         RoutedPaymentRepository(get(), get(), get(), get(), get(), get())
     }
     single<DeepLinkDispatcher> { DeepLinkDispatcherImpl() }
-    single<StripeCheckoutRepository> { StripeCheckoutRepositoryImpl(get(), Dispatchers.IO) }
+    single<StripeCheckoutRepository> { StripeCheckoutRepositoryImpl(get(), get()) }
     single<PowerPayEventRepository> { PowerPayEventRepositoryImpl(get(), get()) }
     single<ForemanAgentDispatchers> {
         object : ForemanAgentDispatchers {
@@ -214,7 +207,18 @@ val useCaseModule = module {
     factory { GetClientFinancialSummaryUseCase(get(), get()) }
     factory { GetHiddenSuppliersUseCase(get()) }
     factory { GetSuppliersUseCase(get()) }
-    factory { RunForemanAgentUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    factory {
+        RunForemanAgentUseCase(
+            llmGateway = get(),
+            toolRegistry = get(),
+            draftRepository = get(),
+            dispatchers = get(),
+            hasSubscriptionFeature = get(),
+            consumeToken = get(),
+            platformActions = get(),
+            settingsRepository = get()
+        )
+    }
     single { CoroutineScope(SupervisorJob() + get<kotlinx.coroutines.CoroutineDispatcher>()) }
     single<ForemanSessionPersistencePort> { DataStoreForemanSessionPersistence(get()) }
     single { ForemanSessionStore(get(), get()) }

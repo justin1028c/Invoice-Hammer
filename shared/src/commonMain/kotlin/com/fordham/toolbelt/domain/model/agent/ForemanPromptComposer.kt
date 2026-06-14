@@ -16,7 +16,8 @@ object ForemanPromptComposer {
     suspend fun compose(
         systemPrompt: NaturalLanguage,
         session: ForemanSession,
-        jobMemory: ForemanJobMemoryPort
+        jobMemory: ForemanJobMemoryPort,
+        autoSaveEnabled: Boolean
     ): ForemanPlannerRequest {
         val userInput = ForemanSessionPromptBuilder.buildChainedInput(session).value
         val runtime = ForemanRuntimeBinding.current()
@@ -25,6 +26,9 @@ object ForemanPromptComposer {
 
         val contextBlock = buildString {
             append(systemPrompt.value)
+            if (autoSaveEnabled) {
+                append("\n\n[AUTO-SAVE SETTING IS ACTIVE] Direct invoice saving is enabled. When the user dictates a command to invoice, bill, or charge a client, you must NOT stop after creating the draft. Instead, you MUST execute a multi-step chain: first call QUICK_INVOICE or QUICK_CLIENT_AND_INVOICE to create the draft, and then immediately call SAVE_INVOICE_FROM_DRAFT in the next step to initiate the save and approval flow.")
+            }
             append("\n\n[ACTIVE SKILL INTERACTION] Active skill selected: ")
             append(skill::class.simpleName)
             append("\nSkill specific rules: ").append(skill.systemInstruction)

@@ -9,6 +9,7 @@ import com.fordham.toolbelt.domain.model.GeminiOutcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -36,6 +37,8 @@ class IosVoiceAssistant(
     private var onResultCallback: ((VoiceTranscriptMeta) -> Unit)? = null
     private var onEndCallback: (() -> Unit)? = null
     private val scope = CoroutineScope(Dispatchers.Default)
+    private var currentSessionId = 0
+    private var silenceJob: kotlinx.coroutines.Job? = null
 
     private fun runOnMain(block: () -> Unit) {
         dispatch_async(dispatch_get_main_queue()) {
@@ -89,7 +92,11 @@ class IosVoiceAssistant(
         onResult: (VoiceTranscriptMeta) -> Unit,
         onEnd: () -> Unit
     ) {
+        onResultCallback = null
+        onEndCallback = null
         stopListening(discard = true)
+
+        currentSessionId++
         onResultCallback = onResult
         onEndCallback = onEnd
 
@@ -122,9 +129,34 @@ class IosVoiceAssistant(
 
         try {
             val recorder = AVAudioRecorder(URL = url, settings = settings as Map<Any?, *>, error = null)
+            recorder.meteringEnabled = true
             audioRecorder = recorder
             recorder.prepareToRecord()
             recorder.record()
+
+            silenceJob = scope.launch(Dispatchers.Main) {
+                val checkIntervalMs = 200L
+                val requiredSilenceDurationMs = 2500L
+                var consecutiveSilenceMs = 0L
+
+                delay(1500)
+
+                while (audioRecorder != null) {
+                    delay(checkIntervalMs)
+                    val currentRecorder = audioRecorder ?: break
+                    currentRecorder.updateMeters()
+                    val power = currentRecorder.averagePowerForChannel(0.toULong())
+                    if (power < -40.0f) {
+                        consecutiveSilenceMs += checkIntervalMs
+                        if (consecutiveSilenceMs >= requiredSilenceDurationMs) {
+                            stopListening(discard = false)
+                            break
+                        }
+                    } else {
+                        consecutiveSilenceMs = 0L
+                    }
+                }
+            }
         } catch (e: Exception) {
             audioRecorder = null
             onEnd()
@@ -132,8 +164,29 @@ class IosVoiceAssistant(
     }
 
     override fun stopListening(discard: Boolean) {
-        val recorder = audioRecorder ?: return
+        silenceJob?.cancel()
+        silenceJob = null
+
+        if (discard) {
+            currentSessionId++
+        }
+        val recorder = audioRecorder
+        if (recorder == null) {
+            if (discard) {
+                onResultCallback = null
+                onEndCallback = null
+            }
+            return
+        }
         audioRecorder = null
+
+        val sessionId = currentSessionId
+        val localResultCallback = onResultCallback
+        val localEndCallback = onEndCallback
+
+        onResultCallback = null
+        onEndCallback = null
+
         try {
             recorder.stop()
         } catch (e: Exception) {
@@ -145,7 +198,7 @@ class IosVoiceAssistant(
             val filePath = tempDir + "voice_command.m4a"
             NSFileManager.defaultManager.removeItemAtPath(filePath, error = null)
             runOnMain {
-                onEndCallback?.invoke()
+                localEndCallback?.invoke()
             }
             return
         }
@@ -161,7 +214,9 @@ class IosVoiceAssistant(
                     is GeminiOutcome.Success -> {
                         val transcript = outcome.text
                         runOnMain {
-                            onResultCallback?.invoke(VoiceTranscriptMeta(transcript, 1.0f))
+                            if (sessionId == currentSessionId) {
+                                localResultCallback?.invoke(VoiceTranscriptMeta(transcript, 1.0f))
+                            }
                         }
                     }
                     is GeminiOutcome.Failure -> {
@@ -169,15 +224,23 @@ class IosVoiceAssistant(
                     }
                 }
                 runOnMain {
-                    onEndCallback?.invoke()
+                    if (sessionId == currentSessionId) {
+                        localEndCallback?.invoke()
+                    }
                 }
             }
         } else {
-            onEndCallback?.invoke()
+            runOnMain {
+                if (sessionId == currentSessionId) {
+                    localEndCallback?.invoke()
+                }
+            }
         }
     }
 
     override fun destroy() {
+        silenceJob?.cancel()
+        silenceJob = null
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundaryImmediate)
         val recorder = audioRecorder
         audioRecorder = null

@@ -26,4 +26,8 @@ class PlatformActionsBridge: NSObject, IosPlatformActionsBridge {
             onSuccess(idToken)
         }
     }
+
+    func getJpegData(image: UIImage, compressionQuality: Double) -> Data? {
+        return image.jpegData(compressionQuality: CGFloat(compressionQuality))
+    }
 }

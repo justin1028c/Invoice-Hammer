@@ -16,6 +16,7 @@ fun getIosDatabaseBuilder(passphrase: String): RoomDatabase.Builder<AppDatabase>
     val escapedPassphrase = passphrase.replace("'", "''")
     return Room.databaseBuilder<AppDatabase>(
         name = dbFile,
+        factory = { AppDatabaseConstructor.initialize() }
     ).setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .addMigrations(MIGRATION_19_20)

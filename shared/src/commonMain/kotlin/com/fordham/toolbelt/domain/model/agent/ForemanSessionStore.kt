@@ -21,7 +21,7 @@ class ForemanSessionStore(
     var lastSystemPrompt: String = ""
         private set
 
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var restored = false
 
     suspend fun ensureRestored() {

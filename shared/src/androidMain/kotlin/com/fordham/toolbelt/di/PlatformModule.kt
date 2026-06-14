@@ -2,6 +2,15 @@ package com.fordham.toolbelt.di
 
 import android.content.Context
 import androidx.room.RoomDatabase
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+import okhttp3.ConnectionSpec
+import okhttp3.TlsVersion
+import io.ktor.client.request.HttpRequestPipeline
+import io.ktor.http.URLProtocol
 import com.fordham.toolbelt.data.AppDatabase
 import com.fordham.toolbelt.domain.repository.BentoReportGenerator
 import com.fordham.toolbelt.pdf.AndroidBentoReportGenerator
@@ -65,3 +74,34 @@ actual fun platformModule(): Module = module {
     single<TapToPayGateway> { AndroidTapToPayGateway(get()) }
     single<BluetoothCardReaderGateway> { AndroidBluetoothCardReaderGateway() }
 }
+
+actual fun platformHttpClient(): HttpClient {
+    val client = HttpClient(io.ktor.client.engine.okhttp.OkHttp) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                coerceInputValues = true
+            })
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 60_000
+            connectTimeoutMillis = 30_000
+            socketTimeoutMillis = 30_000
+        }
+        engine {
+            config {
+                val spec = ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+                    .tlsVersions(TlsVersion.TLS_1_3)
+                    .build()
+                connectionSpecs(listOf(spec))
+            }
+        }
+    }
+    client.requestPipeline.intercept(HttpRequestPipeline.Before) {
+        if (context.url.protocol == URLProtocol.HTTP) {
+            context.url.protocol = URLProtocol.HTTPS
+        }
+    }
+    return client
+}
+

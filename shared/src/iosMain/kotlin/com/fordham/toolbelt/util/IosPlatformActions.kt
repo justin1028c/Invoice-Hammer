@@ -325,7 +325,7 @@ class ImagePickerDelegate(
     ) {
         val image = didFinishPickingMediaWithInfo[UIImagePickerControllerOriginalImage] as? UIImage
         if (image != null) {
-            val data = image.jpegData(compressionQuality = 0.8)
+            val data = IosPlatformActionsServiceProvider.bridge?.getJpegData(image, 0.8)
             val tempDir = NSTemporaryDirectory()
             val fileName = NSUUID().UUIDString() + ".jpg"
             val path = tempDir + fileName

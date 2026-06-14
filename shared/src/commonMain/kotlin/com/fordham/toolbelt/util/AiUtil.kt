@@ -41,6 +41,9 @@ object AiUtil {
             cleaned = cleaned.substring(start, end + 1)
         }
         
+        // Remove trailing commas before closing braces/brackets to avoid parsing exceptions
+        cleaned = cleaned.replace(",\\s*([}\\u005D])".toRegex(), "$1")
+        
         return cleaned
     }
 }

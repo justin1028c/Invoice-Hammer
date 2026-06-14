@@ -9,8 +9,13 @@ struct iOSApp: App {
     private static let notificationDelegate = NotificationNavigationDelegate()
 
     init() {
-        // Initialize Firebase
-        FirebaseApp.configure()
+        // Initialize Firebase with safety guards
+        guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
+            fatalError("GoogleService-Info.plist is missing from the iOS application bundle.")
+        }
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
         UNUserNotificationCenter.current().delegate = Self.notificationDelegate
         
         // Register iOS-specific bridges before Koin can resolve platform services.
