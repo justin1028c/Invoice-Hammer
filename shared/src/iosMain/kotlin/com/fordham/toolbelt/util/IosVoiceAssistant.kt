@@ -275,7 +275,7 @@ class IosVoiceAssistant(
 
             silenceJob = scope.launch(Dispatchers.Main) {
                 val checkIntervalMs = 200L
-                val requiredSilenceDurationMs = 1200L
+                val requiredSilenceDurationMs = 3000L
                 var consecutiveSilenceMs = 0L
 
                 delay(1000)

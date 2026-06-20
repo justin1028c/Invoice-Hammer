@@ -131,6 +131,8 @@ class AndroidVoiceAssistant(
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                         val locale = if (AppLocale.fromSystem() == AppLocale.Spanish) "es-ES" else "en-US"
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
                     }
 
                     val sessionId = currentSessionId
@@ -223,7 +225,7 @@ class AndroidVoiceAssistant(
             silenceJob = scope.launch(Dispatchers.Main) {
                 val silenceThreshold = 1200
                 val checkIntervalMs = 200L
-                val requiredSilenceDurationMs = 1200L
+                val requiredSilenceDurationMs = 3000L
                 var consecutiveSilenceMs = 0L
 
                 delay(1000)
