@@ -36,6 +36,11 @@ class AndroidVoiceAssistant(
     private var speechRecognizer: SpeechRecognizer? = null
     private var isRecognizerListening = false
 
+    // Multi-segment silence-aware state tracking variables
+    private var accumulatedText = ""
+    private var lastSpeechTimestamp = 0L
+    private var isFinalizing = false
+
     init {
         tts = TextToSpeech(context, this)
     }
@@ -85,6 +90,9 @@ class AndroidVoiceAssistant(
         onEnd: () -> Unit,
         onPartialResult: (String) -> Unit
     ) {
+        accumulatedText = ""
+        isFinalizing = false
+        lastSpeechTimestamp = System.currentTimeMillis()
         onResultCallback = null
         onEndCallback = null
         stopListening(discard = true)
@@ -131,19 +139,50 @@ class AndroidVoiceAssistant(
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                         val locale = if (AppLocale.fromSystem() == AppLocale.Spanish) "es-ES" else "en-US"
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale)
+                        // Standard values (may be ignored by Google recognition engine, hence our loop wrapper)
                         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L)
                         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
                     }
 
                     val sessionId = currentSessionId
+
+                    // Launch or resume the absolute silence checking coroutine
+                    if (silenceJob == null || silenceJob?.isCompleted == true) {
+                        silenceJob = scope.launch(Dispatchers.Main) {
+                            val checkInterval = 200L
+                            val maxSilenceMs = 3500L
+                            while (currentSessionId == sessionId && !isFinalizing) {
+                                delay(checkInterval)
+                                val elapsed = System.currentTimeMillis() - lastSpeechTimestamp
+                                if (elapsed >= maxSilenceMs) {
+                                    Log.d("VoiceAssistant", "Silence limit of ${maxSilenceMs}ms reached, finalizing speech recognition.")
+                                    isFinalizing = true
+                                    stopListening(discard = false)
+                                    break
+                                }
+                            }
+                        }
+                    }
+
                     recognizer.setRecognitionListener(object : RecognitionListener {
                         override fun onReadyForSpeech(params: Bundle?) {
                             Log.d("VoiceAssistant", "SpeechRecognizer: onReadyForSpeech")
+                            if (sessionId == currentSessionId) {
+                                lastSpeechTimestamp = System.currentTimeMillis()
+                            }
                         }
                         override fun onBeginningOfSpeech() {
                             Log.d("VoiceAssistant", "SpeechRecognizer: onBeginningOfSpeech")
+                            if (sessionId == currentSessionId) {
+                                lastSpeechTimestamp = System.currentTimeMillis()
+                            }
                         }
-                        override fun onRmsChanged(rmsdB: Float) {}
+                        override fun onRmsChanged(rmsdB: Float) {
+                            // If rmsdB is elevated, treat it as active input activity
+                            if (rmsdB > 3.0f && sessionId == currentSessionId) {
+                                lastSpeechTimestamp = System.currentTimeMillis()
+                            }
+                        }
                         override fun onBufferReceived(buffer: ByteArray?) {}
                         override fun onEndOfSpeech() {
                             Log.d("VoiceAssistant", "SpeechRecognizer: onEndOfSpeech")
@@ -163,8 +202,29 @@ class AndroidVoiceAssistant(
                             }
                             Log.e("VoiceAssistant", "SpeechRecognizer error: $msg")
                             isRecognizerListening = false
+
                             if (sessionId == currentSessionId) {
-                                onEnd()
+                                val elapsed = System.currentTimeMillis() - lastSpeechTimestamp
+                                val isTransient = error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
+                                                  error == SpeechRecognizer.ERROR_NO_MATCH ||
+                                                  error == SpeechRecognizer.ERROR_NETWORK ||
+                                                  error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT ||
+                                                  error == SpeechRecognizer.ERROR_CLIENT
+
+                                if (!isFinalizing && elapsed < 3500L && isTransient) {
+                                    Log.d("VoiceAssistant", "Restarting recognizer due to transient/silence error: $msg")
+                                    scope.launch(Dispatchers.Main) {
+                                        delay(100)
+                                        if (sessionId == currentSessionId && !isFinalizing) {
+                                            startSpeechRecognizerListening(onResult, onEnd, onPartialResult)
+                                        }
+                                    }
+                                } else {
+                                    isFinalizing = true
+                                    val finalCombined = accumulatedText
+                                    onResult(VoiceTranscriptMeta(finalCombined, 1.0f))
+                                    onEnd()
+                                }
                             }
                         }
                         override fun onResults(results: Bundle?) {
@@ -172,9 +232,28 @@ class AndroidVoiceAssistant(
                             val text = matches?.firstOrNull() ?: ""
                             Log.d("VoiceAssistant", "SpeechRecognizer results: $text")
                             isRecognizerListening = false
+
                             if (sessionId == currentSessionId) {
-                                onResult(VoiceTranscriptMeta(text, 1.0f))
-                                onEnd()
+                                val finalCombined = if (accumulatedText.isEmpty()) {
+                                    text
+                                } else {
+                                    if (text.isNotEmpty()) "$accumulatedText $text" else accumulatedText
+                                }
+
+                                val elapsed = System.currentTimeMillis() - lastSpeechTimestamp
+                                if (isFinalizing || elapsed >= 3500L) {
+                                    isFinalizing = true
+                                    onResult(VoiceTranscriptMeta(finalCombined, 1.0f))
+                                    onEnd()
+                                } else {
+                                    accumulatedText = finalCombined
+                                    Log.d("VoiceAssistant", "Segment complete. Restarting recognizer. Current accumulated: $accumulatedText")
+                                    scope.launch(Dispatchers.Main) {
+                                        if (sessionId == currentSessionId && !isFinalizing) {
+                                            startSpeechRecognizerListening(onResult, onEnd, onPartialResult)
+                                        }
+                                    }
+                                }
                             }
                         }
                         override fun onPartialResults(partialResults: Bundle?) {
@@ -182,7 +261,9 @@ class AndroidVoiceAssistant(
                             val text = matches?.firstOrNull() ?: ""
                             if (text.isNotBlank() && sessionId == currentSessionId) {
                                 Log.d("VoiceAssistant", "SpeechRecognizer partial results: $text")
-                                onPartialResult(text)
+                                lastSpeechTimestamp = System.currentTimeMillis()
+                                val combined = if (accumulatedText.isEmpty()) text else "$accumulatedText $text"
+                                onPartialResult(combined)
                             }
                         }
                         override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -258,6 +339,14 @@ class AndroidVoiceAssistant(
         silenceJob?.cancel()
         silenceJob = null
 
+        if (!discard) {
+            isFinalizing = true
+        } else {
+            currentSessionId++
+            accumulatedText = ""
+            isFinalizing = false
+        }
+
         if (isRecognizerListening) {
             isRecognizerListening = false
             scope.launch(Dispatchers.Main) {
@@ -270,9 +359,6 @@ class AndroidVoiceAssistant(
             return
         }
 
-        if (discard) {
-            currentSessionId++
-        }
         val recorder = mediaRecorder
         if (recorder == null) {
             if (discard) {
@@ -305,7 +391,7 @@ class AndroidVoiceAssistant(
 
         val file = outputFile ?: return
         if (file.exists()) {
-            scope.launch {
+            scope.launch(Dispatchers.Default) {
                 val bytes = file.readBytes()
                 when (val outcome = geminiRepository.transcribeAudio(bytes, "audio/mp4")) {
                     is com.fordham.toolbelt.domain.model.GeminiOutcome.Success -> {
