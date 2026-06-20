@@ -73,8 +73,7 @@ fun buildForemanSystemPrompt(
         append("If multiple clients match, the app will ask the user to pick — run SEARCH_CLIENTS first. ")
         append("Delete/Send require explicit user request.")
         
-        // Dynamic active context entities from session
-        append(ForemanSessionReducer.formatForContext(session))
+        // Note: Dynamic active context entities from session are appended in ForemanPromptComposer in shared.
 
         // Inject speech alternatives if voice recognition confidence is low
         val meta = voiceTranscriptMeta
