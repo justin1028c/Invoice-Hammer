@@ -44,6 +44,14 @@ object StripePaymentSheetCoordinator {
             )
         }
         pendingContinuation = continuation
-        sheet.presentWithPaymentIntent(clientSecret)
+        val googlePayConfig = PaymentSheet.GooglePayConfiguration(
+            environment = PaymentSheet.GooglePayConfiguration.Environment.Test,
+            countryCode = "US"
+        )
+        val configuration = PaymentSheet.Configuration(
+            merchantDisplayName = "Invoice Hammer",
+            googlePay = googlePayConfig
+        )
+        sheet.presentWithPaymentIntent(clientSecret, configuration)
     }
 }

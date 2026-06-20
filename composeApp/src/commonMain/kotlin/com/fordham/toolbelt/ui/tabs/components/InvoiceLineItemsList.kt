@@ -18,7 +18,10 @@ import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
 import com.fordham.toolbelt.domain.model.BusinessSettings
 import com.fordham.toolbelt.domain.model.LineItem
 import com.fordham.toolbelt.ui.components.TacticalButton
+import com.fordham.toolbelt.ui.localizeInvoiceCategory
 import com.fordham.toolbelt.util.DateTimeUtil
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun InvoiceLineItemsList(
@@ -34,14 +37,22 @@ fun InvoiceLineItemsList(
     onAddManualLineItem: () -> Unit,
     onRemoveLineItem: (LineItem) -> Unit
 ) {
+    val lineItemsTitle = stringResource(Res.string.line_items)
+    val linkUnbilledText = stringResource(Res.string.link_unbilled)
+    val descriptionLabel = stringResource(Res.string.description_label)
+    val priceLabel = stringResource(Res.string.price_label)
+    val aiFillText = stringResource(Res.string.ai_fill)
+    val addItemText = stringResource(Res.string.add_item)
+    val lineItemsEmptyText = stringResource(Res.string.line_items_empty)
+
     Column {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("LINE ITEMS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
+            Text(lineItemsTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
             if (uiState.availableReceipts.isNotEmpty()) {
                 TextButton(onClick = { onSetReceiptPickerVisible(true) }) {
                     Icon(Icons.Default.Link, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("LINK UNBILLED", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                    Text(linkUnbilledText, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -53,7 +64,7 @@ fun InvoiceLineItemsList(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) {
-                        Text(uiState.selectedCategory.uppercase(), fontWeight = FontWeight.Black)
+                        Text(localizeInvoiceCategory(uiState.selectedCategory).uppercase(), fontWeight = FontWeight.Black)
                     }
                     DropdownMenu(
                         expanded = uiState.showCategoryDropdown,
@@ -61,7 +72,7 @@ fun InvoiceLineItemsList(
                     ) {
                         categories.forEach { category ->
                             DropdownMenuItem(
-                                text = { Text(category.uppercase(), fontWeight = FontWeight.Bold) },
+                                text = { Text(localizeInvoiceCategory(category).uppercase(), fontWeight = FontWeight.Bold) },
                                 onClick = { 
                                     onCategoryChange(category)
                                     onSetInvoiceCategoryDropdownVisible(false)
@@ -73,7 +84,7 @@ fun InvoiceLineItemsList(
                 OutlinedTextField(
                     value = uiState.itemDesc,
                     onValueChange = { onItemDescChange(it) },
-                    label = { Text("DESCRIPTION", fontWeight = FontWeight.Black) },
+                    label = { Text(descriptionLabel, fontWeight = FontWeight.Black) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(4.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -88,7 +99,7 @@ fun InvoiceLineItemsList(
                     OutlinedTextField(
                         value = uiState.itemAmt,
                         onValueChange = { onItemAmtChange(it) },
-                        label = { Text("PRICE ($)", fontWeight = FontWeight.Black) },
+                        label = { Text(priceLabel, fontWeight = FontWeight.Black) },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         shape = RoundedCornerShape(4.dp),
@@ -104,14 +115,14 @@ fun InvoiceLineItemsList(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         TacticalButton(
                             onClick = { onProcessInvoiceAi(categories) },
-                            text = if (uiState.isProcessingAi) "" else "AI FILL",
+                            text = if (uiState.isProcessingAi) "" else aiFillText,
                             enabled = !uiState.isProcessingAi && uiState.itemDesc.length > 5 && businessSettings.isPremium,
                             containerColor = MaterialTheme.colorScheme.primary,
                             icon = { if (uiState.isProcessingAi) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) else Icon(Icons.Default.AutoAwesome, null) }
                         )
                     }
                 }
-                TacticalButton(onClick = { onAddManualLineItem() }, text = "ADD ITEM", modifier = Modifier.align(Alignment.End), containerColor = MaterialTheme.colorScheme.secondary, enabled = uiState.canAddManual)
+                TacticalButton(onClick = { onAddManualLineItem() }, text = addItemText, modifier = Modifier.align(Alignment.End), containerColor = MaterialTheme.colorScheme.secondary, enabled = uiState.canAddManual)
             }
         }
         uiState.lineItems.forEach { item ->
@@ -124,7 +135,7 @@ fun InvoiceLineItemsList(
         }
         if (uiState.lineItems.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Text("No items yet. Add labor, parts, or use AI Fill.", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f), fontWeight = FontWeight.Bold)
+                Text(lineItemsEmptyText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f), fontWeight = FontWeight.Bold)
             }
         }
     }

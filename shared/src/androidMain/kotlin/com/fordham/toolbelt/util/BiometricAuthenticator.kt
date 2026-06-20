@@ -33,7 +33,7 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
             setSubtitle(subtitle)
             if (cipher != null) {
                 setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                setNegativeButtonText("Cancel")
+                setNegativeButtonText(UserFacingCopy.Common.cancel())
             } else {
                 setAllowedAuthenticators(
                     BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -46,7 +46,7 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
                 super.onAuthenticationSucceeded(result)
                 val authenticatedCipher = result.cryptoObject?.cipher
                 if (cipher != null && authenticatedCipher == null) {
-                    onError("Cryptographic authentication failed")
+                    onError(UserFacingCopy.Platform.cryptographicAuthFailed())
                     return
                 }
                 try {
@@ -55,7 +55,7 @@ class BiometricAuthenticator(private val activity: FragmentActivity) {
                     onSuccess()
                 } catch (e: Exception) {
                     AppLogger.e("BiometricAuthenticator", "Mock encryption verification failed", e)
-                    onError("Biometric verification failed: ${e.message}")
+                    onError(UserFacingCopy.Platform.biometricVerificationFailed(e.message))
                 }
             }
 

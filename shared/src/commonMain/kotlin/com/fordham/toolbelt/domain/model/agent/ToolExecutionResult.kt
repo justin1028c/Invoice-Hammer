@@ -196,6 +196,36 @@ sealed interface ToolExecutionResult {
         override val toolName: ToolName = ToolName.OpenSupplier
     }
 
+    data class GetProfitGuardianStatusCompleted(
+        val status: ProfitGuardianStatus,
+        override val uiEffects: List<AgentUiEffect> = emptyList()
+    ) : ToolExecutionResult {
+        override val toolName: ToolName = ToolName.GetProfitGuardianStatus
+    }
+
+    data class DetectChangeOrdersCompleted(
+        val opportunities: List<ChangeOrderOpportunity>,
+        override val uiEffects: List<AgentUiEffect> = emptyList()
+    ) : ToolExecutionResult {
+        override val toolName: ToolName = ToolName.DetectChangeOrders
+    }
+
+    data class GetDailyBriefingCompleted(
+        val briefing: DailyBriefing,
+        override val uiEffects: List<AgentUiEffect> = emptyList()
+    ) : ToolExecutionResult {
+        override val toolName: ToolName = ToolName.GetDailyBriefing
+    }
+
+    data class CreateChangeOrderCompleted(
+        val invoiceId: InvoiceId,
+        val description: NaturalLanguage,
+        val amount: Double,
+        override val uiEffects: List<AgentUiEffect> = emptyList()
+    ) : ToolExecutionResult {
+        override val toolName: ToolName = ToolName.CreateChangeOrder
+    }
+
     data class Failure(
         override val toolName: ToolName,
         val error: FailureMessage,

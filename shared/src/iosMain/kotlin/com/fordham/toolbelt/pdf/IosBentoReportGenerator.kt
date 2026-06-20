@@ -2,6 +2,7 @@ package com.fordham.toolbelt.pdf
 
 import com.fordham.toolbelt.domain.model.BentoReportData
 import com.fordham.toolbelt.domain.repository.BentoReportGenerator
+import com.fordham.toolbelt.util.UserFacingCopy
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSFileManager
@@ -48,12 +49,15 @@ class IosBentoReportGenerator : BentoReportGenerator {
             val headerPath = platform.UIKit.UIBezierPath.bezierPathWithRoundedRect(headerRect, cornerRadius = 8.0)
             headerPath.fill()
 
+            val bento = UserFacingCopy.Bento
+            val dateStr = com.fordham.toolbelt.util.DateTimeUtil.getNowFormatted()
+
             // Header Text - Left
             val titleLabelAttrs = mapOf<Any?, Any?>(
                 platform.UIKit.NSFontAttributeName to UIFont.boldSystemFontOfSize(10.0),
                 platform.UIKit.NSForegroundColorAttributeName to UIColor.whiteColor
             )
-            ("INVOICE HAMMER" as NSString).drawAtPoint(
+            (UserFacingCopy.Pdf.defaultBusinessName() as NSString).drawAtPoint(
                 platform.CoreGraphics.CGPointMake(60.0, 50.0),
                 withAttributes = titleLabelAttrs
             )
@@ -62,7 +66,7 @@ class IosBentoReportGenerator : BentoReportGenerator {
                 platform.UIKit.NSFontAttributeName to UIFont.boldSystemFontOfSize(18.0),
                 platform.UIKit.NSForegroundColorAttributeName to UIColor.whiteColor
             )
-            ("Bento Business Report" as NSString).drawAtPoint(
+            (bento.reportTitle() as NSString).drawAtPoint(
                 platform.CoreGraphics.CGPointMake(60.0, 72.0),
                 withAttributes = titleAttrs
             )
@@ -72,17 +76,16 @@ class IosBentoReportGenerator : BentoReportGenerator {
                 platform.UIKit.NSFontAttributeName to UIFont.systemFontOfSize(8.0),
                 platform.UIKit.NSForegroundColorAttributeName to colorFromHex("#94A3B8")
             )
-            ("FINANCIAL YEAR YTD" as NSString).drawAtPoint(
+            (bento.financialYearYtd() as NSString).drawAtPoint(
                 platform.CoreGraphics.CGPointMake(400.0, 50.0),
                 withAttributes = rightLabelAttrs
             )
 
-            val dateStr = com.fordham.toolbelt.util.DateTimeUtil.getNowFormatted()
             val dateAttrs = mapOf<Any?, Any?>(
                 platform.UIKit.NSFontAttributeName to UIFont.systemFontOfSize(10.0),
                 platform.UIKit.NSForegroundColorAttributeName to UIColor.whiteColor
             )
-            ("Generated: $dateStr" as NSString).drawAtPoint(
+            (bento.generated(dateStr) as NSString).drawAtPoint(
                 platform.CoreGraphics.CGPointMake(400.0, 70.0),
                 withAttributes = dateAttrs
             )
@@ -98,16 +101,16 @@ class IosBentoReportGenerator : BentoReportGenerator {
             drawCard(
                 left = 45.0, top = 130.0, width = 240.0, height = 120.0,
                 bgColor = colorFromHex("#DCFCE7"), borderColor = colorFromHex("#86EFAC"),
-                title = "NET PROFIT YTD", titleColor = colorFromHex("#166534"),
+                title = bento.netProfitYtd(), titleColor = colorFromHex("#166534"),
                 value = formatCurrency(data.netProfit), valueColor = colorFromHex("#15803D"), valueSize = 20.0,
-                subtext = "Status: Profitable YTD", subtextColor = colorFromHex("#15803D")
+                subtext = bento.profitableStatus(), subtextColor = colorFromHex("#15803D")
             )
 
             // Card 2: Gross Income
             drawCard(
                 left = 310.0, top = 130.0, width = 240.0, height = 55.0,
                 bgColor = colorFromHex("#DBEAFE"), borderColor = colorFromHex("#BFDBFE"),
-                title = "GROSS INCOME", titleColor = colorFromHex("#1E3A8A"),
+                title = bento.grossIncome(), titleColor = colorFromHex("#1E3A8A"),
                 value = formatCurrency(data.grossIncome), valueColor = colorFromHex("#1D4ED8"), valueSize = 14.0,
                 subtext = null, subtextColor = null
             )
@@ -116,7 +119,7 @@ class IosBentoReportGenerator : BentoReportGenerator {
             drawCard(
                 left = 310.0, top = 195.0, width = 240.0, height = 55.0,
                 bgColor = colorFromHex("#F3E8FF"), borderColor = colorFromHex("#E9D5FF"),
-                title = "PROFIT MARGIN", titleColor = colorFromHex("#581C87"),
+                title = bento.profitMargin(), titleColor = colorFromHex("#581C87"),
                 value = "$marginPercent%", valueColor = colorFromHex("#7E22CE"), valueSize = 14.0,
                 subtext = null, subtextColor = null
             )
@@ -125,7 +128,7 @@ class IosBentoReportGenerator : BentoReportGenerator {
             drawCard(
                 left = 45.0, top = 265.0, width = 240.0, height = 70.0,
                 bgColor = colorFromHex("#FEE2E2"), borderColor = colorFromHex("#FCA5A5"),
-                title = "TOTAL EXPENSES", titleColor = colorFromHex("#991B1B"),
+                title = bento.totalExpenses(), titleColor = colorFromHex("#991B1B"),
                 value = formatCurrency(data.expenses), valueColor = colorFromHex("#B91C1C"), valueSize = 14.0,
                 subtext = null, subtextColor = null
             )
@@ -134,9 +137,9 @@ class IosBentoReportGenerator : BentoReportGenerator {
             drawCard(
                 left = 310.0, top = 265.0, width = 240.0, height = 70.0,
                 bgColor = colorFromHex("#F8FAFC"), borderColor = colorFromHex("#E2E8F0"),
-                title = "OPERATIONS SUMMARY", titleColor = colorFromHex("#475569"),
-                value = "${data.invoices.size} Invoices | ${data.receiptCount} Receipts", valueColor = colorFromHex("#1E293B"), valueSize = 12.0,
-                subtext = "Clean audit trail active", subtextColor = colorFromHex("#64748B")
+                title = bento.operationsSummary(), titleColor = colorFromHex("#475569"),
+                value = bento.operationsValue(data.invoices.size, data.receiptCount), valueColor = colorFromHex("#1E293B"), valueSize = 12.0,
+                subtext = bento.cleanAuditTrail(), subtextColor = colorFromHex("#64748B")
             )
 
             // Recent Invoices Table Header
@@ -144,7 +147,7 @@ class IosBentoReportGenerator : BentoReportGenerator {
                 platform.UIKit.NSFontAttributeName to UIFont.boldSystemFontOfSize(11.0),
                 platform.UIKit.NSForegroundColorAttributeName to colorFromHex("#334155")
             )
-            ("RECENT PAID INVOICES" as NSString).drawAtPoint(
+            (bento.recentPaidInvoices() as NSString).drawAtPoint(
                 platform.CoreGraphics.CGPointMake(45.0, 355.0),
                 withAttributes = tableTitleAttrs
             )
@@ -159,10 +162,10 @@ class IosBentoReportGenerator : BentoReportGenerator {
                 platform.UIKit.NSFontAttributeName to UIFont.boldSystemFontOfSize(9.0),
                 platform.UIKit.NSForegroundColorAttributeName to colorFromHex("#475569")
             )
-            ("Date" as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(55.0, 380.0), withAttributes = tableHeaderAttrs)
-            ("Client" as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(140.0, 380.0), withAttributes = tableHeaderAttrs)
-            ("Description" as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(260.0, 380.0), withAttributes = tableHeaderAttrs)
-            ("Amount" as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(480.0, 380.0), withAttributes = tableHeaderAttrs)
+            (bento.tableDate() as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(55.0, 380.0), withAttributes = tableHeaderAttrs)
+            (bento.tableClient() as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(140.0, 380.0), withAttributes = tableHeaderAttrs)
+            (bento.tableDescription() as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(260.0, 380.0), withAttributes = tableHeaderAttrs)
+            (bento.tableAmount() as NSString).drawAtPoint(platform.CoreGraphics.CGPointMake(480.0, 380.0), withAttributes = tableHeaderAttrs)
 
             // Table Rows
             var y = 405.0
@@ -202,7 +205,7 @@ class IosBentoReportGenerator : BentoReportGenerator {
                     platform.UIKit.NSFontAttributeName to UIFont.systemFontOfSize(8.0),
                     platform.UIKit.NSForegroundColorAttributeName to colorFromHex("#64748B")
                 )
-                ("+ ${sortedInvoices.size - maxRows} more paid invoices recorded YTD" as NSString).drawAtPoint(
+                (bento.morePaidInvoices(sortedInvoices.size - maxRows) as NSString).drawAtPoint(
                     platform.CoreGraphics.CGPointMake(45.0, y + 10.0),
                     withAttributes = footerAttrs
                 )

@@ -146,6 +146,10 @@ class AgentViewModel(
         _uiState.update { it.copy(isListening = listening) }
     }
 
+    fun updateTranscript(text: String) {
+        _uiState.update { it.copy(transcript = text) }
+    }
+
     fun clearAgentResponse() {
         activeCommandJob?.cancel()
         activeCommandJob = null

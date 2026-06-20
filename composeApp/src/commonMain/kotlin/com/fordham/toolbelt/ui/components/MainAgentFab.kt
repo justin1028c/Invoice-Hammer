@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MainAgentFab(
@@ -42,6 +44,11 @@ fun MainAgentFab(
     onPremiumRequired: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val listeningText = stringResource(Res.string.listening)
+    val askAiText = stringResource(Res.string.ask_ai)
+    val stopGeminiCd = stringResource(Res.string.stop_gemini_ai_cd)
+    val askGeminiCd = stringResource(Res.string.ask_gemini_ai_cd)
+
     val infiniteTransition = rememberInfiniteTransition(label = "geminiFabGlow")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -65,7 +72,7 @@ fun MainAgentFab(
             shadowElevation = 2.dp
         ) {
             Text(
-                text = if (isListening) "LISTENING" else "ASK AI",
+                text = if (isListening) listeningText else askAiText,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 0.8.sp,
@@ -98,7 +105,7 @@ fun MainAgentFab(
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = if (isListening) Icons.Default.Stop else Icons.Default.AutoAwesome,
-                    contentDescription = if (isListening) "Stop Gemini AI" else "Ask Gemini AI",
+                    contentDescription = if (isListening) stopGeminiCd else askGeminiCd,
                     modifier = Modifier.size(28.dp)
                 )
                 if (!isPremium) {

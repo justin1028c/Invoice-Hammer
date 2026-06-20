@@ -1,5 +1,6 @@
 package com.fordham.toolbelt.data.implementation
 
+import com.fordham.toolbelt.domain.model.Client
 import com.fordham.toolbelt.domain.model.ClientAddress
 import com.fordham.toolbelt.domain.model.ClientId
 import com.fordham.toolbelt.domain.model.ClientListOutcome
@@ -30,6 +31,7 @@ import com.fordham.toolbelt.domain.usecase.GenerateInvoiceRequest
 import com.fordham.toolbelt.domain.usecase.ProcessReceiptRequest
 import com.fordham.toolbelt.domain.usecase.ProcessReceiptUseCase
 import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
+import com.fordham.toolbelt.domain.usecase.agent.*
 import com.fordham.toolbelt.util.AppLogger
 import com.fordham.toolbelt.util.randomUUID
 import kotlinx.coroutines.flow.first
@@ -45,7 +47,10 @@ internal class RepositoryToolRegistryExecutions(
     private val addJobNoteUseCase: AddJobNoteUseCase,
     private val generateAndSaveInvoiceUseCase: GenerateAndSaveInvoiceUseCase,
     private val processReceiptUseCase: ProcessReceiptUseCase,
-    private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase
+    private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase,
+    private val getProfitGuardianStatus: GetProfitGuardianStatusUseCase,
+    private val detectChangeOrders: DetectChangeOrdersUseCase,
+    private val getDailyBriefing: GetDailyBriefingUseCase
 ) {
     private suspend fun resolveClient(clientId: com.fordham.toolbelt.domain.model.ClientId) =
         loadClients().firstOrNull { it.id == clientId }
@@ -99,10 +104,43 @@ internal class RepositoryToolRegistryExecutions(
 
     suspend fun executeSearchClients(arguments: SearchClientsArgs): ToolExecutionResult {
         val query = arguments.query.value.trim()
-        val clients = if (query.isBlank() || query.lowercase().contains("all") || query.lowercase().contains("recent") || query.lowercase().contains("last")) {
+        var clients = if (query.isBlank() || query.lowercase().contains("all") || query.lowercase().contains("recent") || query.lowercase().contains("last")) {
             loadClients().sortedByDescending { it.lastUpdated }
         } else {
             clientRepository.searchClients(query)
+        }
+        if (clients.isEmpty() && query.isNotBlank()) {
+            val normalizedQuery = query.lowercase().replace("\\s".toRegex(), "")
+            val allDbClients = loadClients()
+            clients = allDbClients.filter { client ->
+                val normalizedName = client.name.lowercase().replace("\\s".toRegex(), "")
+                normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName)
+            }
+        }
+        if (clients.isEmpty() && query.isNotBlank()) {
+            val normalizedQuery = query.lowercase().replace("\\s".toRegex(), "")
+            val allInvoices = invoiceRepository.allInvoices.first()
+            val matchedNames = allInvoices.map { it.clientName }
+                .distinct()
+                .filter { name ->
+                    val normalizedName = name.lowercase().replace("\\s".toRegex(), "")
+                    normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName)
+                }
+            if (matchedNames.isNotEmpty()) {
+                clients = matchedNames.map { name ->
+                    val matchingInv = allInvoices.firstOrNull { it.clientName == name }
+                    val newClient = Client(
+                        id = ClientId(randomUUID()),
+                        name = name,
+                        email = matchingInv?.clientEmail ?: EmailAddress(""),
+                        phone = matchingInv?.clientPhone ?: PhoneNumber(""),
+                        address = matchingInv?.clientAddress ?: ""
+                    )
+                    // Auto-persist synthesized client so subsequent lookups by ID will succeed
+                    clientRepository.insertClient(newClient)
+                    newClient
+                }
+            }
         }
         val hits = clients.map { client ->
             val invoices = invoiceRepository.getInvoicesByClient(client.name).first()
@@ -294,18 +332,37 @@ internal class RepositoryToolRegistryExecutions(
                     .maxByOrNull { it.lastUpdated }
                 val invoiceId = savedInvoice?.id ?: com.fordham.toolbelt.domain.model.InvoiceId(randomUUID())
                 val clientRecord = resolveClientByName(draft.clientName)
+                val emailStr = clientRecord?.email?.value.orEmpty()
+                val phoneStr = clientRecord?.phone?.value.orEmpty()
+                val pdf = savedPath.ifBlank { savedInvoice?.pdfPath.orEmpty() }
+
+                val effects = mutableListOf<AgentUiEffect>(
+                    AgentUiEffect.NavigateToTab(AppTab.History)
+                )
+
+                if (arguments.autoShare) {
+                    effects.add(
+                        AgentUiEffect.ShareInvoiceDocument(
+                            pdfPath = pdf,
+                            title = if (arguments.isEstimate) "Estimate" else "Invoice",
+                            recipientEmail = emailStr,
+                            recipientPhone = phoneStr,
+                            subject = if (arguments.isEstimate) "Estimate from Invoice Hammer" else "Invoice from Invoice Hammer",
+                            body = if (arguments.isEstimate) "Please find your estimate attached." else "Please find your invoice attached."
+                        )
+                    )
+                }
+
                 ForemanRuntimeBinding.recordLastSaved(invoiceId, draft.clientName)
                 draftRepository.clearDraft()
                 ToolExecutionResult.InvoiceSavedFromDraft(
                     invoiceId = invoiceId,
-                    pdfPath = savedPath.ifBlank { savedInvoice?.pdfPath.orEmpty() },
+                    pdfPath = pdf,
                     clientName = NaturalLanguage(draft.clientName),
                     totalAmount = subtotal + tax - draft.deposit,
-                    clientEmail = clientRecord?.email?.value.orEmpty(),
-                    clientPhone = clientRecord?.phone?.value.orEmpty(),
-                    uiEffects = listOf(
-                        AgentUiEffect.NavigateToTab(AppTab.History)
-                    )
+                    clientEmail = emailStr,
+                    clientPhone = phoneStr,
+                    uiEffects = effects
                 )
             }
             is GenerateInvoiceOutcome.Error -> ToolExecutionResult.Failure(
@@ -322,7 +379,7 @@ internal class RepositoryToolRegistryExecutions(
             "No invoices found matching '$query'."
         } else {
             matches.take(5).joinToString("; ") { inv ->
-                "id=${inv.id.value}, client=${inv.clientName}, total=$${(inv.totalAmount * 100).toInt() / 100.0}, date=${inv.date}, paid=${inv.isPaid}"
+                "id=${inv.id.value}, client=${inv.clientName}, total=${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(inv.totalAmount)}, date=${inv.date}, paid=${inv.isPaid}"
             }
         }
         return ToolExecutionResult.InvoiceHistorySearched(
@@ -389,10 +446,45 @@ internal class RepositoryToolRegistryExecutions(
             )
         )
         return when (result) {
-            is ProcessReceiptOutcome.Success -> ToolExecutionResult.ReceiptScanned(
-                itemCount = result.items.size,
-                uiEffects = listOf(AgentUiEffect.NavigateToTab(AppTab.Receipts))
-            )
+            is ProcessReceiptOutcome.Success -> {
+                val draft = draftRepository.getDraft().first()
+                if (draft.clientName.isNotBlank()) {
+                    val lineItems = result.items.map { item ->
+                        com.fordham.toolbelt.domain.model.LineItem(
+                            description = if (item.supplierName.isNotBlank()) "${item.description} (${item.supplierName})" else item.description,
+                            amount = item.totalPrice,
+                            category = "Materials",
+                            quantity = item.quantity,
+                            unitPrice = item.unitPrice
+                        )
+                    }
+                    draftRepository.saveDraft(
+                        draft.copy(
+                            lineItems = draft.lineItems + lineItems,
+                            linkedReceiptIds = draft.linkedReceiptIds + result.items.map { it.id.value }
+                        )
+                    )
+                    result.items.forEach { item ->
+                        receiptRepository.updateItem(
+                            item.copy(
+                                isBilled = true,
+                                linkedInvoiceId = com.fordham.toolbelt.domain.model.InvoiceId("current_draft")
+                            )
+                        )
+                    }
+                    ToolExecutionResult.ReceiptScanned(
+                        itemCount = result.items.size,
+                        uiEffects = listOf(
+                            AgentUiEffect.NavigateToTab(AppTab.NewInvoice)
+                        )
+                    )
+                } else {
+                    ToolExecutionResult.ReceiptScanned(
+                        itemCount = result.items.size,
+                        uiEffects = listOf(AgentUiEffect.NavigateToTab(AppTab.Receipts))
+                    )
+                }
+            }
             is ProcessReceiptOutcome.PremiumRequired -> ToolExecutionResult.Failure(
                 ToolName.ScanLastReceipt,
                 FailureMessage("Pro subscription required for receipt scan.")
@@ -799,6 +891,72 @@ internal class RepositoryToolRegistryExecutions(
                     packageName = matchedSupplier.packageName,
                     webUrl = matchedSupplier.webUrl
                 )
+            )
+        )
+    }
+
+    suspend fun executeGetProfitGuardianStatus(arguments: GetProfitGuardianStatusArgs): ToolExecutionResult {
+        return when (val outcome = getProfitGuardianStatus(arguments.invoiceId)) {
+            is ProfitGuardianOutcome.Success -> ToolExecutionResult.GetProfitGuardianStatusCompleted(outcome.status)
+            is ProfitGuardianOutcome.ProjectNotFound -> ToolExecutionResult.Failure(
+                ToolName.GetProfitGuardianStatus,
+                FailureMessage("Estimate/Invoice project not found: ${arguments.invoiceId.value}")
+            )
+            is ProfitGuardianOutcome.Error -> ToolExecutionResult.Failure(
+                ToolName.GetProfitGuardianStatus,
+                outcome.message
+            )
+        }
+    }
+
+    suspend fun executeDetectChangeOrders(arguments: DetectChangeOrdersArgs): ToolExecutionResult {
+        return when (val outcome = detectChangeOrders(arguments.invoiceId)) {
+            is DetectChangeOrdersOutcome.Success -> ToolExecutionResult.DetectChangeOrdersCompleted(outcome.opportunities)
+            is DetectChangeOrdersOutcome.ProjectNotFound -> ToolExecutionResult.Failure(
+                ToolName.DetectChangeOrders,
+                FailureMessage("Estimate/Invoice project not found: ${arguments.invoiceId.value}")
+            )
+            is DetectChangeOrdersOutcome.Error -> ToolExecutionResult.Failure(
+                ToolName.DetectChangeOrders,
+                outcome.message
+            )
+        }
+    }
+
+    suspend fun executeGetDailyBriefing(arguments: GetDailyBriefingArgs): ToolExecutionResult {
+        return when (val outcome = getDailyBriefing.execute()) {
+            is GetDailyBriefingOutcome.Success -> ToolExecutionResult.GetDailyBriefingCompleted(outcome.briefing)
+            is GetDailyBriefingOutcome.Error -> ToolExecutionResult.Failure(
+                ToolName.GetDailyBriefing,
+                outcome.message
+            )
+        }
+    }
+
+    suspend fun executeCreateChangeOrder(arguments: CreateChangeOrderArgs): ToolExecutionResult {
+        val current = draftRepository.getDraft().first()
+        val invoice = invoiceRepository.getInvoiceById(arguments.invoiceId)
+        val clientName = invoice?.clientName ?: current.clientName
+        val clientAddress = invoice?.clientAddress ?: current.clientAddress
+
+        val newItem = com.fordham.toolbelt.domain.model.LineItem(
+            description = "[Change Order] ${arguments.description.value}",
+            amount = arguments.amount,
+            category = "Service"
+        )
+        val updated = current.copy(
+            clientName = clientName,
+            clientAddress = clientAddress,
+            lineItems = current.lineItems + newItem
+        )
+        draftRepository.saveDraft(updated)
+
+        return ToolExecutionResult.CreateChangeOrderCompleted(
+            invoiceId = arguments.invoiceId,
+            description = arguments.description,
+            amount = arguments.amount,
+            uiEffects = listOf(
+                AgentUiEffect.NavigateToTab(AppTab.NewInvoice)
             )
         )
     }

@@ -31,6 +31,10 @@ enum class ToolType(val category: ToolCategory) {
     DELETE_INVOICE(ToolCategory.DESTRUCTIVE),
     OPEN_LAST_INVOICE(ToolCategory.SAFE),
     OPEN_SUPPLIER(ToolCategory.SAFE),
+    GET_PROFIT_GUARDIAN_STATUS(ToolCategory.SAFE),
+    DETECT_CHANGE_ORDERS(ToolCategory.SAFE),
+    GET_DAILY_BRIEFING(ToolCategory.SAFE),
+    CREATE_CHANGE_ORDER(ToolCategory.DESTRUCTIVE),
     UNKNOWN(ToolCategory.SAFE)
 }
 
@@ -116,6 +120,14 @@ sealed interface ToolParameters {
     data class OpenTab(val tabName: String) : ToolParameters
     data class OpenLastInvoice(val invoiceId: String? = null) : ToolParameters
     data class OpenSupplier(val supplierId: String?, val supplierName: String?) : ToolParameters
+    data class GetProfitGuardianStatus(val invoiceId: String) : ToolParameters
+    data class DetectChangeOrders(val invoiceId: String) : ToolParameters
+    data object GetDailyBriefing : ToolParameters
+    data class CreateChangeOrder(
+        val invoiceId: String,
+        val description: String,
+        val amount: Double
+    ) : ToolParameters
     data object None : ToolParameters
 }
 

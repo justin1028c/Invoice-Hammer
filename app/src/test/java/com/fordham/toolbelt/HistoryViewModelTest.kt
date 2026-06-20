@@ -23,6 +23,7 @@ class HistoryViewModelTest {
 
     private lateinit var viewModel: HistoryViewModel
     private val invoiceRepository: InvoiceRepository = mockk(relaxed = true)
+    private val composeAiInvoiceReminderUseCase: com.fordham.toolbelt.domain.usecase.ComposeAiInvoiceReminderUseCase = mockk(relaxed = true)
     private val testDispatcher = UnconfinedTestDispatcher()
 
     private val testInvoices = listOf(
@@ -47,7 +48,7 @@ class HistoryViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         every { invoiceRepository.allInvoices } returns flowOf(testInvoices)
-        viewModel = HistoryViewModel(invoiceRepository)
+        viewModel = HistoryViewModel(invoiceRepository, composeAiInvoiceReminderUseCase)
     }
 
     @After

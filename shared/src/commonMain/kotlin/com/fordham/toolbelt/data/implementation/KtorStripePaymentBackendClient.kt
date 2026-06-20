@@ -13,8 +13,14 @@ import com.fordham.toolbelt.data.remote.StripePaymentIntentOutcome
 import com.fordham.toolbelt.data.remote.StripeCreateCheckoutSessionRequest
 import com.fordham.toolbelt.data.remote.StripeCreateCheckoutSessionResponse
 import com.fordham.toolbelt.domain.model.FailureMessage
-import com.fordham.toolbelt.domain.model.stripe.StripeCheckoutSessionOutcome
+import com.fordham.toolbelt.data.remote.StripeCheckoutLinkOutcome
+import com.fordham.toolbelt.data.remote.StripeCheckoutLinkResponse
+import com.fordham.toolbelt.data.remote.StripeCheckoutVerifyOutcome
+import com.fordham.toolbelt.data.remote.StripeCheckoutVerifyResponse
+import com.fordham.toolbelt.data.remote.StripeInvoicePaymentStatusOutcome
+import com.fordham.toolbelt.data.remote.StripeInvoicePaymentStatusResponse
 import com.fordham.toolbelt.domain.model.stripe.CheckoutUrl
+import com.fordham.toolbelt.domain.model.stripe.StripeCheckoutSessionOutcome
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
@@ -126,6 +132,84 @@ class KtorStripePaymentBackendClient(
         }.getOrElse {
             StripeCheckoutSessionOutcome.Failure(
                 FailureMessage(it.message ?: "Checkout backend unreachable.")
+            )
+        }
+    }
+
+    override suspend fun verifyCheckoutSession(
+        sessionId: String,
+        contractorUserId: String?
+    ): StripeCheckoutVerifyOutcome {
+        if (!config.isBackendConfigured) return StripeCheckoutVerifyOutcome.NotConfigured
+        return runCatching {
+            val contractorQuery = contractorUserId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { "&contractorUserId=$it" }
+                .orEmpty()
+            val response = httpClient.get(
+                "${config.paymentBackendBaseUrl.trimEnd('/')}/v1/payments/verify" +
+                    "?session_id=$sessionId$contractorQuery"
+            ) {
+                applyBackendAuth()
+            }
+            if (!response.status.isSuccess()) {
+                val details = mapStripeBackendFailure(response, "Checkout verify error")
+                return StripeCheckoutVerifyOutcome.Failure(details.error)
+            }
+            StripeCheckoutVerifyOutcome.Success(response.body<StripeCheckoutVerifyResponse>())
+        }.getOrElse {
+            StripeCheckoutVerifyOutcome.Failure(
+                FailureMessage(it.message ?: "Checkout verify unreachable.")
+            )
+        }
+    }
+
+    override suspend fun fetchInvoicePaymentStatus(
+        invoiceId: String,
+        contractorUserId: String
+    ): StripeInvoicePaymentStatusOutcome {
+        if (!config.isBackendConfigured) return StripeInvoicePaymentStatusOutcome.NotConfigured
+        return runCatching {
+            val response = httpClient.get(
+                "${config.paymentBackendBaseUrl.trimEnd('/')}/v1/payments/invoice-status" +
+                    "?invoiceId=$invoiceId&contractorUserId=$contractorUserId"
+            ) {
+                applyBackendAuth()
+            }
+            if (!response.status.isSuccess()) {
+                val details = mapStripeBackendFailure(response, "Invoice payment status error")
+                return StripeInvoicePaymentStatusOutcome.Failure(details.error)
+            }
+            StripeInvoicePaymentStatusOutcome.Success(
+                response.body<StripeInvoicePaymentStatusResponse>()
+            )
+        }.getOrElse {
+            StripeInvoicePaymentStatusOutcome.Failure(
+                FailureMessage(it.message ?: "Invoice payment status unreachable.")
+            )
+        }
+    }
+
+    override suspend fun resolveCheckoutLink(
+        sessionId: String,
+        contractorUserId: String
+    ): StripeCheckoutLinkOutcome {
+        if (!config.isBackendConfigured) return StripeCheckoutLinkOutcome.NotConfigured
+        return runCatching {
+            val response = httpClient.get(
+                "${config.paymentBackendBaseUrl.trimEnd('/')}/v1/payments/checkout-link" +
+                    "?session_id=$sessionId&contractorUserId=$contractorUserId"
+            ) {
+                applyBackendAuth()
+            }
+            if (!response.status.isSuccess()) {
+                val details = mapStripeBackendFailure(response, "Checkout link error")
+                return StripeCheckoutLinkOutcome.Failure(details.error)
+            }
+            StripeCheckoutLinkOutcome.Success(response.body<StripeCheckoutLinkResponse>())
+        }.getOrElse {
+            StripeCheckoutLinkOutcome.Failure(
+                FailureMessage(it.message ?: "Checkout link unreachable.")
             )
         }
     }

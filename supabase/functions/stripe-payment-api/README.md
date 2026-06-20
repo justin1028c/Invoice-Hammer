@@ -7,6 +7,7 @@ Implements the HTTP contract used by `KtorStripePaymentBackendClient` in the KMP
 1. Run SQL migrations in the Supabase dashboard (or `supabase db push`):
    - `003_stripe_connect_accounts.sql`
    - `004_stripe_payment_events.sql` (optional webhook audit log)
+   - `005_stripe_invoice_payments.sql` (paid-state for contractor polling)
 
 2. Set function secrets (Dashboard → Edge Functions → Secrets, or CLI):
 
@@ -38,7 +39,14 @@ stripe.backend.api.key=your-random-shared-secret
 The app calls:
 
 - `POST …/v1/payments/intent`
+- `GET …/v1/payments/verify?session_id=…`
+- `GET …/v1/payments/invoice-status?invoiceId=…&contractorUserId=…`
 - `GET …/v1/connect/status?userId=…`
+
+Public browser pages (no auth):
+
+- `GET …/v1/payments/success?invoice_id=…&session_id=…` → redirects to `invoicehammer://payment-success`
+- `GET …/v1/payments/cancel?invoice_id=…` → redirects to `invoicehammer://payment-cancelled`
 
 ## Endpoints
 
@@ -71,7 +79,7 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 
 Webhook URL: `https://YOUR_PROJECT.supabase.co/functions/v1/stripe-webhook`
 
-Events: `payment_intent.succeeded` (logs + optional `stripe_payment_events` row).
+Events: `payment_intent.succeeded`, `checkout.session.completed` (updates `stripe_invoice_payments`).
 
 ## Security
 

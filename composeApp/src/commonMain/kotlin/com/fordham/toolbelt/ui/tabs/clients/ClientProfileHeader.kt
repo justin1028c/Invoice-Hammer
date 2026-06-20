@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.Client
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Responsibility: Display the header for a client profile with navigation and contact actions.
@@ -33,7 +35,7 @@ fun ClientProfileHeader(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) { 
             IconButton(onClick = onBackClick) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
-            Text("CLIENT PROFILE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black) 
+            Text(stringResource(Res.string.client_profile), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
         }
         Row { 
             if (client.phone.value.isNotEmpty()) {

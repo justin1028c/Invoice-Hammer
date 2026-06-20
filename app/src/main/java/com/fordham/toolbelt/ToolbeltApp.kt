@@ -13,6 +13,7 @@ class ToolbeltApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.fordham.toolbelt.util.AndroidAppContext.application = this
         
         // Protocol: Initialize SQLCipher native libraries
         try {

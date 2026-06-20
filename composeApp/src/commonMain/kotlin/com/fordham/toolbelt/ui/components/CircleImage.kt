@@ -8,6 +8,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import invoicehammer.composeapp.generated.resources.Res
+import invoicehammer.composeapp.generated.resources.profile_image_cd
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun CircleImage(
@@ -16,7 +19,7 @@ fun CircleImage(
 ) {
     AsyncImage(
         model = url,
-        contentDescription = "Profile Image",
+        contentDescription = stringResource(Res.string.profile_image_cd),
         modifier = modifier.clip(CircleShape),
         contentScale = ContentScale.Crop
     )

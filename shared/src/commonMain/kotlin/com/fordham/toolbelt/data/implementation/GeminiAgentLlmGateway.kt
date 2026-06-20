@@ -12,6 +12,8 @@ import com.fordham.toolbelt.domain.repository.AgentLlmGateway
 import com.fordham.toolbelt.domain.repository.ForemanJobMemoryPort
 import com.fordham.toolbelt.domain.repository.GeminiRepository
 import com.fordham.toolbelt.domain.repository.SettingsRepository
+import com.fordham.toolbelt.util.ForemanMessageLocalizer
+import com.fordham.toolbelt.util.LlmOutputValidator
 
 class GeminiAgentLlmGateway(
     private val geminiRepository: GeminiRepository,
@@ -57,9 +59,13 @@ class GeminiAgentLlmGateway(
             is ToolCallOutcome.Success -> {
                 val toolCall = result.toolCall
                 if (toolCall == null) {
-                    val message = result.completionReasoning.ifBlank {
-                        "Done."
-                    }
+                    val raw = result.completionReasoning.ifBlank { "Done." }
+                    val localized = ForemanMessageLocalizer.localize(raw)
+                    val message = LlmOutputValidator.ensureUserFacingProse(
+                        localized,
+                        ForemanMessageLocalizer.localize("Done."),
+                        planner.userInput
+                    )
                     return AgentOutcome.TextResponse(NaturalLanguage(message))
                 }
                 toolCallMapper.toAgentOutcome(toolCall)

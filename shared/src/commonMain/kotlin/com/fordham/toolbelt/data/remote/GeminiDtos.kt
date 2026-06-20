@@ -40,7 +40,15 @@ data class GeminiGenerationConfig(
 
 @Serializable
 data class GeminiResponse(
-    val candidates: List<GeminiCandidate>? = null
+    val candidates: List<GeminiCandidate>? = null,
+    val usageMetadata: GeminiUsageMetadata? = null
+)
+
+@Serializable
+data class GeminiUsageMetadata(
+    val promptTokenCount: Int = 0,
+    val candidatesTokenCount: Int = 0,
+    val totalTokenCount: Int = 0
 )
 
 @Serializable
@@ -51,7 +59,8 @@ data class GeminiCandidate(
 @Serializable
 data class AiReceiptItemDto(
     val description: String,
-    val totalPrice: Double
+    val totalPrice: Double,
+    val category: String? = null
 )
 
 @Serializable

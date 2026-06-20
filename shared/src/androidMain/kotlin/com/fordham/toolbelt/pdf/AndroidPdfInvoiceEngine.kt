@@ -5,6 +5,7 @@ import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import com.fordham.toolbelt.domain.model.InvoiceData
 import com.fordham.toolbelt.util.SecurityManager
+import com.fordham.toolbelt.util.UserFacingCopy
 import java.io.File
 import java.io.FileOutputStream
 
@@ -34,17 +35,19 @@ class AndroidPdfInvoiceEngine(
         val lightGrayColor = Color.rgb(250, 250, 252)
         val borderGrayColor = Color.rgb(230, 230, 235)
         
+        val pdf = UserFacingCopy.Pdf
+        
         // 1. Draw Business Details (Top Left)
         paint.color = orangeColor
         paint.textSize = 24f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        val bizName = data.settings.businessName.ifBlank { "INVOICE HAMMER" }.uppercase()
+        val bizName = data.settings.businessName.ifBlank { pdf.defaultBusinessName() }.uppercase()
         canvas1.drawText(bizName, 50f, 65f, paint)
         
         paint.color = grayColor
         paint.textSize = 10f
         paint.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        val slogan = data.settings.businessSlogan.ifBlank { "Professional Field Services" }
+        val slogan = data.settings.businessSlogan.ifBlank { pdf.defaultSlogan() }
         canvas1.drawText(slogan, 50f, 82f, paint)
         
         paint.color = mutedCharcoal
@@ -111,7 +114,7 @@ class AndroidPdfInvoiceEngine(
         paint.color = orangeColor
         paint.textSize = 9f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        canvas1.drawText("BILLED TO", 65f, cardTop + 20f, paint)
+        canvas1.drawText(pdf.billedTo(), 65f, cardTop + 20f, paint)
         
         paint.color = charcoalColor
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
@@ -137,7 +140,7 @@ class AndroidPdfInvoiceEngine(
         paint.color = grayColor
         paint.textSize = 9f
         paint.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        val clientAddressText = data.clientAddress.ifBlank { "No Job Address Provided" }
+        val clientAddressText = data.clientAddress.ifBlank { pdf.noJobAddress() }
         // Simple one-line address drawing
         val truncatedClientAddress = if (clientAddressText.length > 38) clientAddressText.take(35) + "..." else clientAddressText
         canvas1.drawText(truncatedClientAddress, 65f, cardTop + 54f, paint)
@@ -156,18 +159,17 @@ class AndroidPdfInvoiceEngine(
         paint.color = orangeColor
         paint.textSize = 9f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        canvas1.drawText("DOCUMENT DETAILS", 325f, cardTop + 20f, paint)
+        canvas1.drawText(pdf.documentDetails(), 325f, cardTop + 20f, paint)
         
         paint.color = charcoalColor
         paint.textSize = 11f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        val docType = if (data.isEstimate) "ESTIMATE" else "INVOICE"
-        canvas1.drawText("$docType #${data.invoiceId.take(8).uppercase()}", 325f, cardTop + 38f, paint)
+        canvas1.drawText(pdf.docNumber(data.isEstimate, data.invoiceId), 325f, cardTop + 38f, paint)
         
         paint.color = grayColor
         paint.textSize = 9f
         paint.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        canvas1.drawText("DATE: ${data.date}", 325f, cardTop + 54f, paint)
+        canvas1.drawText(pdf.datePrefix(data.date), 325f, cardTop + 54f, paint)
         
         // 4. Status Badge Pill (Drawn inside the details card top-right)
         val statusText: String
@@ -175,7 +177,7 @@ class AndroidPdfInvoiceEngine(
         val badgeTextColor: Int
         
         if (data.isEstimate) {
-            statusText = "ESTIMATE"
+            statusText = pdf.statusEstimate()
             badgeBgColor = Color.rgb(232, 240, 254) // Soft blue
             badgeTextColor = Color.rgb(26, 115, 232) // Rich blue
         } else {
@@ -183,15 +185,15 @@ class AndroidPdfInvoiceEngine(
             val taxAmount = subtotal * (data.taxRate / 100.0)
             val totalAmount = subtotal + taxAmount - data.deposit
             if (data.deposit >= (subtotal + taxAmount)) {
-                statusText = "PAID"
+                statusText = pdf.statusPaid()
                 badgeBgColor = Color.rgb(230, 244, 234) // Soft emerald
                 badgeTextColor = Color.rgb(30, 142, 62) // Rich emerald
             } else if (data.deposit > 0.0) {
-                statusText = "PARTIAL"
+                statusText = pdf.statusPartial()
                 badgeBgColor = Color.rgb(254, 243, 224) // Soft orange/amber
                 badgeTextColor = Color.rgb(230, 81, 0)
             } else {
-                statusText = "DUE"
+                statusText = pdf.statusDue()
                 badgeBgColor = Color.rgb(253, 236, 236) // Soft red
                 badgeTextColor = Color.rgb(217, 48, 37)
             }
@@ -219,10 +221,10 @@ class AndroidPdfInvoiceEngine(
         paint.color = charcoalColor
         paint.textSize = 8.5f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        canvas1.drawText("DESCRIPTION", 60f, currentY + 14f, paint)
-        AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, "QTY", 360f, currentY + 14f, paint)
-        AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, "UNIT PRICE", 450f, currentY + 14f, paint)
-        AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, "TOTAL", 535f, currentY + 14f, paint)
+        canvas1.drawText(pdf.description(), 60f, currentY + 14f, paint)
+        AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, pdf.qty(), 360f, currentY + 14f, paint)
+        AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, pdf.unitPrice(), 450f, currentY + 14f, paint)
+        AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, pdf.total(), 535f, currentY + 14f, paint)
         
         currentY += 22f
         
@@ -293,16 +295,16 @@ class AndroidPdfInvoiceEngine(
         paint.textSize = 9f
         paint.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         
-        canvas1.drawText("Subtotal", 340f, calcY, paint)
+        canvas1.drawText(pdf.subtotal(), 340f, calcY, paint)
         AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, "$${String.format("%.2f", subtotal)}", 530f, calcY, paint)
         calcY += 16f
         
-        canvas1.drawText("Tax (${data.taxRate}%)", 340f, calcY, paint)
+        canvas1.drawText(pdf.tax(data.taxRate), 340f, calcY, paint)
         AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, "$${String.format("%.2f", taxAmount)}", 530f, calcY, paint)
         calcY += 16f
         
         if (data.deposit > 0.0) {
-            canvas1.drawText("Deposit Paid", 340f, calcY, paint)
+            canvas1.drawText(pdf.depositPaid(), 340f, calcY, paint)
             paint.color = Color.rgb(30, 142, 62) // Green for deposit paid
             AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, "-$${String.format("%.2f", data.deposit)}", 530f, calcY, paint)
             paint.color = grayColor
@@ -317,7 +319,7 @@ class AndroidPdfInvoiceEngine(
         paint.color = charcoalColor
         paint.textSize = 10f
         paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        canvas1.drawText("TOTAL DUE", 340f, calcY + 12f, paint)
+        canvas1.drawText(pdf.totalDue(), 340f, calcY + 12f, paint)
         
         paint.textSize = 12f
         paint.color = orangeColor
@@ -328,7 +330,7 @@ class AndroidPdfInvoiceEngine(
         paint.color = grayColor
         paint.textSize = 9f
         paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        val thankYouText = "THANK YOU FOR YOUR BUSINESS!"
+        val thankYouText = pdf.thankYou()
         val textWidth = paint.measureText(thankYouText)
         canvas1.drawText(thankYouText, (595f - textWidth) / 2f, 790f, paint)
         
@@ -339,7 +341,8 @@ class AndroidPdfInvoiceEngine(
         val internalDir = File(context.filesDir, "vault/invoices")
         if (!internalDir.exists()) internalDir.mkdirs()
         
-        val file = File(internalDir, "${if (data.isEstimate) "Estimate" else "Invoice"}_${data.invoiceId}.pdf")
+        val filePrefix = if (data.isEstimate) pdf.estimateFilePrefix() else pdf.invoiceFilePrefix()
+        val file = File(internalDir, "${filePrefix}_${data.invoiceId}.pdf")
         return try {
             pdfDocument.writeTo(FileOutputStream(file))
             pdfDocument.close()

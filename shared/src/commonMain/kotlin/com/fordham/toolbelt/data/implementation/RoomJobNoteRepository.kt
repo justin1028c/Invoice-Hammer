@@ -31,8 +31,16 @@ class RoomJobNoteRepository(
         jobNoteDao.deleteNote(note.toEntity())
         JobNoteOutcome.Success
     } catch (e: Exception) {
-    logRepositoryFailure("RoomJobNoteRepository", "repository", e)
+        logRepositoryFailure("RoomJobNoteRepository", "repository", e)
         JobNoteOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete note"))
+    }
+
+    override suspend fun deleteAllNotes(): JobNoteOutcome = try {
+        jobNoteDao.deleteAllNotes()
+        JobNoteOutcome.Success
+    } catch (e: Exception) {
+        logRepositoryFailure("RoomJobNoteRepository", "repository", e)
+        JobNoteOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete all notes"))
     }
 }
 

@@ -67,7 +67,8 @@ data class AddJobNoteArgs(
 }
 
 data class SaveInvoiceFromDraftArgs(
-    val isEstimate: Boolean = false
+    val isEstimate: Boolean = false,
+    val autoShare: Boolean = false
 ) : ToolArguments {
     override val expectedToolName: ToolName = ToolName.SaveInvoiceFromDraft
 }
@@ -193,6 +194,32 @@ data class OpenSupplierArgs(
     val supplierName: NaturalLanguage? = null
 ) : ToolArguments {
     override val expectedToolName: ToolName = ToolName.OpenSupplier
+}
+
+data class GetProfitGuardianStatusArgs(
+    val invoiceId: InvoiceId
+) : ToolArguments {
+    override val expectedToolName: ToolName = ToolName.GetProfitGuardianStatus
+}
+
+data class DetectChangeOrdersArgs(
+    val invoiceId: InvoiceId
+) : ToolArguments {
+    override val expectedToolName: ToolName = ToolName.DetectChangeOrders
+}
+
+data class GetDailyBriefingArgs(
+    val timestamp: Long = 0L
+) : ToolArguments {
+    override val expectedToolName: ToolName = ToolName.GetDailyBriefing
+}
+
+data class CreateChangeOrderArgs(
+    val invoiceId: InvoiceId,
+    val description: NaturalLanguage,
+    val amount: Double
+) : ToolArguments {
+    override val expectedToolName: ToolName = ToolName.CreateChangeOrder
 }
 
 object ToolArgumentValidator {

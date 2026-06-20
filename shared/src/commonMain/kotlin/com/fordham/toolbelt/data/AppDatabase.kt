@@ -14,9 +14,10 @@ import androidx.room.RoomDatabaseConstructor
         JobNoteEntity::class,
         SupplierEntity::class,
         DraftInvoiceEntity::class,
-        PaymentRequestEntity::class
+        PaymentRequestEntity::class,
+        SyncQueueEntity::class
     ], 
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -29,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun supplierDao(): SupplierDao
     abstract fun draftDao(): DraftDao
     abstract fun paymentRequestDao(): PaymentRequestDao
+    abstract fun syncQueueDao(): SyncQueueDao
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")

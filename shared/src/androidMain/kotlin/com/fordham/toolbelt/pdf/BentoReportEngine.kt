@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import com.fordham.toolbelt.domain.model.BentoReportData
 import com.fordham.toolbelt.util.SecurityManager
+import com.fordham.toolbelt.util.UserFacingCopy
 import java.io.File
 import java.io.FileOutputStream
 
@@ -37,23 +38,25 @@ class BentoReportEngine(
         val headerRect = RectF(45f, 40f, 550f, 110f)
         canvas.drawRoundRect(headerRect, 8f, 8f, paint)
 
+        val bento = UserFacingCopy.Bento
+        val dateStr = com.fordham.toolbelt.util.DateTimeUtil.getNowFormatted()
+
         // Header Text - Left
         paint.color = Color.WHITE
         paint.textSize = 10f
         paint.isFakeBoldText = true
-        canvas.drawText("INVOICE HAMMER", 60f, 68f, paint)
+        canvas.drawText(UserFacingCopy.Pdf.defaultBusinessName(), 60f, 68f, paint)
         paint.textSize = 18f
-        canvas.drawText("Bento Business Report", 60f, 94f, paint)
+        canvas.drawText(bento.reportTitle(), 60f, 94f, paint)
 
         // Header Text - Right
         paint.isFakeBoldText = false
         paint.textSize = 8f
         paint.color = Color.parseColor("#94A3B8")
-        canvas.drawText("FINANCIAL YEAR YTD", 400f, 68f, paint)
+        canvas.drawText(bento.financialYearYtd(), 400f, 68f, paint)
         paint.color = Color.WHITE
         paint.textSize = 10f
-        val dateStr = com.fordham.toolbelt.util.DateTimeUtil.getNowFormatted()
-        canvas.drawText("Generated: $dateStr", 400f, 90f, paint)
+        canvas.drawText(bento.generated(dateStr), 400f, 90f, paint)
 
         // Calculations
         val marginPercent = if (data.grossIncome > 0.0) {
@@ -67,9 +70,9 @@ class BentoReportEngine(
             canvas, paint,
             left = 45f, top = 130f, right = 285f, bottom = 250f,
             bgColor = "#DCFCE7", borderColor = "#86EFAC",
-            title = "NET PROFIT YTD", titleColor = "#166534",
+            title = bento.netProfitYtd(), titleColor = "#166534",
             value = formatCurrency(data.netProfit), valueColor = "#15803D", valueSize = 20f,
-            subtext = "Status: Profitable YTD", subtextColor = "#15803D"
+            subtext = bento.profitableStatus(), subtextColor = "#15803D"
         )
 
         // Card 2: Gross Income
@@ -77,7 +80,7 @@ class BentoReportEngine(
             canvas, paint,
             left = 310f, top = 130f, right = 550f, bottom = 185f,
             bgColor = "#DBEAFE", borderColor = "#BFDBFE",
-            title = "GROSS INCOME", titleColor = "#1E3A8A",
+            title = bento.grossIncome(), titleColor = "#1E3A8A",
             value = formatCurrency(data.grossIncome), valueColor = "#1D4ED8", valueSize = 14f,
             subtext = null, subtextColor = null
         )
@@ -87,7 +90,7 @@ class BentoReportEngine(
             canvas, paint,
             left = 310f, top = 195f, right = 550f, bottom = 250f,
             bgColor = "#F3E8FF", borderColor = "#E9D5FF",
-            title = "PROFIT MARGIN", titleColor = "#581C87",
+            title = bento.profitMargin(), titleColor = "#581C87",
             value = "$marginPercent%", valueColor = "#7E22CE", valueSize = 14f,
             subtext = null, subtextColor = null
         )
@@ -97,7 +100,7 @@ class BentoReportEngine(
             canvas, paint,
             left = 45f, top = 265f, right = 285f, bottom = 335f,
             bgColor = "#FEE2E2", borderColor = "#FCA5A5",
-            title = "TOTAL EXPENSES", titleColor = "#991B1B",
+            title = bento.totalExpenses(), titleColor = "#991B1B",
             value = formatCurrency(data.expenses), valueColor = "#B91C1C", valueSize = 14f,
             subtext = null, subtextColor = null
         )
@@ -107,16 +110,16 @@ class BentoReportEngine(
             canvas, paint,
             left = 310f, top = 265f, right = 550f, bottom = 335f,
             bgColor = "#F8FAFC", borderColor = "#E2E8F0",
-            title = "OPERATIONS SUMMARY", titleColor = "#475569",
-            value = "${data.invoices.size} Invoices | ${data.receiptCount} Receipts", valueColor = "#1E293B", valueSize = 12f,
-            subtext = "Clean audit trail active", subtextColor = "#64748B"
+            title = bento.operationsSummary(), titleColor = "#475569",
+            value = bento.operationsValue(data.invoices.size, data.receiptCount), valueColor = "#1E293B", valueSize = 12f,
+            subtext = bento.cleanAuditTrail(), subtextColor = "#64748B"
         )
 
         // Recent Invoices Table
         paint.color = Color.parseColor("#334155")
         paint.textSize = 11f
         paint.isFakeBoldText = true
-        canvas.drawText("RECENT PAID INVOICES", 45f, 370f, paint)
+        canvas.drawText(bento.recentPaidInvoices(), 45f, 370f, paint)
 
         // Table Header
         paint.color = Color.parseColor("#F1F5F9")
@@ -126,10 +129,10 @@ class BentoReportEngine(
         paint.color = Color.parseColor("#475569")
         paint.textSize = 9f
         paint.isFakeBoldText = true
-        canvas.drawText("Date", 55f, 398f, paint)
-        canvas.drawText("Client", 140f, 398f, paint)
-        canvas.drawText("Description", 260f, 398f, paint)
-        canvas.drawText("Amount", 480f, 398f, paint)
+        canvas.drawText(bento.tableDate(), 55f, 398f, paint)
+        canvas.drawText(bento.tableClient(), 140f, 398f, paint)
+        canvas.drawText(bento.tableDescription(), 260f, 398f, paint)
+        canvas.drawText(bento.tableAmount(), 480f, 398f, paint)
 
         // Table Rows
         var y = 422f
@@ -165,7 +168,7 @@ class BentoReportEngine(
         if (sortedInvoices.size > maxRows) {
             paint.color = Color.parseColor("#64748B")
             paint.textSize = 8f
-            canvas.drawText("+ ${sortedInvoices.size - maxRows} more paid invoices recorded YTD", 45f, y + 10f, paint)
+            canvas.drawText(bento.morePaidInvoices(sortedInvoices.size - maxRows), 45f, y + 10f, paint)
         }
 
         pdfDocument.finishPage(page)

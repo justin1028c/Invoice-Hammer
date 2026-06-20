@@ -11,19 +11,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.JobPhotoPhase
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun JobPhotoCaptureButtons(
     onCapture: (JobPhotoPhase) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val beforeText = stringResource(Res.string.before)
+    val afterText = stringResource(Res.string.after)
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         TacticalButton(
             onClick = { onCapture(JobPhotoPhase.Before) },
-            text = "BEFORE",
+            text = beforeText,
             modifier = Modifier.weight(1f),
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -33,7 +38,7 @@ fun JobPhotoCaptureButtons(
         )
         TacticalButton(
             onClick = { onCapture(JobPhotoPhase.After) },
-            text = "AFTER",
+            text = afterText,
             modifier = Modifier.weight(1f),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,

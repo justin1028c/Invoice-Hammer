@@ -10,6 +10,11 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Instant
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -148,6 +153,130 @@ class GetBusinessStatsUseCaseTest {
             assertEquals(0.0, stats.totalExpenses, 0.01)
             assertEquals(0, stats.profitMargin)
             assertTrue(stats.projectStats.isEmpty())
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `calculates YTD metrics aging receivables and tax projection`() = runTest {
+        val today = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+        val currentYear = today.year
+
+        // Create invoices dynamically in the current year
+        val invoicePaidThisYear = Invoice(
+            id = com.fordham.toolbelt.domain.model.InvoiceId("ytd-1"),
+            clientName = "Client YTD",
+            clientAddress = "",
+            date = "01/01/$currentYear",
+            totalAmount = 4000.0,
+            itemsSummary = "Drywall YTD",
+            isPaid = true,
+            isEstimate = false
+        )
+
+        // Create an unpaid invoice to verify aging receivables
+        // Let's make it 10 days old relative to today
+        val date10DaysAgo = today.toEpochDays() - 10
+        val localDate10DaysAgo = kotlinx.datetime.LocalDate.fromEpochDays(date10DaysAgo)
+        val month10DaysAgo = localDate10DaysAgo.monthNumber
+        val day10DaysAgo = localDate10DaysAgo.dayOfMonth
+        val year10DaysAgo = localDate10DaysAgo.year
+        // format as M/D/YYYY
+        val dateStr10DaysAgo = "$month10DaysAgo/$day10DaysAgo/$year10DaysAgo"
+
+        val unpaidInvoice0to30 = Invoice(
+            id = com.fordham.toolbelt.domain.model.InvoiceId("unpaid-0-30"),
+            clientName = "Client Unpaid 1",
+            clientAddress = "",
+            date = dateStr10DaysAgo,
+            totalAmount = 1500.0,
+            itemsSummary = "Labor",
+            isPaid = false,
+            isEstimate = false
+        )
+
+        // Let's make another unpaid invoice 40 days old relative to today
+        val date40DaysAgo = today.toEpochDays() - 40
+        val localDate40DaysAgo = kotlinx.datetime.LocalDate.fromEpochDays(date40DaysAgo)
+        val month40DaysAgo = localDate40DaysAgo.monthNumber
+        val day40DaysAgo = localDate40DaysAgo.dayOfMonth
+        val year40DaysAgo = localDate40DaysAgo.year
+        val dateStr40DaysAgo = "$month40DaysAgo/$day40DaysAgo/$year40DaysAgo"
+
+        val unpaidInvoice31to60 = Invoice(
+            id = com.fordham.toolbelt.domain.model.InvoiceId("unpaid-31-60"),
+            clientName = "Client Unpaid 2",
+            clientAddress = "",
+            date = dateStr40DaysAgo,
+            totalAmount = 2500.0,
+            itemsSummary = "Materials",
+            isPaid = false,
+            isEstimate = false
+        )
+
+        // Let's make another unpaid invoice 70 days old relative to today
+        val date70DaysAgo = today.toEpochDays() - 70
+        val localDate70DaysAgo = kotlinx.datetime.LocalDate.fromEpochDays(date70DaysAgo)
+        val month70DaysAgo = localDate70DaysAgo.monthNumber
+        val day70DaysAgo = localDate70DaysAgo.dayOfMonth
+        val year70DaysAgo = localDate70DaysAgo.year
+        val dateStr70DaysAgo = "$month70DaysAgo/$day70DaysAgo/$year70DaysAgo"
+
+        val unpaidInvoice61Plus = Invoice(
+            id = com.fordham.toolbelt.domain.model.InvoiceId("unpaid-61-plus"),
+            clientName = "Client Unpaid 3",
+            clientAddress = "",
+            date = dateStr70DaysAgo,
+            totalAmount = 3500.0,
+            itemsSummary = "Inspection",
+            isPaid = false,
+            isEstimate = false
+        )
+
+        // Mock receipts logged this year
+        val receiptThisYear = ReceiptItem(
+            id = com.fordham.toolbelt.domain.model.ReceiptId("r-ytd"),
+            description = "Tool Purchase",
+            quantity = 1.0,
+            unitPrice = 1000.0,
+            totalPrice = 1000.0,
+            clientName = "Client YTD",
+            isBilled = false,
+            lastUpdated = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        )
+
+        val invoicesList = listOf(invoicePaidThisYear, unpaidInvoice0to30, unpaidInvoice31to60, unpaidInvoice61Plus)
+        val receiptsList = listOf(receiptThisYear)
+
+        every { invoiceRepository.allInvoices } returns flowOf(invoicesList)
+        every { receiptRepository.allItems } returns flowOf(ReceiptListOutcome.Success(receiptsList))
+
+        val testUseCase = GetBusinessStatsUseCase(invoiceRepository, receiptRepository)
+        testUseCase().test {
+            val stats = awaitItem()
+            // YTD Revenue: 4000.0 (from invoicePaidThisYear)
+            // YTD Expenses: 1000.0 (from receiptThisYear)
+            // YTD Net Profit: 3000.0
+            assertEquals(4000.0, stats.ytdRevenue, 0.01)
+            assertEquals(1000.0, stats.ytdExpenses, 0.01)
+            assertEquals(3000.0, stats.ytdNetProfit, 0.01)
+
+            // Projected tax: 3000.0 * 20% = 600.0
+            assertEquals(600.0, stats.projectedTax, 0.01)
+
+            // Current Quarter should be between 1 and 4
+            assertTrue(stats.currentQuarter in 1..4)
+
+            // Aging Receivables:
+            // Total Outstanding = 1500 + 2500 + 3500 = 7500
+            // 0 to 30: 1500
+            // 31 to 60: 2500
+            // 61+: 3500
+            assertEquals(7500.0, stats.totalOutstanding, 0.01)
+            assertEquals(1500.0, stats.outstanding0to30, 0.01)
+            assertEquals(2500.0, stats.outstanding31to60, 0.01)
+            assertEquals(3500.0, stats.outstanding61Plus, 0.01)
+
             cancelAndConsumeRemainingEvents()
         }
     }

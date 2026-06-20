@@ -80,9 +80,16 @@ class ForemanCommandRouterTest {
     }
 
     @Test
-    fun `routes new client quick invoice macro to LLM chain`() {
+    fun `routes new client quick invoice macro locally`() {
         val route = ForemanCommandRouter.route("new client Bob invoice 200 for labor")
-        assertTrue(route is ForemanRoute.LlmChain)
+        assertTrue(route is ForemanRoute.LocalMacro)
+        val macro = route as ForemanRoute.LocalMacro
+        assertEquals(ToolName.QuickClientAndInvoice, macro.toolName)
+        val args = macro.arguments as QuickClientAndInvoiceArgs
+        assertEquals("Bob", args.clientName.value)
+        assertEquals(1, args.lineItems.size)
+        assertEquals(200.0, args.lineItems.first().amount, 0.01)
+        assertEquals("labor", args.lineItems.first().description.value)
     }
 
     @Test
@@ -95,5 +102,15 @@ class ForemanCommandRouterTest {
     fun `ambiguous create invoice uses LLM chain`() {
         val route = ForemanCommandRouter.route("create a new invoice")
         assertTrue(route is ForemanRoute.LlmChain)
+    }
+
+    @Test
+    fun `routes hours at rate with for preposition macro locally`() {
+        val route = ForemanCommandRouter.route("bill john for 3 hours at 85")
+        assertTrue(route is ForemanRoute.LocalMacro)
+        val macro = route as ForemanRoute.LocalMacro
+        assertEquals(ToolName.QuickInvoice, macro.toolName)
+        val args = macro.arguments as QuickInvoiceArgs
+        assertEquals("john", args.clientName.value)
     }
 }

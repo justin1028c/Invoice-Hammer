@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,18 +30,22 @@ fun MainTopBar(
     onLedgerClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    val topBarInvoice = stringResource(Res.string.top_bar_invoice)
+    val topBarHammer = stringResource(Res.string.top_bar_hammer)
+    val paymentLedgerCd = stringResource(Res.string.payment_ledger_cd)
+
     TopAppBar(
         title = {
             Column {
                 Text(
-                    "INVOICE",
+                    topBarInvoice,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    "HAMMER",
+                    topBarHammer,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.primary,
@@ -63,7 +69,7 @@ fun MainTopBar(
         actions = {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
                 IconButton(onClick = onLedgerClick) {
-                    Icon(Icons.Default.AccountBalanceWallet, "Payment ledger", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.AccountBalanceWallet, paymentLedgerCd, tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.onBackground)

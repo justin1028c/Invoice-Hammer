@@ -74,3 +74,13 @@ value class ReceiptImagePayload(val bytes: ByteArray) {
         require(bytes.isNotEmpty()) { "Receipt image payload cannot be empty." }
     }
 }
+
+@JvmInline
+value class LlmPrompt(val value: String) {
+    init {
+        require(value.isNotBlank()) { "LlmPrompt cannot be blank." }
+    }
+}
+
+@JvmInline
+value class LlmResponseText(val value: String)

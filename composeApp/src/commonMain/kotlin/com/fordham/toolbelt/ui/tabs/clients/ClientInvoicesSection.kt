@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.JobPhotoPhase
+import com.fordham.toolbelt.util.DateTimeUtil
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 /**
  * Responsibility: Display a list of past invoices for the selected client.
@@ -30,7 +33,7 @@ fun ClientInvoicesSection(
     onAddPhotoClick: (Invoice, JobPhotoPhase) -> Unit
 ) {
     Column {
-        Text("PAST INVOICES", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+        Text(stringResource(Res.string.past_invoices), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
         
         invoices.forEach { inv -> 
@@ -49,7 +52,7 @@ fun ClientInvoicesSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) { 
                     Column(modifier = Modifier.weight(1f)) { 
-                        Text(inv.date.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text(DateTimeUtil.formatDateForDisplay(inv.date).uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Text(inv.itemsSummary.uppercase(), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -60,14 +63,14 @@ fun ClientInvoicesSection(
                             }
                             DropdownMenu(expanded = showPhotoMenu, onDismissRequest = { showPhotoMenu = false }) {
                                 DropdownMenuItem(
-                                    text = { Text("BEFORE", fontWeight = FontWeight.Black) },
+                                    text = { Text(stringResource(Res.string.before), fontWeight = FontWeight.Black) },
                                     onClick = {
                                         showPhotoMenu = false
                                         onAddPhotoClick(inv, JobPhotoPhase.Before)
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("AFTER", fontWeight = FontWeight.Black) },
+                                    text = { Text(stringResource(Res.string.after), fontWeight = FontWeight.Black) },
                                     onClick = {
                                         showPhotoMenu = false
                                         onAddPhotoClick(inv, JobPhotoPhase.After)

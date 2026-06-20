@@ -10,4 +10,5 @@ interface JobNoteRepository {
     fun getNotesByClient(clientName: String): Flow<List<JobNote>>
     suspend fun insertNote(note: JobNote): JobNoteOutcome
     suspend fun deleteNote(note: JobNote): JobNoteOutcome
+    suspend fun deleteAllNotes(): JobNoteOutcome
 }

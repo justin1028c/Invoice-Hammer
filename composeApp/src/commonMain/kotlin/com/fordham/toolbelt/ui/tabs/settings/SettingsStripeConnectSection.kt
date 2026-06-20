@@ -17,6 +17,8 @@ import com.fordham.toolbelt.domain.model.stripe.StripePaymentMode
 import com.fordham.toolbelt.domain.repository.FordhamUser
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.theme.BrandOrange
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun SettingsStripeConnectSection(
@@ -27,24 +29,24 @@ fun SettingsStripeConnectSection(
     onRefreshConnectStatus: () -> Unit,
     onStartConnectOnboarding: () -> Unit
 ) {
-    SettingsSection(title = "STRIPE PAYOUTS (CONNECT)") {
+    SettingsSection(title = stringResource(Res.string.stripe_payouts_title)) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Accept card, Google Pay, and Apple Pay from clients. Funds settle to your bank via Stripe Connect; Invoice Hammer can take a platform fee on each charge.",
+                stringResource(Res.string.stripe_payouts_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
+ 
             when (stripePaymentMode) {
                 StripePaymentMode.ManualEntrySimulator -> {
                     StatusRow(
                         icon = Icons.Default.Warning,
                         tint = Color(0xFFFFA726),
-                        title = "Demo mode",
-                        subtitle = "Add stripe.publishable.key and stripe.payment.backend.url, then rebuild, to enable live checkout."
+                        title = stringResource(Res.string.demo_mode_title),
+                        subtitle = stringResource(Res.string.demo_mode_desc)
                     )
                 }
                 StripePaymentMode.PaymentSheet -> when {
@@ -52,8 +54,8 @@ fun SettingsStripeConnectSection(
                         StatusRow(
                             icon = Icons.Default.Warning,
                             tint = Color(0xFFFFA726),
-                            title = "Sign in required",
-                            subtitle = "Use Google sign-in under Account & Cloud Sync before connecting Stripe."
+                            title = stringResource(Res.string.sign_in_required_title),
+                            subtitle = stringResource(Res.string.sign_in_required_desc)
                         )
                     }
                     connectState is StripeConnectSetupState.Loading -> {
@@ -66,22 +68,22 @@ fun SettingsStripeConnectSection(
                                 strokeWidth = 2.dp,
                                 color = BrandOrange
                             )
-                            Text("Checking Stripe Connect status…", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(Res.string.checking_stripe_status), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     connectState is StripeConnectSetupState.Active -> {
                         StatusRow(
                             icon = Icons.Default.CheckCircle,
                             tint = Color(0xFF4CAF50),
-                            title = "Ready to accept payments",
+                            title = stringResource(Res.string.ready_accept_payments),
                             subtitle = buildString {
-                                append("Account ")
+                                append(stringResource(Res.string.account_prefix))
                                 append(connectState.accountId.take(12))
                                 append("…")
                                 if (connectState.payoutsEnabled) {
-                                    append(" · Payouts enabled")
+                                    append(stringResource(Res.string.payouts_enabled_suffix))
                                 } else {
-                                    append(" · Finish payout details in Stripe if prompted")
+                                    append(stringResource(Res.string.payouts_disabled_suffix))
                                 }
                             }
                         )
@@ -90,19 +92,19 @@ fun SettingsStripeConnectSection(
                             enabled = !connectBusy,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("REFRESH STATUS")
+                            Text(stringResource(Res.string.refresh_status))
                         }
                     }
                     connectState is StripeConnectSetupState.Incomplete -> {
                         StatusRow(
                             icon = Icons.Default.Payment,
                             tint = BrandOrange,
-                            title = "Finish Stripe setup",
-                            subtitle = "Complete onboarding so clients can pay you. This opens Stripe in your browser."
+                            title = stringResource(Res.string.finish_stripe_setup),
+                            subtitle = stringResource(Res.string.finish_stripe_setup_desc)
                         )
                         TacticalButton(
                             onClick = onStartConnectOnboarding,
-                            text = if (connectBusy) "OPENING…" else "SET UP STRIPE PAYOUTS",
+                            text = if (connectBusy) stringResource(Res.string.opening_progress) else stringResource(Res.string.setup_stripe_payouts),
                             enabled = !connectBusy,
                             modifier = Modifier.fillMaxWidth(),
                             containerColor = BrandOrange
@@ -112,14 +114,14 @@ fun SettingsStripeConnectSection(
                             enabled = !connectBusy,
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         ) {
-                            Text("Refresh status")
+                            Text(stringResource(Res.string.refresh_status_lc))
                         }
                     }
                     connectState is StripeConnectSetupState.Error -> {
                         StatusRow(
                             icon = Icons.Default.Warning,
                             tint = MaterialTheme.colorScheme.error,
-                            title = "Could not reach payment backend",
+                            title = stringResource(Res.string.payment_backend_error),
                             subtitle = connectState.message.value
                         )
                         OutlinedButton(
@@ -127,7 +129,7 @@ fun SettingsStripeConnectSection(
                             enabled = !connectBusy,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("TRY AGAIN")
+                            Text(stringResource(Res.string.try_again))
                         }
                     }
                     else -> Unit

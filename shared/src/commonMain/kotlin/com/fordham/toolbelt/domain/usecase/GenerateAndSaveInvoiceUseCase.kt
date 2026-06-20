@@ -1,6 +1,7 @@
 package com.fordham.toolbelt.domain.usecase
 
 import com.fordham.toolbelt.domain.model.*
+import com.fordham.toolbelt.domain.model.agent.SystemBudgetSerializer
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.repository.DocumentExporter
 import com.fordham.toolbelt.util.DateTimeUtil
@@ -32,7 +33,8 @@ class GenerateAndSaveInvoiceUseCase(
     private val storageRepository: StorageRepository,
     private val receiptRepository: ReceiptRepository,
     private val engine: InvoiceEngine,
-    private val documentExporter: DocumentExporter
+    private val documentExporter: DocumentExporter,
+    private val jobNoteRepository: JobNoteRepository
 ) {
     suspend operator fun invoke(request: GenerateInvoiceRequest): GenerateInvoiceOutcome {
         return try {
@@ -125,7 +127,29 @@ class GenerateAndSaveInvoiceUseCase(
             if (saveResult is SaveInvoiceOutcome.Success) {
                 val savedInvoice = saveResult.invoice
                 AppLogger.d(LOG_TAG, " Invoice saved to DB successfully with ID: ${savedInvoice.id}")
-                
+
+                // Save system budget note for Profit Guardian variance tracking
+                val materialBudget = request.lineItems.filter { it.category.equals("Materials", ignoreCase = true) }.sumOf { it.amount }
+                val systemNoteText = SystemBudgetSerializer.serialize(
+                    revenue = savedInvoice.totalAmount,
+                    materials = materialBudget,
+                    lineItems = request.lineItems
+                )
+                try {
+                    jobNoteRepository.insertNote(
+                        JobNote(
+                            id = NoteId(randomUUID()),
+                            clientName = savedInvoice.clientName,
+                            invoiceId = savedInvoice.id,
+                            text = systemNoteText,
+                            timestamp = Clock.System.now().toEpochMilliseconds()
+                        )
+                    )
+                    AppLogger.d(LOG_TAG, " System budget note saved successfully for estimate/invoice.")
+                } catch (e: Exception) {
+                    AppLogger.e(LOG_TAG, " Failed to save system budget note", e)
+                }
+
                 AppLogger.d(LOG_TAG, " Step 5 - Persisting Linked Receipts...")
                 // 5. Persist Linked Receipts
                 request.linkedReceiptIds.forEach { receiptId ->

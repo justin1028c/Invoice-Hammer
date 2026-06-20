@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.SupplierCategory
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.util.PlaceSuggestion
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 /**
  * Responsibility: Bottom sheet for creating a new custom supplier with place suggestions and photo capture.
@@ -49,7 +51,7 @@ fun AddSupplierBottomSheet(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                "NEW SUPPLIER",
+                stringResource(Res.string.new_supplier),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary
@@ -64,7 +66,7 @@ fun AddSupplierBottomSheet(
                     onQueryChange(it)
                     showSuggestions = it.isNotBlank()
                 },
-                label = { Text("Store Name") },
+                label = { Text(stringResource(Res.string.store_name)) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -93,7 +95,7 @@ fun AddSupplierBottomSheet(
             OutlinedTextField(
                 value = address,
                 onValueChange = { address = it },
-                label = { Text("Address (Optional)") },
+                label = { Text(stringResource(Res.string.address_optional)) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -103,7 +105,7 @@ fun AddSupplierBottomSheet(
             OutlinedTextField(
                 value = phone,
                 onValueChange = { phone = it },
-                label = { Text("Phone (Optional)") },
+                label = { Text(stringResource(Res.string.phone_optional)) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -113,14 +115,14 @@ fun AddSupplierBottomSheet(
             OutlinedTextField(
                 value = webUrl,
                 onValueChange = { webUrl = it },
-                label = { Text("Website URL (Optional)") },
+                label = { Text(stringResource(Res.string.website_optional)) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
 
             Spacer(Modifier.height(24.dp))
 
-            Text("CATEGORY", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.category), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             
             Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
@@ -128,7 +130,7 @@ fun AddSupplierBottomSheet(
                     FilterChip(
                         selected = category == cat,
                         onClick = { category = cat },
-                        label = { Text(cat.name) },
+                        label = { Text(localizeSupplierCategory(cat)) },
                         modifier = Modifier.padding(end = 8.dp)
                     )
                 }
@@ -138,7 +140,7 @@ fun AddSupplierBottomSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TacticalButton(
                     onClick = onSnapPhoto,
-                    text = "SNAP PHOTO",
+                    text = stringResource(Res.string.snap_photo),
                     containerColor = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.weight(1f)
                 )
@@ -159,7 +161,7 @@ fun AddSupplierBottomSheet(
 
             TacticalButton(
                 onClick = { onSave(name, category, address, phone, webUrl, photoUri) },
-                text = "CREATE SUPPLIER",
+                text = stringResource(Res.string.create_supplier),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = name.isNotBlank()
             )

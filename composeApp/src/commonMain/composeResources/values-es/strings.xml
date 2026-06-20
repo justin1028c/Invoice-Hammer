@@ -1,0 +1,538 @@
+<resources>
+    <string name="app_name">Invoice Hammer</string>
+    
+    <!-- Navigation Tabs -->
+    <string name="tab_new">NUEVO</string>
+    <string name="tab_past">HISTORIAL</string>
+    <string name="tab_receipts">RECIBOS</string>
+    <string name="tab_stats">ESTADÍSTICAS</string>
+    <string name="tab_stores">TIENDAS</string>
+    <string name="tab_clients">CLIENTES</string>
+    <string name="tab_settings">AJUSTES</string>
+
+    <!-- General / Common -->
+    <string name="profile_image_cd">Imagen de perfil</string>
+    <string name="contractor_default">Contratista</string>
+    <string name="cancel">CANCELAR</string>
+    <string name="delete">ELIMINAR</string>
+    <string name="save">GUARDAR</string>
+    <string name="ok">OK</string>
+    <string name="close">CERRAR</string>
+    <string name="dismiss">DESCARTAR</string>
+    <string name="error">ERROR</string>
+    <string name="category">CATEGORÍA</string>
+
+    <!-- New Invoice Tab -->
+    <string name="invoice_details">DETALLES DE FACTURA</string>
+    <string name="business">EMPRESA</string>
+    <string name="job_timer">TEMPORIZADOR</string>
+    <string name="start_timer">INICIAR TIEMPO</string>
+    <string name="stop_timer">DETENER TIEMPO</string>
+    <string name="rate_hr">TASA ($/HORA)</string>
+    <string name="bill_time">COBRAR TIEMPO</string>
+    <string name="saved_future">Guardado para futuras facturas</string>
+    <string name="client_name">NOMBRE DEL CLIENTE</string>
+    <string name="client_address">DIRECCIÓN DEL CLIENTE</string>
+    <string name="save_client_dir">GUARDAR EN DIRECTORIO</string>
+    <string name="job_photos">FOTOS DEL TRABAJO</string>
+    <string name="tap_before_after">Toque ANTES al entrar y DESPUÉS al terminar.</string>
+    <string name="tax_rate">TASA DE IMPUESTOS %</string>
+    <string name="deposit_collected">DEPÓSITO COBRADO ($)</string>
+    <string name="save_estimate">GUARDAR PRESUPUESTO</string>
+    <string name="save_invoice">GUARDAR FACTURA</string>
+    <string name="floating_expense_pool">FONDO DE GASTOS FLOTANTE</string>
+    <string name="no_unbilled_receipts">NO SE ENCONTRARON RECIBOS SIN FACTURAR.</string>
+    <string name="apply_markup">¿APLICAR RECARGO?</string>
+    <string name="linking">VINCULANDO: %s</string>
+    <string name="raw_cost">COSTO BASE: %s</string>
+    <string name="markup_percentage">PORCENTAJE DE RECARGO %</string>
+    <string name="no_at_cost">NO (A COSTO)</string>
+    <string name="apply_pct">APLICAR %</string>
+
+    <!-- Expense Matching Suggestion -->
+    <string name="match_expense_title">¿Vincular gasto a factura?</string>
+    <string name="match_expense_desc">Encontramos una factura/presupuesto borrador activo para %1$s (%2$s). ¿Desea agregar estos costos de materiales ($%3$s) a esa factura?</string>
+    <string name="append_to_invoice">VINCULAR A FACTURA</string>
+    <string name="no_thanks">NO, GRACIAS</string>
+
+    <!-- Past / History Tab -->
+    <string name="delete_record">¿Eliminar registro?</string>
+    <string name="delete_record_desc">Esto eliminará permanentemente este/a %s de sus registros. El archivo PDF permanecerá en su dispositivo.</string>
+    <string name="archived_records">REGISTROS ARCHIVADOS</string>
+    <string name="track_cash_flow">Siga el historial de su flujo de efectivo.</string>
+    <string name="search_clients_items">BUSCAR CLIENTES O ARTÍCULOS...</string>
+    <string name="paid_only">SOLO PAGADOS</string>
+
+    <!-- Receipts Tab -->
+    <string name="clear_all_receipts">¿Borrar todos los recibos?</string>
+    <string name="clear_all_receipts_desc">Esto eliminará permanentemente todos los suministros y recibos registrados. Esta acción no se puede deshacer.</string>
+    <string name="purge_all">BORRAR TODO</string>
+    <string name="billed">FACTURADO</string>
+    <string name="unbilled">SIN FACTURAR</string>
+    <string name="total_expenses">TOTAL GASTOS</string>
+    <string name="markup_tool">HERRAMIENTA DE RECARGO</string>
+    <string name="material_markup">RECARGO DE MATERIAL</string>
+    <string name="markup_desc">Agregue margen de beneficio a sus suministros.</string>
+    <string name="markup_pct_label">RECARGO %</string>
+    <string name="billed_total">TOTAL FACTURADO:</string>
+    <string name="general_expenses">GASTOS GENERALES</string>
+
+    <!-- Stats / Bento Tab -->
+    <string name="pro_feature_locked">FUNCIÓN PRO BLOQUEADA</string>
+    <string name="pro_feature_locked_desc">Los informes Bento y paquetes de impuestos son funciones premium. Actualice a Pro en Ajustes para desbloquearlas.</string>
+    <string name="project_profitability">RENTABILIDAD DEL PROYECTO</string>
+    <string name="financial_bento_grid">INFORME FINANCIERO BENTO</string>
+    <string name="generate_tax_bundle">GENERAR PAQUETE DE IMPUESTOS</string>
+    <string name="profit_margin">Margen de beneficio</string>
+
+    <!-- Stores / Suppliers Tab -->
+    <string name="manage_hidden_stores">GESTIONAR TIENDAS OCULTAS (%d)</string>
+    <string name="hidden_stores">TIENDAS OCULTAS</string>
+    <string name="log_expense">Registrar Gasto</string>
+    <string name="hide_store">Ocultar Tienda</string>
+    <string name="unhide_store">Mostrar Tienda</string>
+    <string name="quick_log_expense">REGISTRAR GASTO: %s</string>
+    <string name="amount_usd">Monto ($)</string>
+    <string name="description_eg">Descripción (ej. Materiales para obra Smith)</string>
+    <string name="store_name">Nombre de la tienda</string>
+    <string name="address_optional">Dirección (Opcional)</string>
+    <string name="phone_optional">Teléfono (Opcional)</string>
+    <string name="website_optional">Sitio Web (Opcional)</string>
+    <string name="pinned_suppliers">PROVEEDORES FIJADOS</string>
+    <string name="active_suppliers">PROVEEDORES ACTIVOS</string>
+    <string name="add_custom_supplier">AGREGAR PROVEEDOR PROPIO</string>
+
+    <!-- Clients Tab -->
+    <string name="delete_client">¿Eliminar cliente?</string>
+    <string name="delete_client_desc">¿Está seguro de que desea eliminar a %s? Esto lo quitará de su directorio, pero sus facturas y recibos permanecerán.</string>
+    <string name="new_job_note">NUEVA NOTA DE OBRA</string>
+    <string name="note_content">CONTENIDO DE LA NOTA...</string>
+    <string name="save_note">GUARDAR NOTA</string>
+    <string name="select_receipt_link">SELECCIONE RECIBO PARA VINCULAR A %s:</string>
+    <string name="client_directory">DIRECTORIO DE CLIENTES</string>
+
+    <!-- Settings Tab -->
+    <string name="restore_supabase">¿RESTAURAR DESDE SUPABASE?</string>
+    <string name="restore">RESTAURAR</string>
+    <string name="dark_mode">Modo Oscuro</string>
+    <string name="biometric_lock">Bloqueo Biométrico</string>
+    <string name="business_profile">Perfil de la Empresa</string>
+    <string name="stripe_connect">Conexión con Stripe</string>
+    <string name="cloud_sync">Copia de Seguridad</string>
+    <string name="danger_zone">ZONA DE PELIGRO</string>
+    <string name="delete_account">ELIMINAR CUENTA</string>
+    <string name="confirm_restore_desc">Esto sobrescribirá sus bases de datos locales con la última copia de seguridad en Supabase. Esta acción no se puede deshacer.</string>
+
+    <!-- Premium/Lock dialogs -->
+    <string name="premium_lock_dialog_desc">Suscríbase a través de Google Play o App Store para desbloquear el Centro de comandos de IA, OCR de recibos, informes Bento y exportaciones de impuestos. Los derechos se sincronizan con Supabase.</string>
+    <string name="view_plans">VER PLANES</string>
+
+    <!-- AI Agent / Overlay -->
+    <string name="confirm_ai">Confirmar IA</string>
+    <string name="add_all">AGREGAR TODO</string>
+    <string name="report_error">ERROR DE INFORME</string>
+    <string name="ai_system_error">ERROR DEL SISTEMA IA</string>
+    <string name="working_on">Trabajando en: %s</string>
+    <string name="settings_api_cost_title">Costos de API de Desarrollador</string>
+    <string name="settings_gemini_usage_label">Costo de Uso de Clave Gemini</string>
+    <string name="settings_gemini_usage_desc">Costo estimado en USD de las operaciones locales de la API de Gemini.</string>
+    <string name="which_client">¿Qué cliente?</string>
+    <string name="save_invoice_q">¿Guardar factura?</string>
+    <string name="edit_draft">Editar borrador</string>
+    <string name="save_pdf">Guardar PDF</string>
+    <string name="speak_now">Hable ahora...</string>
+    <string name="ready">Listo.</string>
+    <string name="type_command">Escriba un comando…</string>
+    <string name="quick_workflows">FLUJOS DE TRABAJO RÁPIDOS</string>
+    <string name="pick_client">SELECCIONAR CLIENTE</string>
+    <string name="approval_needed">APROBACIÓN REQUERIDA</string>
+    <string name="listening">ESCUCHANDO</string>
+    <string name="working">TRABAJANDO</string>
+    <string name="ai_action">ACCIÓN IA</string>
+    <string name="foreman">FOREMAN</string>
+    <string name="reject">RECHAZAR</string>
+    <string name="approve">APROBAR</string>
+    <string name="estimate">presupuesto</string>
+    <string name="invoice">factura</string>
+    <string name="converted">¡Convertido!</string>
+    <string name="deposit_label">DEPÓSITO: %s</string>
+    <string name="request_deposit">SOLICITAR DEPÓSITO</string>
+    <string name="pay_link">ENLACE DE PAGO</string>
+    <string name="paid">PAGADO</string>
+    <string name="unpaid">PENDIENTE</string>
+    <string name="finalize_invoice">CONVERTIR EN FACTURA</string>
+    <string name="view">Ver</string>
+    <string name="share">Compartir</string>
+    <string name="send">Enviar</string>
+    <string name="speak">Hablar</string>
+    <string name="client_notes">NOTAS DEL CLIENTE</string>
+    <string name="ai_summary">RESUMEN IA</string>
+    <string name="add_note">AÑADIR NOTA</string>
+    <string name="ai_job_insights">INFORMACIÓN IA</string>
+    <string name="no_notes_recorded">NO SE REGISTRARON NOTAS PARA ESTE CLIENTE.</string>
+    <string name="past_invoices">FACTURAS ANTERIORES</string>
+    <string name="before">ANTES</string>
+    <string name="after">DESPUÉS</string>
+    <string name="job_summary">RESUMEN DE TRABAJO</string>
+    <string name="revenue_label">INGRESOS:</string>
+    <string name="costs_label">COSTOS:</string>
+    <string name="net_profit_label">BENEFICIO NETO:</string>
+    <string name="link_receipt">Vincular recibo</string>
+    <string name="expense_tracker">CONTROL DE GASTOS</string>
+    <string name="expense_tracker_desc">Evite fugas de dinero. Vincule recibos a obras específicas.</string>
+    <string name="apply">APLICAR</string>
+    <string name="select_project_client">SELECCIONAR OBRA / CLIENTE</string>
+    <string name="snap_receipt">TOMAR FOTO DE RECIBO</string>
+    <string name="upload">SUBIR FOTO</string>
+    <string name="how_to_track_expenses">CÓMO REGISTRAR GASTOS</string>
+    <string name="how_to_track_expenses_desc">1. Seleccione un Cliente/Obra del menú desplegable superior.\n2. Presione Tomar foto de recibo o Subir foto para escanear un gasto.\n3. Verifique la imagen capturada, presione Escanear y registrar recibo, y nuestro motor de IA extraerá automáticamente los artículos para agregarlos a su lista inferior.</string>
+    <string name="captured_receipt">Recibo capturado</string>
+    <string name="remove_receipt_image">Quitar imagen del recibo</string>
+    <string name="analyzing">ANALIZANDO...</string>
+    <string name="scan_log_receipt">ESCANEAR Y REGISTRAR RECIBO</string>
+    <string name="logged_supplies">SUMINISTROS REGISTRADOS</string>
+    
+    <!-- Suppliers / Stores Tab batch B -->
+    <string name="reorder">REORDENAR</string>
+    <string name="reorder_desc">Establezca su prioridad absoluta</string>
+    <string name="suppliers_desc">Su red de suministro personalizada</string>
+    <string name="done">LISTO</string>
+    <string name="new_supplier">NUEVO PROVEEDOR</string>
+    <string name="add_supplier">Agregar Proveedor</string>
+    <string name="create_supplier">CREAR PROVEEDOR</string>
+    <string name="unpin_top">Desanclar de la parte superior</string>
+    <string name="pin_top">Anclar a la parte superior</string>
+    <string name="drag_to_reorder">Mantenga presionado y arrastre para reordenar</string>
+    <string name="supplier_category_lumber">Madera</string>
+    <string name="supplier_category_electrical">Electricidad</string>
+    <string name="supplier_category_plumbing">Plomería</string>
+    <string name="supplier_category_paint">Pintura</string>
+    <string name="supplier_category_roofing">Techado</string>
+    <string name="supplier_category_hvac">Climatización</string>
+    <string name="supplier_category_hardware">Ferretería</string>
+    <string name="supplier_category_fasteners">Fijaciones</string>
+    <string name="supplier_category_flooring">Pisos</string>
+    <string name="supplier_category_general_supply">Suministros generales</string>
+    <string name="supplier_category_other">Otro</string>
+    
+    <!-- Stats Tab batch B -->
+    <string name="go_to_settings">IR A AJUSTES</string>
+    <string name="business_analytics">ANÁLISIS DE NEGOCIO</string>
+    <string name="pro_account">CUENTA PRO</string>
+    <string name="free_account">CUENTA GRATUITA</string>
+    <string name="bento_report">INFORME BENTO</string>
+    <string name="tax_bundle">PAQUETE DE IMPUESTOS</string>
+    <string name="pro_label">PRO</string>
+    <string name="lock_label">BLOQUEADO</string>
+    <string name="system_diagnostics_stress">DIAGNÓSTICOS DEL SISTEMA Y PRUEBAS DE ESTRÉS</string>
+    <string name="simulate_1000">SIMULAR 1000</string>
+    <string name="purge_vault">BORRAR BÓVEDA</string>
+    <string name="net_profit_ytd">BENEFICIO NETO YTD</string>
+    <string name="margin_label">MARGEN</string>
+    <string name="total_hours_label">HORAS TOTALES</string>
+    <string name="billable_label">FACTURABLE</string>
+    <string name="floating_costs_label">COSTOS FLOTANTES</string>
+    <string name="total_business_expenses_label">GASTOS TOTALES DE EMPRESA</string>
+    
+    <!-- Settings Tab batch B -->
+    <string name="confirm_restore_full_desc">Esto reemplaza los clientes locales, facturas, recibos, proveedores y ajustes comerciales con su copia de seguridad de Supabase más reciente. Las fotos de trabajo y las entradas del libro de contabilidad de pagos no se restauran.</string>
+    <string name="application_settings">AJUSTES DE APLICACIÓN</string>
+    <string name="invoice_reminders_title">RECORDATORIOS DE FACTURAS</string>
+    <string name="unpaid_reminders_label">Recordatorios de facturas pendientes</string>
+    <string name="unpaid_reminders_desc">Notificación diaria con hasta tres facturas pendientes (no presupuestos). Primer recordatorio ~15 minutos después de activar, luego cada 24 horas.</string>
+    <string name="business_branding_title">IMAGEN DE LA EMPRESA</string>
+    <string name="ai_assistant_title">ASISTENTE DE IA</string>
+    <string name="direct_invoice_saving_label">Guardado directo de facturas</string>
+    <string name="direct_invoice_saving_desc">Al estar activo, los comandos de voz para crear facturas solicitarán automáticamente aprobar y guardar, omitiendo el borrador.</string>
+    <string name="direct_invoice_saving_warn">Precauciones: Asegúrese de que sus comandos de voz contengan todos los detalles necesarios (cliente, descripción, precios) para evitar guardar facturas incompletas.</string>
+    <string name="appearance_title">APARIENCIA</string>
+    <string name="security_title">SEGURIDAD</string>
+    <string name="biometric_lock_desc">Requiere huella digital o código de acceso para desbloquear Invoice Hammer al iniciar. (Las capturas y grabaciones de pantalla nunca se bloquean).</string>
+    <string name="biometrics_not_available">Biometría no disponible en este dispositivo</string>
+    <string name="privacy_permissions_title">PRIVACIDAD Y PERMISOS</string>
+    <string name="sensitive_permissions_disclosure">Divulgación de permisos sensibles</string>
+    <string name="permissions_disclosure_desc">Invoice Hammer requiere los siguientes permisos para funcionar. Solo accedemos a ellos cuando usa activamente las funciones correspondientes:</string>
+    <string name="perm_notifications">Notificaciones</string>
+    <string name="perm_notifications_desc">Usado para recordatorios diarios de facturas pendientes. Puede desactivarlos en Recordatorios de facturas al inicio de Ajustes.</string>
+    <string name="perm_microphone">Acceso al micrófono</string>
+    <string name="perm_microphone_desc">Usado para el Centro de comandos de IA para procesar comandos de voz. No se guarda audio fuera del procesamiento activo.</string>
+    <string name="perm_camera">Acceso a la cámara</string>
+    <string name="perm_camera_desc">Usado para escanear recibos y capturar fotos de trabajo. Las imágenes se guardan localmente en su directorio.</string>
+    <string name="perm_storage">Almacenamiento de archivos</string>
+    <string name="perm_storage_desc">Usado para guardar, exportar y gestionar sus facturas, presupuestos e informes PDF.</string>
+    <string name="save_all_changes">GUARDAR TODOS LOS CAMBIOS</string>
+    <string name="settings_saved_toast">Ajustes guardados</string>
+    
+    <!-- Account & Cloud Sync Section -->
+    <string name="account_cloud_sync_title">CUENTA Y COPIA EN LA NUBE</string>
+    <string name="cloud_backup_inactive">Copia de seguridad inactiva</string>
+    <string name="cloud_backup_inactive_desc">Inicie sesión con Google para activar la copia y sincronización en la nube.</string>
+    <string name="sign_in">INICIAR SESIÓN</string>
+    <string name="sign_out">CERRAR SESIÓN</string>
+    <string name="backup_desc_drive_supabase">Respalda en Google Drive y Supabase (%s).</string>
+    <string name="backup_desc_drive">Respalda datos de la app en su carpeta privada de Google Drive.</string>
+    <string name="sync_status_uploading">Subiendo copia de seguridad encriptada...</string>
+    <string name="sync_status_restoring">Restaurando datos de Supabase...</string>
+    <string name="sync_status_backup_complete">¡Copia de seguridad completada!</string>
+    <string name="sync_status_restore_complete">¡Restauración completada!</string>
+    <string name="sync_status_error">Error: %s</string>
+    <string name="sync_now">SINCRONIZAR AHORA</string>
+    
+    <!-- Stripe Connect Section -->
+    <string name="stripe_payouts_title">PAGOS DE STRIPE (CONNECT)</string>
+    <string name="stripe_payouts_desc">Acepte tarjeta, Google Pay y Apple Pay de sus clientes. Los fondos se liquidan en su banco mediante Stripe Connect; Invoice Hammer puede cobrar una comisión de plataforma.</string>
+    <string name="demo_mode_title">Modo demo</string>
+    <string name="demo_mode_desc">Agregue stripe.publishable.key y stripe.payment.backend.url, luego compile, para activar el pago real.</string>
+    <string name="sign_in_required_title">Inicio de sesión requerido</string>
+    <string name="sign_in_required_desc">Use el inicio de sesión con Google en Cuenta y Copia en la Nube antes de conectar Stripe.</string>
+    <string name="checking_stripe_status">Comprobando estado de Stripe Connect…</string>
+    <string name="ready_accept_payments">Listo para recibir pagos</string>
+    <string name="account_prefix">Cuenta </string>
+    <string name="payouts_enabled_suffix"> · Transferencias habilitadas</string>
+    <string name="payouts_disabled_suffix"> · Complete los datos de transferencia en Stripe si se le solicita</string>
+    <string name="refresh_status">ACTUALIZAR ESTADO</string>
+    <string name="finish_stripe_setup">Finalizar configuración de Stripe</string>
+    <string name="finish_stripe_setup_desc">Complete el registro para que los clientes puedan pagarle. Esto abrirá Stripe en su navegador.</string>
+    <string name="opening_progress">ABRIENDO…</string>
+    <string name="setup_stripe_payouts">CONFIGURAR PAGOS DE STRIPE</string>
+    <string name="refresh_status_lc">Actualizar estado</string>
+    <string name="payment_backend_error">No se pudo contactar con el backend de pago</string>
+    <string name="try_again">REINTENTAR</string>
+    
+    <!-- Pro & Subscription section -->
+    <string name="pro_sub_beta_title">SUSCRIPCIÓN PRO Y PRUEBA BETA</string>
+    <string name="pro_entitlements_active">BENEFICIOS PRO ACTIVOS</string>
+    <string name="free_tier_contractor">CONTRATISTA NIVEL GRATUITO</string>
+    <string name="pro_entitlements_active_desc">El centro de comandos de IA, OCR, informes Bento y exportación de impuestos están desbloqueados.</string>
+    <string name="free_tier_desc">Actualice para acceder a análisis de voz inteligente, escaneo OCR de recibos y paquetes de informes profesionales.</string>
+    <string name="manage_plan">GESTIONAR PLAN</string>
+    <string name="upgrade_to_pro">COMPRAR PRO</string>
+    <string name="beta_trial_free_unlock">PRUEBA BETA: DESBLOQUEO GRATUITO</string>
+    <string name="beta_trial_free_unlock_desc">Active este ajuste para desbloquear al instante todas las funciones Pro gratis durante la prueba beta. Desactívelo para probar la pantalla de compra y los límites tal como los verán los usuarios.</string>
+    
+    <!-- Paywall Sheet -->
+    <string name="invoice_hammer_pro">INVOICE HAMMER PRO</string>
+    <string name="paywall_subtitle">Suscripciones mediante Google Play o App Store. Los derechos se sincronizan con Supabase.</string>
+    <string name="pro_feat_ai">Centro de comandos de IA y agente Foreman</string>
+    <string name="pro_feat_ocr">Escaneo OCR de recibos</string>
+    <string name="pro_feat_reports">Informes Bento y exportación de impuestos</string>
+    <string name="loading_plans">Cargando planes de Supabase…</string>
+    <string name="starter_pack_title">Paquete de inicio</string>
+    <string name="credits_count_50">50 Créditos</string>
+    <string name="price_starter">$4.99</string>
+    <string name="starter_pack_desc">Perfecto para facturas estándar y escaneos de IA.</string>
+    <string name="builder_pack_title">Paquete constructor</string>
+    <string name="credits_count_150">150 Créditos</string>
+    <string name="price_builder">$9.99</string>
+    <string name="builder_pack_desc">El más popular. Diseñado para contratistas en crecimiento.</string>
+    <string name="contractors_choice">Elección del contratista</string>
+    <string name="contractor_pack_title">Paquete contratista</string>
+    <string name="credits_count_350">350 Créditos</string>
+    <string name="price_contractor">$19.99</string>
+    <string name="contractor_pack_desc">Mejor valor. Acceso completo a utilidades de nivel empresarial.</string>
+    <string name="best_value">Mejor valor</string>
+    <string name="or_purchase_packs">O COMPRE PAQUETES DE CRÉDITOS</string>
+    <string name="restore_purchases">RESTAURAR COMPRAS</string>
+    <string name="not_now">AHORA NO</string>
+    
+    <!-- Contractor Math comparison -->
+    <string name="contractor_math_title">🔨 MATEMÁTICAS DE CONTRATISTA: SUSCRIPCIÓN VS. PAQUETES</string>
+    <string name="contractor_math_desc">Los contratistas activos realizan más de 500 acciones mensuales (escaneos, facturas, paquetes de impuestos y asistente de IA).</string>
+    <string name="pay_as_you_go_packs">PAQUETES DE PAGO POR USO</string>
+    <string name="actions_per_month">500 acciones / mes</string>
+    <string name="price_pay_as_you_go">$59.96 / mes</string>
+    <string name="consumes_credits_desc">Consume créditos para escaneos, facturas y turnos del asistente</string>
+    <string name="pro_subscription">SUSCRIPCIÓN PRO</string>
+    <string name="unlimited_ai_desc">ILIMITADO + 500 IA / mes</string>
+    <string name="price_pro_monthly">$19.99 / mes</string>
+    <string name="pro_yearly_comparison">O Pro Anual: $13.33 / mes ($159.99 / año)</string>
+    <string name="save_with_pro_yearly">🎉 AHORRE HASTA UN 77% AL MES CON PRO ANUAL</string>
+    <string name="pro_tip_deductible">💡 Consejo Pro: Todos los planes de suscripción y paquetes de créditos son gastos comerciales 100% deducibles de impuestos.</string>
+    
+    <!-- Card Terminal Sheet -->
+    <string name="card_terminal_title">TERMINAL DE TARJETA</string>
+    <string name="on_site_entry_desc">Entrada en el sitio · %1$s · %2$s</string>
+    <string name="stripe_secure_checkout_desc">Pago seguro con Stripe — los datos de tarjeta nunca tocan los servidores de Invoice Hammer.</string>
+    <string name="secure_checkout_btn">PAGO SEGURO %s</string>
+    <string name="card_number">Número de tarjeta</string>
+    <string name="expiry">Vencimiento</string>
+    <string name="cvv">CVV</string>
+    <string name="cardholder_name">Nombre del titular</string>
+    <string name="processing_progress">PROCESANDO…</string>
+    <string name="charge_btn">COBRAR %s</string>
+    <string name="beta_simulator_desc">Simulador Beta — agregue claves de Stripe para pago real seguro PCI. Use ••••0002 para simular rechazo.</string>
+    <string name="card_label">TARJETA</string>
+    <string name="cardholder_placeholder">NOMBRE DEL TITULAR</string>
+    <string name="mmyy_placeholder">MM/AA</string>
+    
+    <!-- Payment request created dialog -->
+    <string name="google_pay_ready">ENLACE GOOGLE PAY LISTO</string>
+    <string name="apple_pay_ready">ENLACE APPLE PAY LISTO</string>
+    <string name="card_checkout_ready">PAGO CON TARJETA LISTO</string>
+    <string name="stellar_payment_ready">PAGO STELLAR LISTO</string>
+    <string name="payment_link_ready">ENLACE DE PAGO LISTO</string>
+    <string name="open_link">ABRIR ENLACE</string>
+    
+    <!-- Payment Picker options -->
+    <string name="google_pay_picker_desc">Futuro pago de billetera respaldado por procesador.</string>
+    <string name="apple_pay_picker_desc">Ranura de proveedor lista para iOS para pago nativo.</string>
+    <string name="stellar_usdc_picker_desc">Carril de liquidación de moneda estable para demo de SCF.</string>
+    <string name="card_link_picker_title">Tarjeta / Enlace de pago</string>
+    <string name="card_link_picker_desc">Enlace de respaldo alojado para clientes sin billeteras.</string>
+    <string name="card_terminal_picker_title">Terminal de tarjeta</string>
+    <string name="card_terminal_picker_desc">Ingrese la tarjeta en el sitio (gratis). El backend de Stripe permite un pago seguro PCI.</string>
+    <string name="tap_to_pay_picker_title">Pago sin contacto</string>
+    <string name="tap_to_pay_picker_desc">Pago NFC con el teléfono — nivel gratis (comisión de plataforma mediante Stripe Connect).</string>
+    <string name="bluetooth_reader_picker_title">Lector Bluetooth (Pro)</string>
+    <string name="bluetooth_reader_picker_desc">Lector de tarjetas externo — requiere suscripción Pro.</string>
+    <string name="request_full_payment">SOLICITAR PAGO COMPLETO</string>
+    <string name="payment_picker_subtitle">Stellar USDC → PowerPay. Google Pay, Apple Pay y Enlace de tarjeta → Stripe. Opciones en el sitio abajo.</string>
+    
+    <!-- Payment Ledger Sheet -->
+    <string name="pay_label">PAGAR</string>
+    <string name="tx_label">TRANS</string>
+    <string name="payment_ledger_title">LIBRO DE PAGOS</string>
+    <string name="requested_metric">SOLICITADO</string>
+    <string name="active_metric">ACTIVO</string>
+    <string name="invoice_paid_view_receipt">Factura %s pagada — ver recibo</string>
+    <string name="view_payment_receipt">Ver recibo de pago</string>
+    <string name="no_payment_requests_yet">No hay solicitudes de pago aún. Abra una factura y solicite un depósito o pago completo.</string>
+    
+    <!-- Error/Success states -->
+    <string name="payment_cancelled">El pago fue cancelado.</string>
+    <string name="stripe_connect_not_configured">El backend de Stripe Connect no está configurado.</string>
+    <string name="bluetooth_readers_not_enabled">Los lectores de tarjetas Bluetooth no están habilitados en esta versión. Use Tap to Pay o Terminal de tarjeta.</string>
+    <string name="payment_success">¡El pago seguro se realizó con éxito! La factura está marcada como pagada.</string>
+    <string name="secure_checkout_paid_success">Pagado %s mediante pago seguro.</string>
+    <string name="card_terminal_paid_success">Pagado %s — factura marcada como pagada.</string>
+    <string name="powerpay_demo_banner">Modo demo — configure las credenciales de PowerPay para pago Stellar real.</string>
+    <string name="powerpay_live_banner">Stellar PowerPay · %1$s · %2$s</string>
+    <string name="snap_photo">TOMAR FOTO</string>
+    <string name="pro_year">Pro / año</string>
+    <string name="pro_month">Pro / mes</string>
+    <string name="pro_yearly_equivalent">= $13.33 / mes</string>
+    <string name="deposit_type_label">DEPÓSITO</string>
+    <string name="full_pay_type_label">PAGO TOTAL</string>
+    
+    <!-- Checkout instructions -->
+    <string name="checkout_instr_stellar_live">Pago de Stellar USDC a través de PowerPay. El cliente paga en la cadena; la liquidación se registra en su libro contable.</string>
+    <string name="checkout_instr_stellar_demo">Enlace Stellar de demostración — agregue credenciales de PowerPay en local.properties para el pago real de USDC.</string>
+    <string name="checkout_instr_gpay_live">Pago de Stripe Connect con Google Pay habilitado. Comparta este enlace con su cliente.</string>
+    <string name="checkout_instr_gpay_demo">Enlace de Google Pay de demostración — agregue stripe.publishable.key y stripe.payment.backend.url para el pago real.</string>
+    <string name="checkout_instr_apay_live">Pago de Stripe Connect con Apple Pay habilitado. Comparta este enlace con su cliente (iOS/Safari).</string>
+    <string name="checkout_instr_apay_demo">Enlace de Apple Pay de demostración — agregue las claves de Stripe y el backend de pago para el pago real.</string>
+    <string name="checkout_instr_card_live">Pago con tarjeta alojada en Stripe / Enlace Link. Seguro PCI — los datos de la tarjeta permanecen en Stripe.</string>
+    <string name="checkout_instr_card_demo">Enlace de tarjeta de demostración — agregue las claves de Stripe y el backend de pago para el pago alojado real.</string>
+    <string name="checkout_instr_fallback">Abra el enlace para completar el pago.</string>
+    <string name="qr_scan_hint">Código QR de pago — el cliente escanea para pagar</string>
+    <string name="qr_tap_to_open">Toque el QR para abrir el pago en este teléfono</string>
+    <string name="checkout_link_already_paid">Este enlace de pago ya se usó. Cree uno nuevo si necesita otro cobro.</string>
+    <string name="checkout_link_expired">Este enlace de pago expiró. Cree uno nuevo para su cliente.</string>
+    <string name="checkout_link_refreshing">Actualizando enlace de pago…</string>
+    <string name="checkout_link_new">NUEVO ENLACE DE PAGO</string>
+    <string name="checkout_link_client_hint">Pida a su cliente que escanee este QR con la cámara del teléfono. No pague usted este enlace si ellos van a escanearlo.</string>
+    
+    <!-- Payment request statuses -->
+    <string name="status_requested">SOLICITADO</string>
+    <string name="status_pending">PENDIENTE</string>
+    <string name="status_paid">PAGADO</string>
+    <string name="status_failed">FALLIDO</string>
+    <string name="status_expired">EXPIRADO</string>
+
+    <!-- Biometric lock, line items, business profile, agent FAB, top bar -->
+    <string name="vault_locked">Bóveda bloqueada</string>
+    <string name="vault_locked_subtitle">Autentíquese para acceder a Invoice Hammer</string>
+    <string name="vault_locked_subtitle_short">Autentíquese para acceder</string>
+    <string name="unlock_vault">Desbloquear bóveda</string>
+    <string name="biometrics_changed_title">Biometría cambiada</string>
+    <string name="biometrics_changed_body">La configuración biométrica de su dispositivo (p. ej., huella digital o rostro) ha cambiado. Por seguridad, el bloqueo biométrico se ha desactivado y se cerrará su sesión. Inicie sesión con sus credenciales para volver a activarlo.</string>
+    <string name="line_items">PARTIDAS</string>
+    <string name="link_unbilled">VINCULAR SIN FACTURAR</string>
+    <string name="description_label">DESCRIPCIÓN</string>
+    <string name="price_label">PRECIO ($)</string>
+    <string name="ai_fill">RELLENO IA</string>
+    <string name="add_item">AGREGAR PARTIDA</string>
+    <string name="line_items_empty">Aún no hay partidas. Agregue mano de obra, materiales o use Relleno IA.</string>
+    <string name="business_profile_title">PERFIL DE LA EMPRESA</string>
+    <string name="business_name">NOMBRE DE LA EMPRESA</string>
+    <string name="slogan">ESLOGAN</string>
+    <string name="phone">TELÉFONO</string>
+    <string name="email">CORREO</string>
+    <string name="address">DIRECCIÓN</string>
+    <string name="business_logo">LOGO DE LA EMPRESA</string>
+    <string name="business_logo_desc">Se guarda en este dispositivo y se usa automáticamente en cada factura nueva.</string>
+    <string name="business_logo_cd">Logo de la empresa</string>
+    <string name="upload_logo">SUBIR LOGO</string>
+    <string name="change_logo">CAMBIAR LOGO</string>
+    <string name="remove">ELIMINAR</string>
+    <string name="client_profile">PERFIL DEL CLIENTE</string>
+    <string name="top_bar_invoice">FACTURA</string>
+    <string name="top_bar_hammer">MARTILLO</string>
+    <string name="payment_ledger_cd">Libro de pagos</string>
+    <string name="ask_ai">PREGUNTA IA</string>
+    <string name="stop_gemini_ai_cd">Detener Gemini IA</string>
+    <string name="ask_gemini_ai_cd">Preguntar a Gemini IA</string>
+    <string name="no_photos_added_yet">AÚN NO HAY FOTOS</string>
+    <string name="agent_suggestion_invoice_bob">Factura a Bob 3 h de trabajo a 85</string>
+    <string name="agent_suggestion_go_stats">Ir a estadísticas</string>
+    <string name="agent_suggestion_go_history">Ir al historial</string>
+    <string name="agent_suggestion_bill_joe">Cobrar a Joe 500</string>
+    <string name="agent_suggestion_same_as_mike">Igual que la última vez para Mike</string>
+
+    <!-- ViewModel / toast messages (Phase 3) -->
+    <string name="err_client_name_required">El nombre del cliente es obligatorio para guardar.</string>
+    <string name="err_client_address_required">La dirección del cliente es obligatoria para guardar.</string>
+    <string name="err_line_items_required">La descripción del trabajo / partidas es obligatoria para guardar. Ingrese categoría, descripción y precio, luego toque 'AGREGAR PARTIDA'.</string>
+    <string name="err_ai_error_fmt">Error de IA: %s</string>
+    <string name="toast_business_logo_saved">Logo de la empresa guardado para todas las facturas.</string>
+    <string name="toast_business_logo_removed">Logo de la empresa eliminado.</string>
+    <string name="toast_purchase_cancelled">Compra cancelada.</string>
+    <string name="toast_pro_unlocked_fmt">Pro desbloqueado mediante %s.</string>
+    <string name="toast_purchased_fmt">Comprado %s.</string>
+    <string name="toast_low_balance">¡Saldo bajo! No se pudieron deducir créditos. Compre más escaneos o pase a Pro.</string>
+    <string name="toast_purchases_restored">Compras restauradas.</string>
+    <string name="toast_no_active_subscription">No se encontró una suscripción activa.</string>
+    <string name="toast_stripe_sign_in_required">Inicie sesión con Google antes de configurar pagos de Stripe.</string>
+    <string name="toast_stripe_backend_url_required">Agregue stripe.payment.backend.url en local.properties.</string>
+    <string name="toast_saved_to_fmt">Guardado en %s</string>
+    <string name="err_could_not_load_photo_fmt">No se pudo cargar la foto: %s</string>
+    <string name="err_failed_process_receipt_fmt">No se pudo procesar el recibo: %s</string>
+    <string name="err_premium_required_receipt">Se requiere suscripción premium para procesar recibos</string>
+    <string name="foreman_review_invoice_fmt">Revise la factura de %s antes de guardar.</string>
+    <string name="foreman_unhandled_tool">El agente devolvió una solicitud de herramienta no controlada.</string>
+    <string name="toast_camera_unavailable">Cámara no disponible</string>
+    <string name="toast_camera_permission_required">Se requiere permiso de cámara para fotografiar recibos</string>
+    <string name="category_drywall">Panel de yeso</string>
+    <string name="category_flooring">Pisos</string>
+    <string name="category_roofing">Techado</string>
+    <string name="category_plumbing">Plomería</string>
+    <string name="category_electrical">Electricidad</string>
+    <string name="category_painting">Pintura</string>
+    <string name="category_carpentry">Carpintería</string>
+    <string name="category_general_repair">Reparación general</string>
+
+    <!-- Suggestion 4: Bento YTD & Financial Health Dashboard -->
+    <string name="ytd_revenue">INGRESOS YTD</string>
+    <string name="ytd_expenses">GASTOS YTD</string>
+    <string name="outstanding_invoices">FACTURAS PENDIENTES</string>
+    <string name="aging_receivables">ANTIGÜEDAD DE SALDOS</string>
+    <string name="aging_0_30">0-30 días</string>
+    <string name="aging_31_60">31-60 días</string>
+    <string name="aging_61_plus">61+ días</string>
+    <string name="tax_projection">PROYECCIÓN DE IMPUESTOS</string>
+    <string name="tax_warning">Advertencia de impuestos estimados trimestrales proyectados (Q%1$d). Calculado al 20% del beneficio neto YTD.</string>
+
+    <!-- Suggestion 5: Automated Payment Follow-Ups (Smart Reminders) -->
+    <string name="reminder_sheet_title">ENVIAR RECORDATORIO IA</string>
+    <string name="tone_friendly">Amigable</string>
+    <string name="tone_direct">Directo</string>
+    <string name="tone_firm">Firme</string>
+    <string name="channel_sms">SMS</string>
+    <string name="channel_email">Correo</string>
+    <string name="generate_reminder">GENERAR</string>
+    <string name="send_reminder">ENVIAR / COMPARTIR</string>
+    <string name="generating">Generando…</string>
+    <string name="message_tone">TONO DEL MENSAJE</string>
+    <string name="message_channel">CANAL DEL MENSAJE</string>
+    <string name="send_ai_reminder">Enviar recordatorio IA</string>
+</resources>

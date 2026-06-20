@@ -6,6 +6,8 @@ import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.*
 import com.fordham.toolbelt.domain.model.SaveBusinessLogoOutcome
+import com.fordham.toolbelt.ui.InvoiceCategories
+import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -119,7 +121,7 @@ class NewInvoiceViewModel(
         }
     }
 
-    val categories = listOf("Drywall", "Flooring", "Roofing", "Plumbing", "Electrical", "Painting", "Carpentry", "General Repair")
+    val categories = InvoiceCategories.englishKeys
 
     fun onIntent(intent: NewInvoiceIntent) {
         when (intent) {
@@ -248,7 +250,7 @@ class NewInvoiceViewModel(
                     )
                 }
             } else if (result is InvoiceTextOutcome.Failure) {
-                _transientState.update { it.copy(errorMessage = "AI Error: ${result.error.value}") }
+                _transientState.update { it.copy(errorMessage = UiMessageKeys.aiError(result.error.value)) }
             }
             _transientState.update { it.copy(isProcessingAi = false) }
         }
@@ -270,15 +272,15 @@ class NewInvoiceViewModel(
             val finalClientAddress = (_transientState.value.clientAddress ?: draft.clientAddress).trim()
             
             if (finalClientName.isBlank()) {
-                _transientState.update { it.copy(errorMessage = "Client Name must be filled out to save.") }
+                _transientState.update { it.copy(errorMessage = UiMessageKeys.CLIENT_NAME_REQUIRED) }
                 return@launch
             }
             if (finalClientAddress.isBlank()) {
-                _transientState.update { it.copy(errorMessage = "Client Address must be filled out to save.") }
+                _transientState.update { it.copy(errorMessage = UiMessageKeys.CLIENT_ADDRESS_REQUIRED) }
                 return@launch
             }
             if (draft.lineItems.isEmpty()) {
-                _transientState.update { it.copy(errorMessage = "Job Description / Line Items must be filled out to save. Please enter Category, Description, and Price, then tap 'ADD ITEM'.") }
+                _transientState.update { it.copy(errorMessage = UiMessageKeys.LINE_ITEMS_REQUIRED) }
                 return@launch
             }
             

@@ -27,7 +27,11 @@ sealed interface AgentSkill {
             ToolName.QuickSendInvoice,
             ToolName.SendInvoiceEmail,
             ToolName.SendInvoiceSms,
-            ToolName.DeleteInvoiceForApproval
+            ToolName.DeleteInvoiceForApproval,
+            ToolName.GetProfitGuardianStatus,
+            ToolName.DetectChangeOrders,
+            ToolName.GetDailyBriefing,
+            ToolName.CreateChangeOrder
         )
     }
 
@@ -45,7 +49,9 @@ sealed interface AgentSkill {
             ToolName.GetUnbilledReceipts,
             ToolName.CreateClient,
             ToolName.QuickClientLookup,
-            ToolName.AddJobNote
+            ToolName.AddJobNote,
+            ToolName.GetProfitGuardianStatus,
+            ToolName.DetectChangeOrders
         )
     }
 
@@ -86,11 +92,11 @@ object AgentSkillClassifier {
     fun classify(userInput: String): AgentSkill {
         val query = userInput.trim().lowercase()
 
-        // Help & capability requests
+        // Help & capability requests and common greetings
         val hasHelpIntent = query.containsAny(
             "what does the app do", "what can you do", "help", "features", "capabilities",
             "how to use", "how do i", "guide", "instructions", "explain", "comprehensive list",
-            "what is this app"
+            "what is this app", "hello", "hi", "hey", "hola", "buenos dias", "good morning", "good afternoon"
         )
         if (hasHelpIntent) return AgentSkill.HelpSkills
 
@@ -99,7 +105,8 @@ object AgentSkillClassifier {
         val hasFinanceIntent = query.containsAny(
             "invoice", "bill ", "charge", "estimate", "receipt", "draft",
             "line item", "tax", "deposit", "send invoice", "same as last",
-            "job site", "billing address", "invoice address", "client address"
+            "labor", "append", "add labor", "add service", "add materials", "send it", "send this",
+            "profit", "guardian", "variance", "briefing", "change order", "budget", "overrun", "cost warning"
         )
         if (hasFinanceIntent) return AgentSkill.FinanceSkills
 
@@ -107,7 +114,7 @@ object AgentSkillClassifier {
         val hasCrmIntent = query.containsAny(
             "new client", "add client", "find client", "search client",
             "client", "customer", "find ", "search ", "contact", "phone", "email",
-            "note", "address"
+            "note", "address", "job site", "billing address", "invoice address", "client address"
         )
         if (hasCrmIntent) return AgentSkill.CrmSkills
 

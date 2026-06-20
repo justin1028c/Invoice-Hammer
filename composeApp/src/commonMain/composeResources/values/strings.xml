@@ -1,4 +1,538 @@
 <resources>
     <string name="app_name">Invoice Hammer</string>
-    <string name="default_web_client_id">716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com</string>
+    
+    <!-- Navigation Tabs -->
+    <string name="tab_new">NEW</string>
+    <string name="tab_past">PAST</string>
+    <string name="tab_receipts">RECEIPTS</string>
+    <string name="tab_stats">STATS</string>
+    <string name="tab_stores">STORES</string>
+    <string name="tab_clients">CLIENTS</string>
+    <string name="tab_settings">SETTINGS</string>
+
+    <!-- General / Common -->
+    <string name="profile_image_cd">Profile image</string>
+    <string name="contractor_default">Contractor</string>
+    <string name="cancel">CANCEL</string>
+    <string name="delete">DELETE</string>
+    <string name="save">SAVE</string>
+    <string name="ok">OK</string>
+    <string name="close">CLOSE</string>
+    <string name="dismiss">DISMISS</string>
+    <string name="error">ERROR</string>
+    <string name="category">CATEGORY</string>
+
+    <!-- New Invoice Tab -->
+    <string name="invoice_details">INVOICE DETAILS</string>
+    <string name="business">BUSINESS</string>
+    <string name="job_timer">JOB TIMER</string>
+    <string name="start_timer">START TIMER</string>
+    <string name="stop_timer">STOP TIMER</string>
+    <string name="rate_hr">RATE ($/HR)</string>
+    <string name="bill_time">BILL TIME</string>
+    <string name="saved_future">Saved for all future invoices</string>
+    <string name="client_name">CLIENT NAME</string>
+    <string name="client_address">CLIENT ADDRESS</string>
+    <string name="save_client_dir">SAVE TO CLIENT DIRECTORY</string>
+    <string name="job_photos">JOB PHOTOS</string>
+    <string name="tap_before_after">Tap BEFORE when you walk in, then AFTER when work is done.</string>
+    <string name="tax_rate">TAX RATE %</string>
+    <string name="deposit_collected">DEPOSIT COLLECTED ($)</string>
+    <string name="save_estimate">SAVE ESTIMATE</string>
+    <string name="save_invoice">SAVE INVOICE</string>
+    <string name="floating_expense_pool">FLOATING EXPENSE POOL</string>
+    <string name="no_unbilled_receipts">NO UNBILLED RECEIPTS FOUND.</string>
+    <string name="apply_markup">APPLY MARKUP?</string>
+    <string name="linking">LINKING: %s</string>
+    <string name="raw_cost">RAW COST: %s</string>
+    <string name="markup_percentage">MARKUP PERCENTAGE %</string>
+    <string name="no_at_cost">NO (AT COST)</string>
+    <string name="apply_pct">APPLY %</string>
+
+    <!-- Expense Matching Suggestion -->
+    <string name="match_expense_title">Match Expense to Invoice?</string>
+    <string name="match_expense_desc">We found an active draft invoice/estimate for %1$s (%2$s). Would you like to append these material costs ($%3$s) to that invoice?</string>
+    <string name="append_to_invoice">APPEND TO INVOICE</string>
+    <string name="no_thanks">NO, THANKS</string>
+
+    <!-- Past / History Tab -->
+    <string name="delete_record">Delete Record?</string>
+    <string name="delete_record_desc">This will permanently remove this %s from your records. The PDF file will remain on your device.</string>
+    <string name="archived_records">ARCHIVED RECORDS</string>
+    <string name="track_cash_flow">Track your cash flow history.</string>
+    <string name="search_clients_items">SEARCH CLIENTS OR ITEMS...</string>
+    <string name="paid_only">PAID ONLY</string>
+
+    <!-- Receipts Tab -->
+    <string name="clear_all_receipts">Clear All Receipts?</string>
+    <string name="clear_all_receipts_desc">This will permanently delete all logged supplies and receipts. This action cannot be undone.</string>
+    <string name="purge_all">PURGE ALL</string>
+    <string name="billed">BILLED</string>
+    <string name="unbilled">UNBILLED</string>
+    <string name="total_expenses">TOTAL EXPENSES</string>
+    <string name="markup_tool">MARKUP TOOL</string>
+    <string name="material_markup">MATERIAL MARKUP</string>
+    <string name="markup_desc">Add profit margin to your supplies.</string>
+    <string name="markup_pct_label">MARKUP %</string>
+    <string name="billed_total">BILLED TOTAL:</string>
+    <string name="general_expenses">GENERAL EXPENSES</string>
+
+    <!-- Stats / Bento Tab -->
+    <string name="pro_feature_locked">PRO FEATURE LOCKED</string>
+    <string name="pro_feature_locked_desc">Bento Reporting and Tax Bundles are premium features. Upgrade to Pro in Settings to unlock these tools.</string>
+    <string name="project_profitability">PROJECT PROFITABILITY</string>
+    <string name="financial_bento_grid">FINANCIAL BENTO GRID</string>
+    <string name="generate_tax_bundle">GENERATE TAX BUNDLE</string>
+    <string name="profit_margin">Profit Margin</string>
+
+    <!-- Stores / Suppliers Tab -->
+    <string name="manage_hidden_stores">MANAGE HIDDEN STORES (%d)</string>
+    <string name="hidden_stores">HIDDEN STORES</string>
+    <string name="log_expense">Log Expense</string>
+    <string name="hide_store">Hide Store</string>
+    <string name="unhide_store">Unhide Store</string>
+    <string name="quick_log_expense">LOG EXPENSE: %s</string>
+    <string name="amount_usd">Amount ($)</string>
+    <string name="description_eg">Description (e.g. Materials for Smith Job)</string>
+    <string name="store_name">Store Name</string>
+    <string name="address_optional">Address (Optional)</string>
+    <string name="phone_optional">Phone (Optional)</string>
+    <string name="website_optional">Website URL (Optional)</string>
+    <string name="pinned_suppliers">PINNED SUPPLIERS</string>
+    <string name="active_suppliers">ACTIVE SUPPLIERS</string>
+    <string name="add_custom_supplier">ADD CUSTOM SUPPLIER</string>
+
+    <!-- Clients Tab -->
+    <string name="delete_client">Delete Client?</string>
+    <string name="delete_client_desc">Are you sure you want to delete %s? This will remove them from your directory, but their invoices and receipts will remain.</string>
+    <string name="new_job_note">NEW JOB NOTE</string>
+    <string name="note_content">NOTE CONTENT...</string>
+    <string name="save_note">SAVE NOTE</string>
+    <string name="select_receipt_link">SELECT A RECEIPT TO LINK TO %s:</string>
+    <string name="client_directory">CLIENT DIRECTORY</string>
+
+    <!-- Settings Tab -->
+    <string name="restore_supabase">RESTORE FROM SUPABASE?</string>
+    <string name="restore">RESTORE</string>
+    <string name="dark_mode">Dark Mode</string>
+    <string name="biometric_lock">Biometric Lock</string>
+    <string name="business_profile">Business Profile</string>
+    <string name="stripe_connect">Stripe Connect</string>
+    <string name="cloud_sync">Cloud Backup</string>
+    <string name="danger_zone">DANGER ZONE</string>
+    <string name="delete_account">DELETE ACCOUNT</string>
+    <string name="confirm_restore_desc">This will overwrite your local databases with the latest backup stored on Supabase. This action cannot be undone.</string>
+
+    <!-- Premium/Lock dialogs -->
+    <string name="premium_lock_dialog_desc">Subscribe via Google Play or the App Store to unlock AI Command Center, receipt OCR, Bento reports, and tax exports. Entitlements sync to Supabase.</string>
+    <string name="view_plans">VIEW PLANS</string>
+
+    <!-- AI Agent / Overlay -->
+    <string name="confirm_ai">Confirm AI</string>
+    <string name="add_all">ADD ALL</string>
+    <string name="report_error">REPORT ERROR</string>
+    <string name="ai_system_error">AI SYSTEM ERROR</string>
+    <string name="working_on">Working on: %s</string>
+    <string name="settings_api_cost_title">Developer API Costs</string>
+    <string name="settings_gemini_usage_label">Gemini Key Usage Cost</string>
+    <string name="settings_gemini_usage_desc">Estimated cost in USD of local Gemini API operations.</string>
+    <string name="which_client">Which client?</string>
+    <string name="save_invoice_q">Save invoice?</string>
+    <string name="edit_draft">Edit draft</string>
+    <string name="save_pdf">Save PDF</string>
+    <string name="speak_now">Speak now...</string>
+    <string name="ready">Ready.</string>
+    <string name="type_command">Type a command…</string>
+    <string name="quick_workflows">QUICK WORKFLOWS (TAP TO FILL)</string>
+    <string name="pick_client">PICK CLIENT</string>
+    <string name="approval_needed">APPROVAL NEEDED</string>
+    <string name="listening">LISTENING</string>
+    <string name="working">WORKING</string>
+    <string name="ai_action">AI ACTION</string>
+    <string name="foreman">FOREMAN</string>
+    <string name="reject">REJECT</string>
+    <string name="approve">APPROVE</string>
+    <string name="estimate">estimate</string>
+    <string name="invoice">invoice</string>
+    <string name="converted">Converted!</string>
+    <string name="deposit_label">DEPOSIT: %s</string>
+    <string name="request_deposit">REQUEST DEPOSIT</string>
+    <string name="pay_link">PAY LINK</string>
+    <string name="paid">PAID</string>
+    <string name="unpaid">UNPAID</string>
+    <string name="finalize_invoice">FINALIZE INVOICE</string>
+    <string name="view">View</string>
+    <string name="share">Share</string>
+    <string name="send">Send</string>
+    <string name="speak">Speak</string>
+    <string name="client_notes">CLIENT NOTES</string>
+    <string name="ai_summary">AI SUMMARY</string>
+    <string name="add_note">ADD NOTE</string>
+    <string name="ai_job_insights">AI JOB INSIGHTS</string>
+    <string name="no_notes_recorded">NO NOTES RECORDED FOR THIS CLIENT.</string>
+    <string name="past_invoices">PAST INVOICES</string>
+    <string name="before">BEFORE</string>
+    <string name="after">AFTER</string>
+    <string name="job_summary">JOB SUMMARY</string>
+    <string name="revenue_label">REVENUE:</string>
+    <string name="costs_label">COSTS:</string>
+    <string name="net_profit_label">NET PROFIT:</string>
+    <string name="link_receipt">Link Receipt</string>
+    <string name="expense_tracker">EXPENSE TRACKER</string>
+    <string name="expense_tracker_desc">Stop the leaks. Link receipts to specific jobs.</string>
+    <string name="apply">APPLY</string>
+    <string name="select_project_client">SELECT PROJECT / CLIENT</string>
+    <string name="snap_receipt">SNAP RECEIPT</string>
+    <string name="upload">UPLOAD</string>
+    <string name="how_to_track_expenses">HOW TO TRACK EXPENSES</string>
+    <string name="how_to_track_expenses_desc">1. Select a Client/Project from the dropdown above.\n2. Tap Snap Receipt or Upload to scan an expense image.\n3. Verify the captured image, click Scan &amp; Log Receipt, and our AI engine will automatically extract line items and add them to your logged supplies below.</string>
+    <string name="captured_receipt">Captured Receipt</string>
+    <string name="remove_receipt_image">Remove receipt image</string>
+    <string name="analyzing">ANALYZING...</string>
+    <string name="scan_log_receipt">SCAN &amp; LOG RECEIPT</string>
+    <string name="logged_supplies">LOGGED SUPPLIES</string>
+    
+    <!-- Suppliers / Stores Tab batch B -->
+    <string name="reorder">REORDER</string>
+    <string name="reorder_desc">Set your absolute priority</string>
+    <string name="suppliers_desc">Your personalized supply network</string>
+    <string name="done">DONE</string>
+    <string name="new_supplier">NEW SUPPLIER</string>
+    <string name="add_supplier">Add Supplier</string>
+    <string name="create_supplier">CREATE SUPPLIER</string>
+    <string name="unpin_top">Unpin from Top</string>
+    <string name="pin_top">Pin to Top</string>
+    <string name="drag_to_reorder">Long press and drag to reorder</string>
+    <string name="supplier_category_lumber">Lumber</string>
+    <string name="supplier_category_electrical">Electrical</string>
+    <string name="supplier_category_plumbing">Plumbing</string>
+    <string name="supplier_category_paint">Paint</string>
+    <string name="supplier_category_roofing">Roofing</string>
+    <string name="supplier_category_hvac">HVAC</string>
+    <string name="supplier_category_hardware">Hardware</string>
+    <string name="supplier_category_fasteners">Fasteners</string>
+    <string name="supplier_category_flooring">Flooring</string>
+    <string name="supplier_category_general_supply">General Supply</string>
+    <string name="supplier_category_other">Other</string>
+    
+    <!-- Stats Tab batch B -->
+    <string name="go_to_settings">GO TO SETTINGS</string>
+    <string name="business_analytics">BUSINESS ANALYTICS</string>
+    <string name="pro_account">PRO ACCOUNT</string>
+    <string name="free_account">FREE ACCOUNT</string>
+    <string name="bento_report">BENTO REPORT</string>
+    <string name="tax_bundle">TAX BUNDLE</string>
+    <string name="pro_label">PRO</string>
+    <string name="lock_label">LOCK</string>
+    <string name="system_diagnostics_stress">SYSTEM DIAGNOSTICS &amp; STRESS TESTING</string>
+    <string name="simulate_1000">SIMULATE 1000</string>
+    <string name="purge_vault">PURGE VAULT</string>
+    <string name="net_profit_ytd">NET PROFIT YTD</string>
+    <string name="margin_label">MARGIN</string>
+    <string name="total_hours_label">TOTAL HOURS</string>
+    <string name="billable_label">BILLABLE</string>
+    <string name="floating_costs_label">FLOATING COSTS</string>
+    <string name="total_business_expenses_label">TOTAL BUSINESS EXPENSES</string>
+    
+    <!-- Settings Tab batch B -->
+    <string name="confirm_restore_full_desc">This replaces local clients, invoices, receipts, suppliers, and business settings with your latest Supabase backup. Job photos and payment ledger entries are not restored.</string>
+    <string name="application_settings">APPLICATION SETTINGS</string>
+    <string name="invoice_reminders_title">INVOICE REMINDERS</string>
+    <string name="unpaid_reminders_label">Unpaid invoice reminders</string>
+    <string name="unpaid_reminders_desc">Daily notification with up to three unpaid invoices (not estimates). First reminder ~15 minutes after enabling, then every 24 hours.</string>
+    <string name="business_branding_title">BUSINESS BRANDING</string>
+    <string name="ai_assistant_title">AI ASSISTANT</string>
+    <string name="direct_invoice_saving_label">Direct Invoice Saving</string>
+    <string name="direct_invoice_saving_desc">When enabled, voice commands to create an invoice will automatically prompt to approve and save it, skipping the draft staging area.</string>
+    <string name="direct_invoice_saving_warn">Precautions: Ensure your voice commands contain all required details (client, description, pricing) to avoid saving incomplete invoices.</string>
+    <string name="appearance_title">APPEARANCE</string>
+    <string name="security_title">SECURITY</string>
+    <string name="biometric_lock_desc">Require fingerprint or passcode to unlock Invoice Hammer on launch. (Screenshots and recordings are never blocked).</string>
+    <string name="biometrics_not_available">Biometrics not available on this device</string>
+    <string name="privacy_permissions_title">PRIVACY &amp; PERMISSIONS</string>
+    <string name="sensitive_permissions_disclosure">Sensitive Permissions Disclosure</string>
+    <string name="permissions_disclosure_desc">Invoice Hammer requires the following permissions to function. We only access these when you actively use the corresponding features:</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_desc">Used for daily unpaid invoice reminders. You can turn these off in Invoice Reminders at the top of Settings.</string>
+    <string name="perm_microphone">Microphone Access</string>
+    <string name="perm_microphone_desc">Used for the AI Command Center to process voice commands. No audio is stored outside of active processing.</string>
+    <string name="perm_camera">Camera Access</string>
+    <string name="perm_camera_desc">Used for scanning receipts and capturing job photos. Images are stored locally in your directory.</string>
+    <string name="perm_storage">File Storage</string>
+    <string name="perm_storage_desc">Used to save, export, and manage your invoices, estimates, and PDF reports.</string>
+    <string name="save_all_changes">SAVE ALL CHANGES</string>
+    <string name="settings_saved_toast">Settings Saved</string>
+    
+    <!-- Account & Cloud Sync Section -->
+    <string name="account_cloud_sync_title">ACCOUNT &amp; CLOUD SYNC</string>
+    <string name="cloud_backup_inactive">Cloud Backup Inactive</string>
+    <string name="cloud_backup_inactive_desc">Sign in with Google to enable cloud backup and syncing.</string>
+    <string name="sign_in">SIGN IN</string>
+    <string name="sign_out">SIGN OUT</string>
+    <string name="backup_desc_drive_supabase">Backs up to Google Drive and Supabase (%s).</string>
+    <string name="backup_desc_drive">Backs up app data to your private Google Drive app folder.</string>
+    <string name="sync_status_uploading">Uploading encrypted app backup...</string>
+    <string name="sync_status_restoring">Restoring data from Supabase...</string>
+    <string name="sync_status_backup_complete">Backup complete!</string>
+    <string name="sync_status_restore_complete">Restore complete!</string>
+    <string name="sync_status_error">Error: %s</string>
+    <string name="sync_now">SYNC NOW</string>
+    
+    <!-- Stripe Connect Section -->
+    <string name="stripe_payouts_title">STRIPE PAYOUTS (CONNECT)</string>
+    <string name="stripe_payouts_desc">Accept card, Google Pay, and Apple Pay from clients. Funds settle to your bank via Stripe Connect; Invoice Hammer can take a platform fee on each charge.</string>
+    <string name="demo_mode_title">Demo mode</string>
+    <string name="demo_mode_desc">Add stripe.publishable.key and stripe.payment.backend.url, then rebuild, to enable live checkout.</string>
+    <string name="sign_in_required_title">Sign in required</string>
+    <string name="sign_in_required_desc">Use Google sign-in under Account &amp; Cloud Sync before connecting Stripe.</string>
+    <string name="checking_stripe_status">Checking Stripe Connect status…</string>
+    <string name="ready_accept_payments">Ready to accept payments</string>
+    <string name="account_prefix">Account </string>
+    <string name="payouts_enabled_suffix"> · Payouts enabled</string>
+    <string name="payouts_disabled_suffix"> · Finish payout details in Stripe if prompted</string>
+    <string name="refresh_status">REFRESH STATUS</string>
+    <string name="finish_stripe_setup">Finish Stripe setup</string>
+    <string name="finish_stripe_setup_desc">Complete onboarding so clients can pay you. This opens Stripe in your browser.</string>
+    <string name="opening_progress">OPENING…</string>
+    <string name="setup_stripe_payouts">SET UP STRIPE PAYOUTS</string>
+    <string name="refresh_status_lc">Refresh status</string>
+    <string name="payment_backend_error">Could not reach payment backend</string>
+    <string name="try_again">TRY AGAIN</string>
+    
+    <!-- Pro & Subscription section -->
+    <string name="pro_sub_beta_title">PRO SUBSCRIPTION &amp; BETA TEST</string>
+    <string name="pro_entitlements_active">PRO ENTITLEMENTS ACTIVE</string>
+    <string name="free_tier_contractor">FREE TIER CONTRACTOR</string>
+    <string name="pro_entitlements_active_desc">AI Command Center, OCR, Bento reports, and tax exports are unlocked.</string>
+    <string name="free_tier_desc">Upgrade to access intelligent voice parsing, OCR receipt scanning, and professional report bundles.</string>
+    <string name="manage_plan">MANAGE PLAN</string>
+    <string name="upgrade_to_pro">UPGRADE TO PRO</string>
+    <string name="beta_trial_free_unlock">BETA TRIAL: FREE UNLOCK</string>
+    <string name="beta_trial_free_unlock_desc">Enable this trial override to instantly unlock all Pro features for free during beta testing. Toggle it off to test the upgrade flow, standard lock screens, and live paywalls as users will see them.</string>
+    
+    <!-- Paywall Sheet -->
+    <string name="invoice_hammer_pro">INVOICE HAMMER PRO</string>
+    <string name="paywall_subtitle">Subscriptions via Google Play or App Store. Entitlements sync to Supabase.</string>
+    <string name="pro_feat_ai">AI Command Center &amp; Foreman agent</string>
+    <string name="pro_feat_ocr">Receipt OCR scanning</string>
+    <string name="pro_feat_reports">Bento reports &amp; tax bundle export</string>
+    <string name="loading_plans">Loading plans from Supabase…</string>
+    <string name="starter_pack_title">Starter Pack</string>
+    <string name="credits_count_50">50 Credits</string>
+    <string name="price_starter">$4.99</string>
+    <string name="starter_pack_desc">Perfect for standard contractor invoicing &amp; AI scans.</string>
+    <string name="builder_pack_title">Builder Pack</string>
+    <string name="credits_count_150">150 Credits</string>
+    <string name="price_builder">$9.99</string>
+    <string name="builder_pack_desc">Most Popular. Designed for growing handyman operations.</string>
+    <string name="contractors_choice">Contractor's Choice</string>
+    <string name="contractor_pack_title">Contractor Pack</string>
+    <string name="credits_count_350">350 Credits</string>
+    <string name="price_contractor">$19.99</string>
+    <string name="contractor_pack_desc">Best Value. Complete enterprise utility access.</string>
+    <string name="best_value">Best Value</string>
+    <string name="or_purchase_packs">OR PURCHASE HAMMER CREDIT PACKS</string>
+    <string name="restore_purchases">RESTORE PURCHASES</string>
+    <string name="not_now">NOT NOW</string>
+    
+    <!-- Contractor Math comparison -->
+    <string name="contractor_math_title">🔨 CONTRACTOR MATH: SUBSCRIPTION VS. CREDIT PACKS</string>
+    <string name="contractor_math_desc">Active contractors run 500+ actions monthly (scans, invoices, tax bundles, and Foreman AI assistant).</string>
+    <string name="pay_as_you_go_packs">PAY-AS-YOU-GO PACKS</string>
+    <string name="actions_per_month">500 actions / mo</string>
+    <string name="price_pay_as_you_go">$59.96 / mo</string>
+    <string name="consumes_credits_desc">Consumes credits for scans, invoices &amp; assistant turns</string>
+    <string name="pro_subscription">PRO SUBSCRIPTION</string>
+    <string name="unlimited_ai_desc">UNLIMITED + 500 AI / mo</string>
+    <string name="price_pro_monthly">$19.99 / mo</string>
+    <string name="pro_yearly_comparison">Or Pro Yearly: $13.33 / mo ($159.99 / yr)</string>
+    <string name="save_with_pro_yearly">🎉 SAVE UP TO 77% MONTHLY WITH PRO YEARLY</string>
+    <string name="pro_tip_deductible">💡 Pro Tip: All subscription plans and credit packs are 100% tax-deductible business expenses.</string>
+    
+    <!-- Card Terminal Sheet -->
+    <string name="card_terminal_title">CARD TERMINAL</string>
+    <string name="on_site_entry_desc">On-site entry · %1$s · %2$s</string>
+    <string name="stripe_secure_checkout_desc">Stripe secure checkout — card data never touches Invoice Hammer servers.</string>
+    <string name="secure_checkout_btn">SECURE CHECKOUT %s</string>
+    <string name="card_number">Card number</string>
+    <string name="expiry">Expiry</string>
+    <string name="cvv">CVV</string>
+    <string name="cardholder_name">Cardholder name</string>
+    <string name="processing_progress">PROCESSING…</string>
+    <string name="charge_btn">CHARGE %s</string>
+    <string name="beta_simulator_desc">Beta simulator — add Stripe keys for live PCI-safe checkout. Use ••••0002 to simulate decline.</string>
+    <string name="card_label">CARD</string>
+    <string name="cardholder_placeholder">CARDHOLDER NAME</string>
+    <string name="mmyy_placeholder">MM/YY</string>
+    
+    <!-- Payment request created dialog -->
+    <string name="google_pay_ready">GOOGLE PAY LINK READY</string>
+    <string name="apple_pay_ready">APPLE PAY LINK READY</string>
+    <string name="card_checkout_ready">CARD CHECKOUT READY</string>
+    <string name="stellar_payment_ready">STELLAR PAYMENT READY</string>
+    <string name="payment_link_ready">PAYMENT LINK READY</string>
+    <string name="open_link">OPEN LINK</string>
+    
+    <!-- Payment Picker options -->
+    <string name="google_pay_picker_desc">Future processor-backed wallet payment.</string>
+    <string name="apple_pay_picker_desc">iOS-ready provider slot for native checkout.</string>
+    <string name="stellar_usdc_picker_desc">Stablecoin settlement rail for SCF demo path.</string>
+    <string name="card_link_picker_title">Card / Payment Link</string>
+    <string name="card_link_picker_desc">Hosted fallback link for clients without wallets.</string>
+    <string name="card_terminal_picker_title">Card Terminal</string>
+    <string name="card_terminal_picker_desc">Type card on-site (free). Stripe backend enables PCI-safe checkout.</string>
+    <string name="tap_to_pay_picker_title">Tap to Pay</string>
+    <string name="tap_to_pay_picker_desc">Phone NFC checkout — free tier (platform fee via Stripe Connect).</string>
+    <string name="bluetooth_reader_picker_title">Bluetooth Reader (Pro)</string>
+    <string name="bluetooth_reader_picker_desc">External card reader — Pro subscription required.</string>
+    <string name="request_full_payment">REQUEST FULL PAYMENT</string>
+    <string name="payment_picker_subtitle">Stellar USDC → PowerPay. Google Pay, Apple Pay, and Card Link → Stripe. On-site options below.</string>
+    
+    <!-- Payment Ledger Sheet -->
+    <string name="pay_label">PAY</string>
+    <string name="tx_label">TX</string>
+    <string name="payment_ledger_title">PAYMENT LEDGER</string>
+    <string name="requested_metric">REQUESTED</string>
+    <string name="active_metric">ACTIVE</string>
+    <string name="invoice_paid_view_receipt">Invoice %s paid — view receipt</string>
+    <string name="view_payment_receipt">View payment receipt</string>
+    <string name="no_payment_requests_yet">No payment requests yet. Open an invoice and request a deposit or full payment.</string>
+    
+    <!-- Error/Success states -->
+    <string name="payment_cancelled">Payment checkout was cancelled.</string>
+    <string name="stripe_connect_not_configured">Stripe Connect backend is not configured.</string>
+    <string name="bluetooth_readers_not_enabled">Bluetooth card readers are not enabled in this build. Use Tap to Pay or Card Terminal.</string>
+    <string name="payment_success">Secure payment succeeded! Invoice is marked paid.</string>
+    <string name="secure_checkout_paid_success">Paid %s via secure checkout.</string>
+    <string name="card_terminal_paid_success">Paid %s — invoice marked paid.</string>
+    <string name="powerpay_demo_banner">Demo mode — configure PowerPay credentials for live Stellar checkout.</string>
+    <string name="powerpay_live_banner">Stellar PowerPay · %1$s · %2$s</string>
+    <string name="snap_photo">SNAP PHOTO</string>
+    <string name="pro_year">Pro / year</string>
+    <string name="pro_month">Pro / month</string>
+    <string name="pro_yearly_equivalent">= $13.33 / mo</string>
+    <string name="deposit_type_label">DEPOSIT</string>
+    <string name="full_pay_type_label">FULL PAY</string>
+    
+    <!-- Checkout instructions -->
+    <string name="checkout_instr_stellar_live">Stellar USDC checkout via PowerPay. Client pays on-chain; settlement posts to your ledger.</string>
+    <string name="checkout_instr_stellar_demo">Demo Stellar link — add PowerPay credentials in local.properties for live USDC checkout.</string>
+    <string name="checkout_instr_gpay_live">Stripe Connect checkout with Google Pay enabled. Share this link with your client.</string>
+    <string name="checkout_instr_gpay_demo">Demo Google Pay link — add stripe.publishable.key and stripe.payment.backend.url for live checkout.</string>
+    <string name="checkout_instr_apay_live">Stripe Connect checkout with Apple Pay enabled. Share this link with your client (iOS/Safari).</string>
+    <string name="checkout_instr_apay_demo">Demo Apple Pay link — add Stripe keys and payment backend for live checkout.</string>
+    <string name="checkout_instr_card_live">Stripe hosted card / Link checkout. PCI-safe — card data stays on Stripe.</string>
+    <string name="checkout_instr_card_demo">Demo card link — add Stripe keys and payment backend for live hosted checkout.</string>
+    <string name="checkout_instr_fallback">Open the link to complete payment.</string>
+    <string name="qr_scan_hint">Payment QR code — client scans to pay</string>
+    <string name="qr_tap_to_open">Tap QR to open checkout on this phone</string>
+    <string name="checkout_link_already_paid">This payment link was already used. Create a new link if you need another payment.</string>
+    <string name="checkout_link_expired">This payment link expired. Create a new link for your client.</string>
+    <string name="checkout_link_refreshing">Refreshing payment link…</string>
+    <string name="checkout_link_new">NEW PAYMENT LINK</string>
+    <string name="checkout_link_client_hint">Have your client scan this QR with their phone camera. Don\'t pay this link yourself if they will scan it.</string>
+    
+    <!-- Payment request statuses -->
+    <string name="status_requested">REQUESTED</string>
+    <string name="status_pending">PENDING</string>
+    <string name="status_paid">PAID</string>
+    <string name="status_failed">FAILED</string>
+    <string name="status_expired">EXPIRED</string>
+
+    <!-- Biometric lock, line items, business profile, agent FAB, top bar -->
+    <string name="vault_locked">Vault Locked</string>
+    <string name="vault_locked_subtitle">Authenticate to access Invoice Hammer</string>
+    <string name="vault_locked_subtitle_short">Authenticate to access</string>
+    <string name="unlock_vault">Unlock Vault</string>
+    <string name="biometrics_changed_title">Biometrics Changed</string>
+    <string name="biometrics_changed_body">Your device's biometric configuration (e.g. fingerprint or face) has changed. For security reasons, biometric lock has been disabled and your session will be signed out. Please log in using your account credentials to re-enable.</string>
+    <string name="line_items">LINE ITEMS</string>
+    <string name="link_unbilled">LINK UNBILLED</string>
+    <string name="description_label">DESCRIPTION</string>
+    <string name="price_label">PRICE ($)</string>
+    <string name="ai_fill">AI FILL</string>
+    <string name="add_item">ADD ITEM</string>
+    <string name="line_items_empty">No items yet. Add labor, parts, or use AI Fill.</string>
+    <string name="business_profile_title">BUSINESS PROFILE</string>
+    <string name="business_name">BUSINESS NAME</string>
+    <string name="slogan">SLOGAN</string>
+    <string name="phone">PHONE</string>
+    <string name="email">EMAIL</string>
+    <string name="address">ADDRESS</string>
+    <string name="business_logo">BUSINESS LOGO</string>
+    <string name="business_logo_desc">Saved on this device and used automatically on every new invoice.</string>
+    <string name="business_logo_cd">Business logo</string>
+    <string name="upload_logo">UPLOAD LOGO</string>
+    <string name="change_logo">CHANGE LOGO</string>
+    <string name="remove">REMOVE</string>
+    <string name="client_profile">CLIENT PROFILE</string>
+    <string name="top_bar_invoice">INVOICE</string>
+    <string name="top_bar_hammer">HAMMER</string>
+    <string name="payment_ledger_cd">Payment ledger</string>
+    <string name="ask_ai">ASK AI</string>
+    <string name="stop_gemini_ai_cd">Stop Gemini AI</string>
+    <string name="ask_gemini_ai_cd">Ask Gemini AI</string>
+    <string name="no_photos_added_yet">NO PHOTOS ADDED YET</string>
+    <string name="agent_suggestion_invoice_bob">Invoice Bob 3h labor at 85</string>
+    <string name="agent_suggestion_go_stats">Go to stats</string>
+    <string name="agent_suggestion_go_history">Go to history</string>
+    <string name="agent_suggestion_bill_joe">Bill Joe 500</string>
+    <string name="agent_suggestion_same_as_mike">Same as last time for Mike</string>
+
+    <!-- ViewModel / toast messages (Phase 3) -->
+    <string name="err_client_name_required">Client Name must be filled out to save.</string>
+    <string name="err_client_address_required">Client Address must be filled out to save.</string>
+    <string name="err_line_items_required">Job Description / Line Items must be filled out to save. Please enter Category, Description, and Price, then tap 'ADD ITEM'.</string>
+    <string name="err_ai_error_fmt">AI Error: %s</string>
+    <string name="toast_business_logo_saved">Business logo saved for all invoices.</string>
+    <string name="toast_business_logo_removed">Business logo removed.</string>
+    <string name="toast_purchase_cancelled">Purchase cancelled.</string>
+    <string name="toast_pro_unlocked_fmt">Pro unlocked via %s.</string>
+    <string name="toast_purchased_fmt">Purchased %s.</string>
+    <string name="toast_low_balance">Low Balance! Deducting credits failed. Purchase more scans or Go Pro.</string>
+    <string name="toast_purchases_restored">Purchases restored.</string>
+    <string name="toast_no_active_subscription">No active subscription found.</string>
+    <string name="toast_stripe_sign_in_required">Sign in with Google before setting up Stripe payouts.</string>
+    <string name="toast_stripe_backend_url_required">Add stripe.payment.backend.url in local.properties.</string>
+    <string name="toast_saved_to_fmt">Saved to %s</string>
+    <string name="err_could_not_load_photo_fmt">Could not load photo: %s</string>
+    <string name="err_failed_process_receipt_fmt">Failed to process receipt: %s</string>
+    <string name="err_premium_required_receipt">Premium subscription required to process receipt</string>
+    <string name="foreman_review_invoice_fmt">Review invoice for %s before saving.</string>
+    <string name="foreman_unhandled_tool">Agent returned an unhandled tool request.</string>
+    <string name="toast_camera_unavailable">Camera unavailable</string>
+    <string name="toast_camera_permission_required">Camera permission is required to snap receipts</string>
+    <string name="category_drywall">Drywall</string>
+    <string name="category_flooring">Flooring</string>
+    <string name="category_roofing">Roofing</string>
+    <string name="category_plumbing">Plumbing</string>
+    <string name="category_electrical">Electrical</string>
+    <string name="category_painting">Painting</string>
+    <string name="category_carpentry">Carpentry</string>
+    <string name="category_general_repair">General Repair</string>
+
+    <!-- Suggestion 4: Bento YTD & Financial Health Dashboard -->
+    <string name="ytd_revenue">YTD REVENUE</string>
+    <string name="ytd_expenses">YTD EXPENSES</string>
+    <string name="outstanding_invoices">OUTSTANDING INVOICES</string>
+    <string name="aging_receivables">AGING RECEIVABLES</string>
+    <string name="aging_0_30">0-30 days</string>
+    <string name="aging_31_60">31-60 days</string>
+    <string name="aging_61_plus">61+ days</string>
+    <string name="tax_projection">TAX PROJECTION</string>
+    <string name="tax_warning">Quarterly projected estimated tax warning (Q%1$d). Calculated at 20% of net YTD profit.</string>
+
+    <!-- Suggestion 5: Automated Payment Follow-Ups (Smart Reminders) -->
+    <string name="reminder_sheet_title">SEND AI REMINDER</string>
+    <string name="tone_friendly">Friendly</string>
+    <string name="tone_direct">Direct</string>
+    <string name="tone_firm">Firm</string>
+    <string name="channel_sms">SMS</string>
+    <string name="channel_email">Email</string>
+    <string name="generate_reminder">GENERATE</string>
+    <string name="send_reminder">SEND / SHARE</string>
+    <string name="generating">Generating…</string>
+    <string name="message_tone">MESSAGE TONE</string>
+    <string name="message_channel">MESSAGE CHANNEL</string>
+    <string name="send_ai_reminder">Send AI Reminder</string>
 </resources>

@@ -15,7 +15,8 @@ suspend fun buildForemanAppContextBundle(
     pendingReceiptImageBytes: ByteArray?,
     lastSavedInvoiceId: com.fordham.toolbelt.domain.model.InvoiceId?,
     lastSavedInvoiceClientName: String?,
-    voiceTranscriptMeta: com.fordham.toolbelt.util.VoiceTranscriptMeta?
+    voiceTranscriptMeta: com.fordham.toolbelt.util.VoiceTranscriptMeta?,
+    activeTab: com.fordham.toolbelt.domain.model.agent.AppTab? = null
 ): ForemanAppContextBundle {
     val runtime = ForemanRuntimeSnapshot(
         selectedClientId = selectedClientId,
@@ -25,7 +26,8 @@ suspend fun buildForemanAppContextBundle(
         pendingReceiptImageBytes = pendingReceiptImageBytes,
         lastSavedInvoiceId = lastSavedInvoiceId,
         lastSavedInvoiceClientName = lastSavedInvoiceClientName,
-        voiceTranscriptMeta = voiceTranscriptMeta
+        voiceTranscriptMeta = voiceTranscriptMeta,
+        activeTab = activeTab
     )
     return ForemanAppContextBundle(
         systemPrompt = buildSystemPrompt(),

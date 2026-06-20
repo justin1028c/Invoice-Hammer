@@ -4,6 +4,7 @@ import platform.AVFoundation.*
 import platform.Foundation.*
 import platform.darwin.dispatch_get_main_queue
 import platform.darwin.dispatch_async
+import platform.Speech.*
 import com.fordham.toolbelt.domain.repository.GeminiRepository
 import com.fordham.toolbelt.domain.model.GeminiOutcome
 import kotlinx.coroutines.CoroutineScope
@@ -32,13 +33,18 @@ class IosVoiceAssistant(
     private val geminiRepository: GeminiRepository
 ) : VoiceAssistant {
     private val synthesizer = AVSpeechSynthesizer()
-    private val preferredVoice = IosTtsVoiceSelector.bestUsVoice()
     private var audioRecorder: AVAudioRecorder? = null
     private var onResultCallback: ((VoiceTranscriptMeta) -> Unit)? = null
     private var onEndCallback: (() -> Unit)? = null
     private val scope = CoroutineScope(Dispatchers.Default)
     private var currentSessionId = 0
     private var silenceJob: kotlinx.coroutines.Job? = null
+
+    private var speechRecognizer: SFSpeechRecognizer? = null
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
+    private var recognitionTask: SFSpeechRecognitionTask? = null
+    private val audioEngine = AVAudioEngine()
+    private var isSpeechRecognizerListening = false
 
     private fun runOnMain(block: () -> Unit) {
         dispatch_async(dispatch_get_main_queue()) {
@@ -48,8 +54,14 @@ class IosVoiceAssistant(
 
     override fun speak(text: String) {
         val spoken = ForemanVoiceSpeak.prepareSpokenText(text) ?: return
+        val locale = if (AppLocale.fromSystem() == AppLocale.Spanish) "es-ES" else "en-US"
+        val voice = AVSpeechSynthesisVoice.voiceWithLanguage(locale)
+            ?: AVSpeechSynthesisVoice.speechVoices().firstOrNull {
+                (it as? AVSpeechSynthesisVoice)?.language?.startsWith("es") == true
+            } as? AVSpeechSynthesisVoice
+            ?: AVSpeechSynthesisVoice.voiceWithLanguage("en-US")
         val utterance = AVSpeechUtterance.speechUtteranceWithString(spoken)
-        utterance.voice = preferredVoice ?: AVSpeechSynthesisVoice.voiceWithLanguage("en-US")
+        utterance.voice = voice
         utterance.rate = 0.52f
         utterance.pitchMultiplier = 1.0
         utterance.preUtteranceDelay = 0.05
@@ -66,26 +78,154 @@ class IosVoiceAssistant(
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundaryImmediate)
     }
 
-    override fun startListening(onResult: (String) -> Unit, onEnd: () -> Unit) {
+    override fun startListening(
+        onResult: (String) -> Unit,
+        onEnd: () -> Unit,
+        onPartialResult: (String) -> Unit
+    ) {
         startListeningWithMeta(
             onResult = { meta -> onResult(meta.text) },
-            onEnd = onEnd
+            onEnd = onEnd,
+            onPartialResult = onPartialResult
         )
     }
 
     override fun startListeningWithMeta(
         onResult: (VoiceTranscriptMeta) -> Unit,
-        onEnd: () -> Unit
+        onEnd: () -> Unit,
+        onPartialResult: (String) -> Unit
     ) {
-        AVAudioSession.sharedInstance().requestRecordPermission { granted ->
-            if (granted) {
-                runOnMain {
-                    startRecordingFlow(onResult, onEnd)
+        AVAudioSession.sharedInstance().requestRecordPermission { microphoneGranted ->
+            if (microphoneGranted) {
+                SFSpeechRecognizer.requestAuthorization { authStatus ->
+                    runOnMain {
+                        onResultCallback = null
+                        onEndCallback = null
+                        stopListening(discard = true)
+
+                        currentSessionId++
+                        onResultCallback = onResult
+                        onEndCallback = onEnd
+
+                        val sessionId = currentSessionId
+                        if (authStatus == SFSpeechRecognizerAuthorizationStatusAuthorized) {
+                            startSpeechRecognizer(
+                                onResult = { meta ->
+                                    if (sessionId == currentSessionId) {
+                                        onResult(meta)
+                                    }
+                                },
+                                onEnd = onEnd,
+                                onPartialResult = onPartialResult
+                            )
+                        } else {
+                            startRecordingFlow(onResult, onEnd)
+                        }
+                    }
                 }
             } else {
                 runOnMain(onEnd)
             }
         }
+    }
+
+    private fun startSpeechRecognizer(
+        onResult: (VoiceTranscriptMeta) -> Unit,
+        onEnd: () -> Unit,
+        onPartialResult: (String) -> Unit
+    ) {
+        val locale = if (AppLocale.fromSystem() == AppLocale.Spanish) "es-ES" else "en-US"
+        val recognizer = SFSpeechRecognizer(locale = NSLocale(localeIdentifier = locale))
+        if (recognizer == null || !recognizer.isAvailable()) {
+            startRecordingFlow(onResult, onEnd)
+            return
+        }
+        speechRecognizer = recognizer
+
+        stopSpeechRecognizerListening(discard = true)
+
+        val audioSession = AVAudioSession.sharedInstance()
+        try {
+            audioSession.setCategory(AVAudioSessionCategoryPlayAndRecord, withOptions = AVAudioSessionCategoryOptionDefaultToSpeaker, error = null)
+            audioSession.setMode(AVAudioSessionModeMeasurement, error = null)
+            audioSession.setActive(true, withOptions = AVAudioSessionCategoryOptionNotifyOthersOnDeactivation, error = null)
+        } catch (e: Exception) {
+            startRecordingFlow(onResult, onEnd)
+            return
+        }
+
+        val request = SFSpeechAudioBufferRecognitionRequest()
+        recognitionRequest = request
+        request.shouldReportPartialResults = true
+
+        val inputNode = audioEngine.inputNode
+        val recordingFormat = inputNode.outputFormatForBus(0.toULong())
+
+        inputNode.removeTapOnBus(0.toULong())
+        inputNode.installTapOnBus(
+            bus = 0.toULong(),
+            bufferSize = 1024.toUInt(),
+            format = recordingFormat
+        ) { buffer, _ ->
+            if (buffer != null) {
+                recognitionRequest?.appendAudioPCMBuffer(buffer)
+            }
+        }
+
+        audioEngine.prepare()
+        try {
+            audioEngine.startAndReturnError(null)
+        } catch (e: Exception) {
+            audioEngine.stop()
+            inputNode.removeTapOnBus(0.toULong())
+            startRecordingFlow(onResult, onEnd)
+            return
+        }
+
+        isSpeechRecognizerListening = true
+
+        val sessionId = currentSessionId
+        recognitionTask = recognizer.recognitionTaskWithRequest(request) { result, error ->
+            var isFinal = false
+            if (result != null) {
+                val transcript = result.bestTranscription.formattedString
+                runOnMain {
+                    if (sessionId == currentSessionId) {
+                        onPartialResult(transcript)
+                    }
+                }
+                isFinal = result.isFinal()
+            }
+
+            if (error != null || isFinal) {
+                runOnMain {
+                    if (sessionId == currentSessionId) {
+                        if (result != null) {
+                            val transcript = result.bestTranscription.formattedString
+                            onResult(VoiceTranscriptMeta(transcript, 1.0f))
+                        }
+                        onEnd()
+                        stopSpeechRecognizerListening(discard = false)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopSpeechRecognizerListening(discard: Boolean) {
+        if (!isSpeechRecognizerListening) return
+        isSpeechRecognizerListening = false
+
+        audioEngine.stop()
+        audioEngine.inputNode.removeTapOnBus(0.toULong())
+
+        recognitionRequest?.endAudio()
+        recognitionRequest = null
+
+        if (discard) {
+            recognitionTask?.cancel()
+        }
+        recognitionTask = null
     }
 
     private fun startRecordingFlow(
@@ -103,7 +243,6 @@ class IosVoiceAssistant(
         val audioSession = AVAudioSession.sharedInstance()
         try {
             audioSession.setCategory(AVAudioSessionCategoryPlayAndRecord, withOptions = AVAudioSessionCategoryOptionDefaultToSpeaker, error = null)
-            // Strategy B: Hardware noise-suppression and voice pre-processing
             audioSession.setMode(AVAudioSessionModeVoiceChat, error = null)
             audioSession.setActive(true, withOptions = AVAudioSessionCategoryOptionNotifyOthersOnDeactivation, error = null)
         } catch (e: Exception) {
@@ -136,10 +275,10 @@ class IosVoiceAssistant(
 
             silenceJob = scope.launch(Dispatchers.Main) {
                 val checkIntervalMs = 200L
-                val requiredSilenceDurationMs = 2500L
+                val requiredSilenceDurationMs = 1200L
                 var consecutiveSilenceMs = 0L
 
-                delay(1500)
+                delay(1000)
 
                 while (audioRecorder != null) {
                     delay(checkIntervalMs)
@@ -167,6 +306,15 @@ class IosVoiceAssistant(
         silenceJob?.cancel()
         silenceJob = null
 
+        if (isSpeechRecognizerListening) {
+            stopSpeechRecognizerListening(discard)
+            if (discard) {
+                onResultCallback = null
+                onEndCallback = null
+            }
+            return
+        }
+
         if (discard) {
             currentSessionId++
         }
@@ -190,7 +338,7 @@ class IosVoiceAssistant(
         try {
             recorder.stop()
         } catch (e: Exception) {
-            // Ignore stop issues
+            // Ignore
         }
 
         if (discard) {
@@ -209,7 +357,6 @@ class IosVoiceAssistant(
         if (fileData != null) {
             scope.launch {
                 val bytes = fileData.toByteArray()
-                // Strategy C: Multi-modal cloud audio processing
                 when (val outcome = geminiRepository.transcribeAudio(bytes, "audio/mp4")) {
                     is GeminiOutcome.Success -> {
                         val transcript = outcome.text
@@ -241,6 +388,7 @@ class IosVoiceAssistant(
     override fun destroy() {
         silenceJob?.cancel()
         silenceJob = null
+        stopListening(discard = true)
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundaryImmediate)
         val recorder = audioRecorder
         audioRecorder = null

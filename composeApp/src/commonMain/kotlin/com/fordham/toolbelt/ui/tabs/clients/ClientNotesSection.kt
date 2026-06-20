@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.domain.model.JobNote
 import com.fordham.toolbelt.ui.components.TacticalButton
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 /**
  * Responsibility: Display job notes, allow adding new ones, and show AI summaries.
@@ -38,7 +40,7 @@ fun ClientNotesSection(
             horizontalArrangement = Arrangement.SpaceBetween, 
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("CLIENT NOTES", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+            Text(stringResource(Res.string.client_notes), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
             Row {
                 if (jobNotes.isNotEmpty()) {
                     TextButton(onClick = onSummarizeClick, enabled = !isSummarizing && isPremium) {
@@ -47,14 +49,14 @@ fun ClientNotesSection(
                         } else {
                             Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
-                            Text("AI SUMMARY", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(Res.string.ai_summary), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
                 TextButton(onClick = onAddNoteClick) {
                     Icon(Icons.Default.EditNote, null, tint = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.width(8.dp))
-                    Text("ADD NOTE", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary) 
+                    Text(stringResource(Res.string.add_note), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary) 
                 }
             }
         }
@@ -68,7 +70,7 @@ fun ClientNotesSection(
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("AI JOB INSIGHTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(Res.string.ai_job_insights), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                         IconButton(onClick = onClearAiSummary, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
                         }
@@ -79,7 +81,7 @@ fun ClientNotesSection(
         }
 
         if (jobNotes.isEmpty()) {
-            Text("NO NOTES RECORDED FOR THIS CLIENT.", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.no_notes_recorded), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
         } else {
             jobNotes.forEach { note ->
                 Card(

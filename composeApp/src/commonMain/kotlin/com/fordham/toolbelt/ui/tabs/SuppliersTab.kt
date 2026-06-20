@@ -26,7 +26,10 @@ import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.tabs.suppliers.*
 import com.fordham.toolbelt.ui.viewmodel.SuppliersData
 import com.fordham.toolbelt.ui.viewmodel.SuppliersOutcome
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,13 +73,13 @@ fun SuppliersTab(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isReorderMode) "REORDER" else "SUPPLIERS",
+                        text = if (isReorderMode) stringResource(Res.string.reorder) else stringResource(Res.string.tab_stores),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = if (isReorderMode) "Set your absolute priority" else "Your personalized supply network",
+                        text = if (isReorderMode) stringResource(Res.string.reorder_desc) else stringResource(Res.string.suppliers_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -85,7 +88,7 @@ fun SuppliersTab(
                 if (isReorderMode) {
                     TacticalButton(
                         onClick = onSaveOrder,
-                        text = "DONE",
+                        text = stringResource(Res.string.done),
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 } else {
@@ -98,7 +101,7 @@ fun SuppliersTab(
                             ),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Supplier")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.add_supplier))
                         }
                         Spacer(Modifier.width(8.dp))
                         IconButton(
@@ -161,7 +164,7 @@ fun SuppliersTab(
                         ) {
                             if (state.pinnedSuppliers.isNotEmpty()) {
                                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-                                    SectionHeader(title = "PINNED FAVORITES")
+                                    SectionHeader(title = stringResource(Res.string.pinned_suppliers))
                                 }
                                 items(state.pinnedSuppliers) { uiModel ->
                                     SupplierTile(
@@ -176,7 +179,7 @@ fun SuppliersTab(
 
                             if (state.activeSuppliers.isNotEmpty()) {
                                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-                                    SectionHeader(title = "ACTIVE SUPPLIERS")
+                                    SectionHeader(title = stringResource(Res.string.active_suppliers))
                                 }
                                 items(state.activeSuppliers) { uiModel ->
                                     SupplierTile(
@@ -199,7 +202,7 @@ fun SuppliersTab(
                                     ) {
                                         Icon(Icons.Default.VisibilityOff, null, Modifier.size(16.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text("MANAGE HIDDEN STORES (${hiddenSuppliers.size})", fontWeight = FontWeight.Bold)
+                                        Text(stringResource(Res.string.manage_hidden_stores, hiddenSuppliers.size), fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -207,7 +210,7 @@ fun SuppliersTab(
                     }
                     is SuppliersOutcome.Failure -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = uiState.error.value, color = MaterialTheme.colorScheme.error)
+                            Text(text = localizeUiMessage(uiState.error.value), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -220,7 +223,7 @@ fun SuppliersTab(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(modifier = Modifier.padding(20.dp).fillMaxWidth()) {
-                    Text("HIDDEN STORES", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    Text(stringResource(Res.string.hidden_stores), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(16.dp))
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(hiddenSuppliers) { supplier ->
@@ -236,7 +239,7 @@ fun SuppliersTab(
                                     Text(supplier.domain.name.uppercase(), fontWeight = FontWeight.Bold)
                                     TacticalButton(
                                         onClick = { onRestoreSupplier(supplier.domain.id) },
-                                        text = "RESTORE"
+                                        text = stringResource(Res.string.restore)
                                     )
                                 }
                             }

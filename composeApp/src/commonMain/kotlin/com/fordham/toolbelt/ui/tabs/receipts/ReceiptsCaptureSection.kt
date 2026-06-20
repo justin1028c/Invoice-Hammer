@@ -20,7 +20,10 @@ import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.domain.model.Client
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.viewmodel.ReceiptsUiState
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun ReceiptsCaptureSection(
@@ -40,15 +43,15 @@ fun ReceiptsCaptureSection(
     if (uiState.showMarkupDialog) {
         AlertDialog(
             onDismissRequest = { onSetMarkupDialogVisible(false) },
-            title = { Text("MATERIAL MARKUP", fontWeight = FontWeight.Black) },
+            title = { Text(stringResource(Res.string.material_markup), fontWeight = FontWeight.Black) },
             text = {
                 Column {
-                    Text("Add profit margin to your supplies.", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(Res.string.markup_desc), style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = uiState.markupPercentage,
                         onValueChange = onMarkupPercentageChange,
-                        label = { Text("MARKUP %") },
+                        label = { Text(stringResource(Res.string.markup_pct_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(4.dp),
@@ -61,19 +64,19 @@ fun ReceiptsCaptureSection(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("BILLED TOTAL:", fontWeight = FontWeight.Bold)
+                            Text(stringResource(Res.string.billed_total), fontWeight = FontWeight.Bold)
                             Text("$${totalWithMarkup}", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
             },
-            confirmButton = { TacticalButton(onClick = { onSetMarkupDialogVisible(false) }, text = "APPLY") }
+            confirmButton = { TacticalButton(onClick = { onSetMarkupDialogVisible(false) }, text = stringResource(Res.string.apply)) }
         )
     }
 
     uiState.errorMessage?.let { message ->
         Text(
-            text = message,
+            text = localizeUiMessage(message),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
@@ -90,7 +93,7 @@ fun ReceiptsCaptureSection(
             colors = ButtonDefaults.outlinedButtonColors(containerColor = ComposeColor.Transparent)
         ) {
             Text(
-                (selectedClient?.name ?: "SELECT PROJECT / CLIENT").uppercase(),
+                (selectedClient?.name ?: stringResource(Res.string.select_project_client)).uppercase(),
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.secondary,
                 letterSpacing = 1.sp
@@ -102,7 +105,7 @@ fun ReceiptsCaptureSection(
             modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             DropdownMenuItem(
-                text = { Text("GENERAL EXPENSES", fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(Res.string.general_expenses), fontWeight = FontWeight.Bold) },
                 onClick = { onSelectClient(null); onSetClientDropdownVisible(false) }
             )
             allClients.forEach { client ->
@@ -119,7 +122,7 @@ fun ReceiptsCaptureSection(
             onClick = {
                 platformActions.capturePhoto { uri -> uri?.let { onReceiptUriSelected(it) } }
             },
-            text = "SNAP RECEIPT",
+            text = stringResource(Res.string.snap_receipt),
             modifier = Modifier.weight(1f),
             containerColor = MaterialTheme.colorScheme.primary,
             icon = { Icon(Icons.Default.CameraAlt, null) }
@@ -128,7 +131,7 @@ fun ReceiptsCaptureSection(
             onClick = {
                 platformActions.pickImage { uri -> uri?.let { onReceiptUriSelected(it) } }
             },
-            text = "UPLOAD",
+            text = stringResource(Res.string.upload),
             modifier = Modifier.weight(1f),
             containerColor = MaterialTheme.colorScheme.secondary,
             icon = { Icon(Icons.Default.PhotoLibrary, null) }
@@ -148,7 +151,7 @@ fun ReceiptsCaptureSection(
                 Icon(Icons.Default.Info, "Instructions", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "HOW TO TRACK EXPENSES",
+                    stringResource(Res.string.how_to_track_expenses),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.primary,
@@ -157,7 +160,7 @@ fun ReceiptsCaptureSection(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "1. Select a Client/Project from the dropdown above.\n2. Tap Snap Receipt or Upload to scan an expense image.\n3. Verify the captured image, click Scan & Log Receipt, and our AI engine will automatically extract line items and add them to your logged supplies below.",
+                stringResource(Res.string.how_to_track_expenses_desc),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -180,7 +183,7 @@ fun ReceiptsCaptureSection(
             Icon(Icons.Default.Calculate, null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(16.dp))
         }
         TextButton(onClick = { onSetMarkupDialogVisible(true) }) {
-            Text("MARKUP TOOL", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary)
+            Text(stringResource(Res.string.markup_tool), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary)
         }
     }
 
@@ -193,7 +196,7 @@ fun ReceiptsCaptureSection(
             Box(modifier = Modifier.fillMaxSize()) {
                 coil3.compose.AsyncImage(
                     model = uiState.capturedImageBytes,
-                    contentDescription = "Captured Receipt",
+                    contentDescription = stringResource(Res.string.captured_receipt),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit
                 )
@@ -205,14 +208,14 @@ fun ReceiptsCaptureSection(
                         .size(32.dp)
                         .background(ComposeColor.Black.copy(alpha = 0.72f), RoundedCornerShape(999.dp))
                 ) {
-                    Icon(Icons.Default.Close, "Remove receipt image", tint = ComposeColor.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Close, stringResource(Res.string.remove_receipt_image), tint = ComposeColor.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             TacticalButton(
                 onClick = onProcessReceipt,
-                text = if (uiState.isProcessing) "ANALYZING..." else "SCAN & LOG RECEIPT",
+                text = if (uiState.isProcessing) stringResource(Res.string.analyzing) else stringResource(Res.string.scan_log_receipt),
                 modifier = Modifier.fillMaxWidth(),
                 containerColor = MaterialTheme.colorScheme.primary,
                 icon = {

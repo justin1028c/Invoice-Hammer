@@ -22,7 +22,8 @@ data class StripeCreatePaymentIntentResponse(
     /** Connect Express account that owns this PaymentIntent (required for Payment Sheet). */
     val stripeAccountId: String,
     /** Client-facing Stripe Checkout / Payment Link URL when backend creates a session */
-    val hostedCheckoutUrl: String? = null
+    val hostedCheckoutUrl: String? = null,
+    val checkoutSessionId: String? = null
 )
 
 @Serializable
@@ -60,4 +61,24 @@ data class StripeCreateCheckoutSessionRequest(
 @Serializable
 data class StripeCreateCheckoutSessionResponse(
     val checkoutUrl: String
+)
+
+@Serializable
+data class StripeCheckoutVerifyResponse(
+    val paid: Boolean = false,
+    val invoiceId: String? = null
+)
+
+@Serializable
+data class StripeInvoicePaymentStatusResponse(
+    val paid: Boolean = false,
+    val paidAt: String? = null
+)
+
+@Serializable
+data class StripeCheckoutLinkResponse(
+    val checkoutUrl: String? = null,
+    val status: String = "unknown",
+    val paid: Boolean = false,
+    val canPay: Boolean = false
 )

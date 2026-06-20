@@ -1,4 +1,14 @@
 <resources>
     <string name="app_name">Invoice Hammer</string>
+    <string name="deeplink_payment_return">Invoice Hammer Payment Return</string>
     <string name="default_web_client_id" translatable="false">716278040823-ngqvn2n3td42nrr6nbe4e3jlki348apa.apps.googleusercontent.com</string>
+    <string name="google_sign_in_dev_error">Google Sign-In is not configured for this APK. Add SHA-1 5c64756a1cd541582faaf8ddb20481eeb4446e08 to Firebase, download new google-services.json, rebuild. See FIREBASE_GOOGLE_SIGNIN.md.</string>
+    <string name="google_sign_in_cancelled">Sign-in cancelled. Tap SIGN IN again and choose your Google account.</string>
+    <string name="google_sign_in_network_error">Network error during sign-in. Check connection and try again.</string>
+    <string name="google_sign_in_no_token">Google did not return an ID token. Add this APK\'s SHA-1 in Firebase (see FIREBASE_GOOGLE_SIGNIN.md).</string>
+    <string name="google_sign_in_failed">Sign-in failed</string>
+    <string name="google_sign_in_failed_code">Sign-in failed (code %1$d)</string>
+    <string name="google_sign_in_error_code">%1$s (code %2$d)</string>
+    <string name="camera_open_failed">Could not open camera: %1$s</string>
+    <string name="camera_unknown_error">unknown error</string>
 </resources>

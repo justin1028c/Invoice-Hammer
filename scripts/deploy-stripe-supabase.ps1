@@ -34,13 +34,13 @@ Write-Host "Verifying endpoint ..."
 $uri = "https://$ProjectRef.supabase.co/functions/v1/stripe-payment-api/v1/connect/status?userId=deploy-test"
 try {
     $r = Invoke-WebRequest -Uri $uri -Method GET -UseBasicParsing
-    Write-Host "HTTP $($r.StatusCode) — function is live." -ForegroundColor Green
+    Write-Host "HTTP $($r.StatusCode) - function is live." -ForegroundColor Green
 } catch {
     $code = $_.Exception.Response.StatusCode.value__
     if ($code -eq 400 -or $code -eq 401 -or $code -eq 200) {
-        Write-Host "HTTP $code — function responded (not 404)." -ForegroundColor Green
+        Write-Host "HTTP $code - function responded (not 404)." -ForegroundColor Green
     } else {
-        Write-Host "HTTP $code — check deployment." -ForegroundColor Yellow
+        Write-Host "HTTP $code - check deployment." -ForegroundColor Yellow
     }
 }
 

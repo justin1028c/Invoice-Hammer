@@ -8,6 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fordham.toolbelt.domain.model.BusinessSettings
@@ -33,7 +36,11 @@ import com.fordham.toolbelt.ui.viewmodel.SettingsViewModel
 import com.fordham.toolbelt.ui.viewmodel.SharedViewModel
 import com.fordham.toolbelt.ui.viewmodel.StatsViewModel
 import com.fordham.toolbelt.ui.viewmodel.SuppliersViewModel
+import com.fordham.toolbelt.util.UiMessageKeys
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -58,6 +65,18 @@ fun MainPagerContent(
     paymentRequests: List<com.fordham.toolbelt.domain.model.InvoicePaymentRequest> = emptyList(),
     blockPagerScroll: Boolean = false
 ) {
+    val bentoShareTitle = stringResource(Res.string.bento_report)
+    val taxShareTitle = stringResource(Res.string.tax_bundle)
+    var pendingToastKey by remember { mutableStateOf<String?>(null) }
+    val localizedToast = pendingToastKey?.let { localizeUiMessage(it) }
+
+    LaunchedEffect(localizedToast) {
+        localizedToast?.let {
+            platformActions.showToast(it)
+            pendingToastKey = null
+        }
+    }
+
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
@@ -112,47 +131,49 @@ fun MainPagerContent(
                 onShowPaidOnlyChange = { historyViewModel.onShowPaidOnlyChange(it) },
                 onUpdateInvoice = { historyViewModel.updateInvoice(it) },
                 onConvertEstimateToInvoice = { historyViewModel.convertEstimateToInvoice(it) },
+                onSendAiReminder = { historyViewModel.selectInvoiceForReminder(it) },
                 platformActions = platformActions,
                 listScrollEnabled = !blockPagerScroll
             )
-            2 -> ReceiptsTab(
-                uiState = receiptsViewModel.uiState.collectAsStateWithLifecycle().value,
-                selectedClient = sharedViewModel.selectedClient.collectAsStateWithLifecycle().value,
-                allClients = sharedViewModel.allClients.collectAsStateWithLifecycle(initialValue = emptyList()).value,
-                filteredReceipts = receiptsViewModel.filteredReceipts.collectAsStateWithLifecycle(initialValue = emptyList()).value,
-                receiptsTotal = receiptsViewModel.receiptsTotal.collectAsStateWithLifecycle(initialValue = 0.0).value,
-                totalWithMarkup = receiptsViewModel.totalWithMarkup.collectAsStateWithLifecycle(initialValue = 0.0).value,
-                onSetFilterClient = { receiptsViewModel.setFilterClient(it) },
-                onSetClearConfirmVisible = { receiptsViewModel.setClearConfirmVisible(it) },
-                onClearReceiptItems = { receiptsViewModel.clearReceiptItems() },
-                onReceiptUriSelected = { receiptsViewModel.onReceiptUriSelected(it) },
-                onSetClientDropdownVisible = { receiptsViewModel.setClientDropdownVisible(it) },
-                onSelectClient = { sharedViewModel.selectClient(it) },
-                onSetMarkupDialogVisible = { receiptsViewModel.setMarkupDialogVisible(it) },
-                onMarkupPercentageChange = { receiptsViewModel.onMarkupPercentageChange(it) },
-                onProcessReceipt = { receiptsViewModel.processCapturedReceipt(null) {} },
-                onClearCapturedReceipt = { receiptsViewModel.clearCapturedReceiptImage() },
-                onToggleReceiptBilled = { receiptsViewModel.toggleReceiptBilled(it) },
-                onDeleteReceiptItem = { receiptsViewModel.deleteReceiptItem(it) },
-                platformActions = platformActions
-            )
+            2 -> {
+                val selectedClient by sharedViewModel.selectedClient.collectAsStateWithLifecycle()
+                ReceiptsTab(
+                    uiState = receiptsViewModel.uiState.collectAsStateWithLifecycle().value,
+                    selectedClient = selectedClient,
+                    allClients = sharedViewModel.allClients.collectAsStateWithLifecycle(initialValue = emptyList()).value,
+                    filteredReceipts = receiptsViewModel.filteredReceipts.collectAsStateWithLifecycle(initialValue = emptyList()).value,
+                    receiptsTotal = receiptsViewModel.receiptsTotal.collectAsStateWithLifecycle(initialValue = 0.0).value,
+                    totalWithMarkup = receiptsViewModel.totalWithMarkup.collectAsStateWithLifecycle(initialValue = 0.0).value,
+                    onSetFilterClient = { receiptsViewModel.setFilterClient(it) },
+                    onSetClearConfirmVisible = { receiptsViewModel.setClearConfirmVisible(it) },
+                    onClearReceiptItems = { receiptsViewModel.clearReceiptItems() },
+                    onReceiptUriSelected = { receiptsViewModel.onReceiptUriSelected(it) },
+                    onSetClientDropdownVisible = { receiptsViewModel.setClientDropdownVisible(it) },
+                    onSelectClient = { sharedViewModel.selectClient(it) },
+                    onSetMarkupDialogVisible = { receiptsViewModel.setMarkupDialogVisible(it) },
+                    onMarkupPercentageChange = { receiptsViewModel.onMarkupPercentageChange(it) },
+                    onProcessReceipt = { receiptsViewModel.processCapturedReceipt(selectedClient) {} },
+                    onClearCapturedReceipt = { receiptsViewModel.clearCapturedReceiptImage() },
+                    onToggleReceiptBilled = { receiptsViewModel.toggleReceiptBilled(it) },
+                    onDeleteReceiptItem = { receiptsViewModel.deleteReceiptItem(it) },
+                    onAcceptExpenseMatch = { receiptsViewModel.acceptExpenseMatch() },
+                    onDeclineExpenseMatch = { receiptsViewModel.declineExpenseMatch() },
+                    platformActions = platformActions
+                )
+            }
             3 -> StatsTab(
                 stats = statsViewModel.businessStats.collectAsStateWithLifecycle().value,
                 settings = businessSettings,
                 onExportCsv = {
                     statsViewModel.exportBentoReport { path, savedTo ->
-                        savedTo?.let {
-                            platformActions.showToast("Saved to $it")
-                        }
-                        platformActions.shareFile(path, "Bento Report")
+                        savedTo?.let { pendingToastKey = UiMessageKeys.savedTo(it) }
+                        platformActions.shareFile(path, bentoShareTitle)
                     }
                 },
                 onExportZip = {
                     statsViewModel.exportTaxBundle { path, savedTo ->
-                        savedTo?.let {
-                            platformActions.showToast("Saved to $it")
-                        }
-                        platformActions.shareFile(path, "Tax Bundle")
+                        savedTo?.let { pendingToastKey = UiMessageKeys.savedTo(it) }
+                        platformActions.shareFile(path, taxShareTitle)
                     }
                 },
                 onNavigateToSettings = onNavigateToSettings,
@@ -233,7 +254,7 @@ fun MainPagerContent(
                 onStartStripeConnectOnboarding = {
                     settingsViewModel.startConnectOnboarding(
                         onOpenUrl = { platformActions.openUrl(it) },
-                        onMessage = { platformActions.showToast(it) }
+                        onMessage = { pendingToastKey = it }
                     )
                 },
                 onSaveSettings = { sharedViewModel.saveBusinessSettings(it) },
@@ -241,7 +262,7 @@ fun MainPagerContent(
                     authViewModel.clearAuthMessage()
                     platformActions.signInWithGoogle(
                         onSuccess = { authViewModel.signIn(it) },
-                        onError = { platformActions.showToast(it) }
+                        onError = { pendingToastKey = it }
                     )
                 },
                 onSignOut = { authViewModel.signOut() },

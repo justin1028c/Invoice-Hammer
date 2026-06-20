@@ -7,6 +7,15 @@ value class PaymentCheckoutUrl(val value: String) {
     init {
         require(value.isNotBlank()) { "Checkout URL cannot be blank" }
     }
+
+    companion object {
+        /** Prefer the full Stripe URL (including `#` fragment) for QR encoding. */
+        fun forQrEncoding(rawUrl: String): PaymentCheckoutUrl {
+            val trimmed = rawUrl.trim()
+            require(trimmed.isNotBlank()) { "Checkout URL cannot be blank" }
+            return PaymentCheckoutUrl(trimmed)
+        }
+    }
 }
 
 sealed interface QrSessionState {

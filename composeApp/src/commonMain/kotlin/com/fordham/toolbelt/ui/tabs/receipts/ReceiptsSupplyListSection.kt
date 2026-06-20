@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.ReceiptItem
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun ReceiptsSupplyListSection(
@@ -30,13 +32,13 @@ fun ReceiptsSupplyListSection(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "LOGGED SUPPLIES",
+            stringResource(Res.string.logged_supplies),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
         )
         TextButton(onClick = { onSetClearConfirmVisible(true) }) {
-            Text("PURGE ALL", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.purge_all), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
         }
     }
 
@@ -50,7 +52,7 @@ fun ReceiptsSupplyListSection(
                             FilterChip(
                                 selected = item.isBilled,
                                 onClick = { onToggleReceiptBilled(item) },
-                                label = { Text("BILLED", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black) },
+                                label = { Text(stringResource(Res.string.billed), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black) },
                                 shape = RoundedCornerShape(2.dp),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = ComposeColor(0xFF00E676),
@@ -90,7 +92,7 @@ fun ReceiptsSupplyListSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("TOTAL EXPENSES", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(stringResource(Res.string.total_expenses), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(
                 "$${totalWithMarkup}",
                 style = MaterialTheme.typography.headlineSmall,

@@ -19,6 +19,7 @@ fun getIosDatabaseBuilder(passphrase: String): RoomDatabase.Builder<AppDatabase>
         factory = { AppDatabaseConstructor.initialize() }
     ).setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .addMigrations(MIGRATION_19_20)
         .addCallback(object : RoomDatabase.Callback() {
             override fun onOpen(db: SQLiteConnection) {

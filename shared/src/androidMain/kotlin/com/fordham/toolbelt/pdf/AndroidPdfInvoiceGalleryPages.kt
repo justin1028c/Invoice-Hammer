@@ -8,6 +8,7 @@ import android.graphics.pdf.PdfDocument
 import com.fordham.toolbelt.domain.model.InvoiceData
 import com.fordham.toolbelt.domain.model.JobPhotoPhase
 import com.fordham.toolbelt.domain.model.buildJobPhotoGalleryRows
+import com.fordham.toolbelt.util.UserFacingCopy
 
 internal object AndroidPdfInvoiceGalleryPages {
 
@@ -21,6 +22,7 @@ internal object AndroidPdfInvoiceGalleryPages {
     ) {
         val galleryRows = buildJobPhotoGalleryRows(data.jobSitePhotos)
         if (galleryRows.isNotEmpty()) {
+            val pdf = UserFacingCopy.Pdf
             val galleryPageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
             val cellW = 240f
             val cellH = 130f
@@ -46,7 +48,7 @@ internal object AndroidPdfInvoiceGalleryPages {
                 paint.color = orangeColor
                 paint.textSize = 18f
                 paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                canvasG.drawText("JOB SITE GALLERY - PAGE ${pageNum - 1}", marginX, 60f, paint)
+                canvasG.drawText(pdf.galleryPageTitle(pageNum - 1), marginX, 60f, paint)
 
                 paint.color = charcoalColor
                 paint.strokeWidth = 2f
@@ -77,10 +79,10 @@ internal object AndroidPdfInvoiceGalleryPages {
                         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                         if (phase == JobPhotoPhase.Before) {
                             paint.color = charcoalColor
-                            canvasG.drawText("[ BEFORE WORK ]", x + 5f, y + cellH + 13f, paint)
+                            canvasG.drawText(pdf.beforeWorkCaption(), x + 5f, y + cellH + 13f, paint)
                         } else {
                             paint.color = orangeColor
-                            canvasG.drawText("[ AFTER WORK ]", x + 5f, y + cellH + 13f, paint)
+                            canvasG.drawText(pdf.afterWorkCaption(), x + 5f, y + cellH + 13f, paint)
                         }
                     }
 

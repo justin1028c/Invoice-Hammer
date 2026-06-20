@@ -1,5 +1,7 @@
 package com.fordham.toolbelt.domain.model.agent
 
+import com.fordham.toolbelt.util.AppTabLabels
+
 /**
  * Compact, LLM-facing summaries of tool results for multi-step agent chaining.
  */
@@ -11,8 +13,8 @@ object ForemanToolResultSummarizer {
                 else "Found ${result.clients.size} client(s):\n" +
                     result.clients.take(5).joinToString("\n") { 
                         "- ${it.displayName.value} (id=${it.clientId.value}): " +
-                        "Owed: $${(it.totalOwed * 100).toInt() / 100.0}, " +
-                        "Total Invoiced: $${(it.totalInvoiced * 100).toInt() / 100.0}, " +
+                        "Owed: ${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(it.totalOwed)}, " +
+                        "Total Invoiced: ${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(it.totalInvoiced)}, " +
                         "Invoices count: ${it.invoiceCount}, " +
                         "Address: ${it.address.ifBlank { "n/a" }}"
                     }
@@ -29,7 +31,7 @@ object ForemanToolResultSummarizer {
             is ToolExecutionResult.JobNoteAdded -> "Job note saved for ${result.clientName.value}."
             is ToolExecutionResult.InvoiceSavedFromDraft ->
                 "Invoice saved: id=${result.invoiceId.value}, client=${result.clientName.value}, total≈${
-                    (result.totalAmount * 100).toInt() / 100.0
+                    com.fordham.toolbelt.util.DateTimeUtil.formatMoney(result.totalAmount)
                 }, pdf=${result.pdfPath}."
             is ToolExecutionResult.ClientCreated ->
                 "Client created: ${result.displayName.value} (id=${result.clientId.value})."
@@ -37,17 +39,17 @@ object ForemanToolResultSummarizer {
                 "Receipt scanned: ${result.itemCount} line item(s) added."
             is ToolExecutionResult.QuickInvoiceCompleted ->
                 "Quick invoice saved for ${result.clientName.value} (id=${result.invoiceId.value}, total≈${
-                    (result.totalAmount * 100).toInt() / 100.0
+                    com.fordham.toolbelt.util.DateTimeUtil.formatMoney(result.totalAmount)
                 })."
             is ToolExecutionResult.QuickClientAndInvoiceCompleted ->
                 "Quick client+invoice saved for ${result.clientName.value}" +
                     (if (result.clientCreated) " (client created)" else "") +
-                    " (id=${result.invoiceId.value}, total≈${(result.totalAmount * 100).toInt() / 100.0})."
+                    " (id=${result.invoiceId.value}, total≈${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(result.totalAmount)})."
             is ToolExecutionResult.DuplicateAndEditCompleted ->
                 "Duplicated last invoice for ${result.clientName.value} with ${result.lineItemCount} line(s) in draft."
             is ToolExecutionResult.QuickInvoiceFromUnbilledCompleted ->
                 "Invoiced ${result.receiptCount} unbilled receipt(s) for ${result.clientName.value} " +
-                    "(id=${result.invoiceId.value}, total≈${(result.totalAmount * 100).toInt() / 100.0})."
+                    "(id=${result.invoiceId.value}, total≈${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(result.totalAmount)})."
             is ToolExecutionResult.QuickClientLookupCompleted -> result.summary.value
             is ToolExecutionResult.InvoiceHistorySearched -> {
                 val detail = result.summary.value.takeIf { it.isNotBlank() }
@@ -62,13 +64,21 @@ object ForemanToolResultSummarizer {
                 "Opened invoice PDF: ${result.pdfPath}."
             is ToolExecutionResult.OpenSupplierCompleted ->
                 "Opened supplier store portal: ${result.name}."
+            is ToolExecutionResult.GetProfitGuardianStatusCompleted ->
+                "Status: budgetedMaterials=${result.status.budgetedMaterials.value}, actualMaterials=${result.status.actualMaterials.value}, variance=${result.status.materialVariance.value}. reasons=${result.status.reasons.joinToString { it.value }}"
+            is ToolExecutionResult.DetectChangeOrdersCompleted ->
+                "Detected ${result.opportunities.size} change order opportunity/opportunities."
+            is ToolExecutionResult.GetDailyBriefingCompleted ->
+                "Compiled daily briefing: overdueCount=${result.briefing.overdueInvoiceCount}, potentialRecovery=${result.briefing.potentialProfitRecovery.value}."
+            is ToolExecutionResult.CreateChangeOrderCompleted ->
+                "Change order draft item created for invoiceId ${result.invoiceId.value}: ${result.description.value} ($${result.amount})."
             is ToolExecutionResult.Failure -> "FAILED: ${result.error.value}"
         }
         return NaturalLanguage("${toolLabel(toolName)} → $line")
     }
 
     fun tabOpenedUserMessage(tab: AppTab): NaturalLanguage =
-        NaturalLanguage("Opened ${tab.navLabel}.")
+        NaturalLanguage(AppTabLabels.openedTabMessage(tab))
 
     fun retryExhaustedMessage(error: com.fordham.toolbelt.domain.model.FailureMessage): NaturalLanguage =
         NaturalLanguage("${error.value} Tell me what to change or try a different action.")
@@ -105,5 +115,9 @@ object ForemanToolResultSummarizer {
         ToolName.DeleteInvoiceForApproval -> "DELETE_INVOICE"
         ToolName.OpenLastInvoice -> "OPEN_LAST_INVOICE"
         ToolName.OpenSupplier -> "OPEN_SUPPLIER"
+        ToolName.GetProfitGuardianStatus -> "GET_PROFIT_GUARDIAN_STATUS"
+        ToolName.DetectChangeOrders -> "DETECT_CHANGE_ORDERS"
+        ToolName.GetDailyBriefing -> "GET_DAILY_BRIEFING"
+        ToolName.CreateChangeOrder -> "CREATE_CHANGE_ORDER"
     }
 }

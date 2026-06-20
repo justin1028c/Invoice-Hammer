@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.CapturedJobPhoto
 import com.fordham.toolbelt.domain.model.JobPhotoPhase
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun CapturedJobPhotoStrip(
@@ -26,9 +28,13 @@ fun CapturedJobPhotoStrip(
     onRemovePhoto: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val beforeText = stringResource(Res.string.before)
+    val afterText = stringResource(Res.string.after)
+    val noPhotosText = stringResource(Res.string.no_photos_added_yet)
+
     if (photos.isEmpty()) {
         Text(
-            "NO PHOTOS ADDED YET",
+            noPhotosText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
             fontWeight = FontWeight.Bold,
@@ -69,7 +75,7 @@ fun CapturedJobPhotoStrip(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = if (photo.phase == JobPhotoPhase.Before) "BEFORE" else "AFTER",
+                        text = if (photo.phase == JobPhotoPhase.Before) beforeText else afterText,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Black,

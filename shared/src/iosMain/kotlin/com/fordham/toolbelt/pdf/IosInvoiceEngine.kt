@@ -2,6 +2,7 @@ package com.fordham.toolbelt.pdf
 
 import com.fordham.toolbelt.domain.model.InvoiceData
 import com.fordham.toolbelt.domain.repository.InvoiceEngine
+import com.fordham.toolbelt.util.UserFacingCopy
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
@@ -13,7 +14,9 @@ import platform.UIKit.*
 class IosInvoiceEngine : InvoiceEngine {
 
     override fun generatePdf(data: InvoiceData): String? {
-        val fileName = "${if (data.isEstimate) "Estimate" else "Invoice"}_${data.invoiceId}.pdf"
+        val pdf = UserFacingCopy.Pdf
+        val filePrefix = if (data.isEstimate) pdf.estimateFilePrefix() else pdf.invoiceFilePrefix()
+        val fileName = "${filePrefix}_${data.invoiceId}.pdf"
         val docsRoot = NSSearchPathForDirectoriesInDomains(
             NSDocumentDirectory, NSUserDomainMask, true
         ).first() as String
@@ -47,14 +50,14 @@ class IosInvoiceEngine : InvoiceEngine {
             val greenColor = UIColor.colorWithRed(30.0 / 255.0, 142.0 / 255.0, 62.0 / 255.0, 1.0)
             
             // 1. Draw Business Details (Top Left)
-            val bizName = (data.settings.businessName.ifBlank { "INVOICE HAMMER" }).uppercase()
+            val bizName = (data.settings.businessName.ifBlank { pdf.defaultBusinessName() }).uppercase()
             val bizAttributes = mapOf(
                 NSFontAttributeName to UIFont.boldSystemFontOfSize(24.0),
                 NSForegroundColorAttributeName to orangeColor
             )
             (bizName as NSString).drawAtPoint(CGPointMake(50.0, 40.0), withAttributes = bizAttributes as Map<Any?, *>)
             
-            val slogan = data.settings.businessSlogan.ifBlank { "Professional Field Services" }
+            val slogan = data.settings.businessSlogan.ifBlank { pdf.defaultSlogan() }
             val sloganAttributes = mapOf(
                 NSFontAttributeName to UIFont.italicSystemFontOfSize(10.0),
                 NSForegroundColorAttributeName to grayColor
@@ -119,7 +122,7 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSForegroundColorAttributeName to grayColor
             )
             
-            ("BILLED TO" as NSString).drawAtPoint(CGPointMake(65.0, cardTop + 10.0), withAttributes = sectionHeaderAttributes as Map<Any?, *>)
+            (pdf.billedTo() as NSString).drawAtPoint(CGPointMake(65.0, cardTop + 10.0), withAttributes = sectionHeaderAttributes as Map<Any?, *>)
 
             val nameText = data.clientName.uppercase()
             val maxNameWidth = 210.0
@@ -148,7 +151,7 @@ class IosInvoiceEngine : InvoiceEngine {
             }
             finalNameNSString.drawAtPoint(CGPointMake(65.0, cardTop + 26.0), withAttributes = nameAttributes as Map<Any?, *>)
             
-            val clientAddressText = data.clientAddress.ifBlank { "No Job Address Provided" }
+            val clientAddressText = data.clientAddress.ifBlank { pdf.noJobAddress() }
             val truncatedClientAddress = if (clientAddressText.length > 38) clientAddressText.take(35) + "..." else clientAddressText
             (truncatedClientAddress as NSString).drawAtPoint(CGPointMake(65.0, cardTop + 44.0), withAttributes = normalBodyAttributes as Map<Any?, *>)
             
@@ -160,10 +163,9 @@ class IosInvoiceEngine : InvoiceEngine {
             rightCardPath.lineWidth = 1.0
             rightCardPath.stroke()
             
-            ("DOCUMENT DETAILS" as NSString).drawAtPoint(CGPointMake(325.0, cardTop + 10.0), withAttributes = sectionHeaderAttributes as Map<Any?, *>)
-            val docType = if (data.isEstimate) "ESTIMATE" else "INVOICE"
-            ("$docType #${data.invoiceId.take(8).uppercase()}" as NSString).drawAtPoint(CGPointMake(325.0, cardTop + 26.0), withAttributes = boldBodyAttributes as Map<Any?, *>)
-            ("DATE: ${data.date}" as NSString).drawAtPoint(CGPointMake(325.0, cardTop + 44.0), withAttributes = normalBodyAttributes as Map<Any?, *>)
+            (pdf.documentDetails() as NSString).drawAtPoint(CGPointMake(325.0, cardTop + 10.0), withAttributes = sectionHeaderAttributes as Map<Any?, *>)
+            (pdf.docNumber(data.isEstimate, data.invoiceId) as NSString).drawAtPoint(CGPointMake(325.0, cardTop + 26.0), withAttributes = boldBodyAttributes as Map<Any?, *>)
+            (pdf.datePrefix(data.date) as NSString).drawAtPoint(CGPointMake(325.0, cardTop + 44.0), withAttributes = normalBodyAttributes as Map<Any?, *>)
             
             // 4. Status Badge Pill inside details card
             val statusText: String
@@ -171,22 +173,22 @@ class IosInvoiceEngine : InvoiceEngine {
             val badgeTextColor: UIColor
             
             if (data.isEstimate) {
-                statusText = "ESTIMATE"
+                statusText = pdf.statusEstimate()
                 badgeBgColor = UIColor.colorWithRed(232.0/255.0, 240.0/255.0, 254.0/255.0, 1.0)
                 badgeTextColor = UIColor.colorWithRed(26.0/255.0, 115.0/255.0, 232.0/255.0, 1.0)
             } else {
                 val subtotal = data.items.sumOf { it.amount }
                 val taxAmount = subtotal * (data.taxRate / 100.0)
                 if (data.deposit >= (subtotal + taxAmount)) {
-                    statusText = "PAID"
+                    statusText = pdf.statusPaid()
                     badgeBgColor = UIColor.colorWithRed(230.0/255.0, 244.0/255.0, 234.0/255.0, 1.0)
                     badgeTextColor = UIColor.colorWithRed(30.0/255.0, 142.0/255.0, 62.0/255.0, 1.0)
                 } else if (data.deposit > 0.0) {
-                    statusText = "PARTIAL"
+                    statusText = pdf.statusPartial()
                     badgeBgColor = UIColor.colorWithRed(254.0/255.0, 243.0/255.0, 224.0/255.0, 1.0)
                     badgeTextColor = UIColor.colorWithRed(230.0/255.0, 81.0/255.0, 0.0/255.0, 1.0)
                 } else {
-                    statusText = "DUE"
+                    statusText = pdf.statusDue()
                     badgeBgColor = UIColor.colorWithRed(253.0/255.0, 236.0/255.0, 236.0/255.0, 1.0)
                     badgeTextColor = UIColor.colorWithRed(217.0/255.0, 48.0/255.0, 37.0/255.0, 1.0)
                 }
@@ -226,10 +228,10 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSParagraphStyleAttributeName to rightAlignStyle
             )
             
-            ("DESCRIPTION" as NSString).drawAtPoint(CGPointMake(60.0, currentY + 4.0), withAttributes = tableHeaderAttributes as Map<Any?, *>)
-            ("QTY" as NSString).drawInRect(CGRectMake(300.0, currentY + 4.0, 60.0, 15.0), withAttributes = tableHeaderRightAttributes as Map<Any?, *>)
-            ("UNIT PRICE" as NSString).drawInRect(CGRectMake(370.0, currentY + 4.0, 80.0, 15.0), withAttributes = tableHeaderRightAttributes as Map<Any?, *>)
-            ("TOTAL" as NSString).drawInRect(CGRectMake(460.0, currentY + 4.0, 75.0, 15.0), withAttributes = tableHeaderRightAttributes as Map<Any?, *>)
+            (pdf.description() as NSString).drawAtPoint(CGPointMake(60.0, currentY + 4.0), withAttributes = tableHeaderAttributes as Map<Any?, *>)
+            (pdf.qty() as NSString).drawInRect(CGRectMake(300.0, currentY + 4.0, 60.0, 15.0), withAttributes = tableHeaderRightAttributes as Map<Any?, *>)
+            (pdf.unitPrice() as NSString).drawInRect(CGRectMake(370.0, currentY + 4.0, 80.0, 15.0), withAttributes = tableHeaderRightAttributes as Map<Any?, *>)
+            (pdf.total() as NSString).drawInRect(CGRectMake(460.0, currentY + 4.0, 75.0, 15.0), withAttributes = tableHeaderRightAttributes as Map<Any?, *>)
             
             currentY += 22.0
             
@@ -311,16 +313,16 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSParagraphStyleAttributeName to rightAlignStyle
             )
             
-            ("Subtotal" as NSString).drawAtPoint(CGPointMake(340.0, calcY), withAttributes = calcLabelAttributes as Map<Any?, *>)
+            (pdf.subtotal() as NSString).drawAtPoint(CGPointMake(340.0, calcY), withAttributes = calcLabelAttributes as Map<Any?, *>)
             (NSString.stringWithFormat("$%.2f", subtotal) as NSString).drawInRect(CGRectMake(430.0, calcY, 100.0, 15.0), withAttributes = calcValRightAttributes as Map<Any?, *>)
             calcY += 16.0
             
-            ("Tax (${data.taxRate}%)" as NSString).drawAtPoint(CGPointMake(340.0, calcY), withAttributes = calcLabelAttributes as Map<Any?, *>)
+            (pdf.tax(data.taxRate) as NSString).drawAtPoint(CGPointMake(340.0, calcY), withAttributes = calcLabelAttributes as Map<Any?, *>)
             (NSString.stringWithFormat("$%.2f", taxAmount) as NSString).drawInRect(CGRectMake(430.0, calcY, 100.0, 15.0), withAttributes = calcValRightAttributes as Map<Any?, *>)
             calcY += 16.0
             
             if (data.deposit > 0.0) {
-                ("Deposit Paid" as NSString).drawAtPoint(CGPointMake(340.0, calcY), withAttributes = calcLabelAttributes as Map<Any?, *>)
+                (pdf.depositPaid() as NSString).drawAtPoint(CGPointMake(340.0, calcY), withAttributes = calcLabelAttributes as Map<Any?, *>)
                 (NSString.stringWithFormat("-$%.2f", data.deposit) as NSString).drawInRect(CGRectMake(430.0, calcY, 100.0, 15.0), withAttributes = calcGreenValRightAttributes as Map<Any?, *>)
                 calcY += 16.0
             }
@@ -343,7 +345,7 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSParagraphStyleAttributeName to rightAlignStyle
             )
             
-            ("TOTAL DUE" as NSString).drawAtPoint(CGPointMake(340.0, calcY + 2.0), withAttributes = totalDueLabelAttributes as Map<Any?, *>)
+            (pdf.totalDue() as NSString).drawAtPoint(CGPointMake(340.0, calcY + 2.0), withAttributes = totalDueLabelAttributes as Map<Any?, *>)
             
             val grandTotalText = NSString.stringWithFormat("$%.2f", totalAmount)
             (grandTotalText as NSString).drawInRect(CGRectMake(430.0, calcY + 1.0, 100.0, 18.0), withAttributes = totalDueValRightAttributes as Map<Any?, *>)
@@ -353,7 +355,7 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSFontAttributeName to UIFont.boldSystemFontOfSize(9.0),
                 NSForegroundColorAttributeName to grayColor
             )
-            val thankYouText = "THANK YOU FOR YOUR BUSINESS!"
+            val thankYouText = pdf.thankYou()
             val thankYouNSString = thankYouText as NSString
             val thankYouSize = thankYouNSString.sizeWithAttributes(footerAttributes as Map<Any?, *>)
             val thankYouWidth = thankYouSize.useContents { width }
@@ -374,7 +376,7 @@ class IosInvoiceEngine : InvoiceEngine {
                         NSFontAttributeName to UIFont.boldSystemFontOfSize(18.0),
                         NSForegroundColorAttributeName to orangeColor
                     )
-                    ("JOB SITE GALLERY - PAGE ${pageNum - 1}" as NSString).drawAtPoint(
+                    (pdf.galleryPageTitle(pageNum - 1) as NSString).drawAtPoint(
                         CGPointMake(50.0, 45.0),
                         withAttributes = galleryTitleAttributes as Map<Any?, *>
                     )
@@ -404,7 +406,7 @@ class IosInvoiceEngine : InvoiceEngine {
                                 NSFontAttributeName to UIFont.boldSystemFontOfSize(8.0),
                                 NSForegroundColorAttributeName to captionColor
                             )
-                            val caption = if (isBefore) "[ BEFORE WORK ]" else "[ AFTER WORK ]"
+                            val caption = if (isBefore) pdf.beforeWorkCaption() else pdf.afterWorkCaption()
                             (caption as NSString).drawAtPoint(
                                 CGPointMake(x + 5.0, y + 138.0),
                                 withAttributes = captionAttributes as Map<Any?, *>

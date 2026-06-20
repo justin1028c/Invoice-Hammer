@@ -1,5 +1,7 @@
 package com.fordham.toolbelt.domain.model.agent
 
+import com.fordham.toolbelt.util.AppTabLabels
+
 /**
  * Single mapper from tool execution to spoken + overlay copy.
  */
@@ -89,7 +91,7 @@ object ForemanUserMessageMapper {
             else "Saved invoice for ${result.clientName.value}"
         is ToolExecutionResult.DuplicateAndEditCompleted ->
             "Duplicated last invoice for ${result.clientName.value}"
-        is ToolExecutionResult.TabOpened -> "Opened ${result.tab.navLabel}"
+        is ToolExecutionResult.TabOpened -> AppTabLabels.openedTabStepLabel(result.tab)
         is ToolExecutionResult.Failure -> "Failed: ${result.error.value}"
         else -> ForemanToolResultSummarizer.toContextLine(step.toolName, result).value
             .substringAfter("→", missingDelimiterValue = "Step complete")

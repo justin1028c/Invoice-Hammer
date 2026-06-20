@@ -17,27 +17,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
+import com.fordham.toolbelt.domain.model.InvoicePaymentStatus
 import com.fordham.toolbelt.domain.model.PaymentProviderType
 import com.fordham.toolbelt.domain.model.PaymentRequestType
-import com.fordham.toolbelt.domain.model.checkoutInstructions
 import com.fordham.toolbelt.domain.model.usesStellarRail
 import com.fordham.toolbelt.domain.payment.qr.PaymentCheckoutUrl
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.ui.theme.BrandOrange
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun PaymentRequestCreatedDialog(
     request: InvoicePaymentRequest,
     isLivePowerPay: Boolean,
     isLiveStripe: Boolean,
+    checkoutUrl: String?,
+    checkoutLinkCanPay: Boolean,
+    checkoutLinkMessage: String?,
+    isResolvingCheckoutLink: Boolean,
     onDismiss: () -> Unit,
-    onOpenPaymentLink: (String) -> Unit
+    onOpenPaymentLink: (String) -> Unit,
+    onRegenerateLink: () -> Unit
 ) {
+    val clientScanHint = stringResource(Res.string.checkout_link_client_hint)
+    val refreshingText = stringResource(Res.string.checkout_link_refreshing)
+    val newLinkText = stringResource(Res.string.checkout_link_new)
+    val localizedCheckoutMessage = checkoutLinkMessage?.let { localizeUiMessage(it) }
+    val displayUrl = checkoutUrl?.takeIf { it.isNotBlank() && checkoutLinkCanPay }
     val title = when (request.provider) {
-        PaymentProviderType.GooglePay -> "GOOGLE PAY LINK READY"
-        PaymentProviderType.ApplePay -> "APPLE PAY LINK READY"
-        PaymentProviderType.CardLink -> "CARD CHECKOUT READY"
-        PaymentProviderType.StellarUsdc -> "STELLAR PAYMENT READY"
-        else -> "PAYMENT LINK READY"
+        PaymentProviderType.GooglePay -> stringResource(Res.string.google_pay_ready)
+        PaymentProviderType.ApplePay -> stringResource(Res.string.apple_pay_ready)
+        PaymentProviderType.CardLink -> stringResource(Res.string.card_checkout_ready)
+        PaymentProviderType.StellarUsdc -> stringResource(Res.string.stellar_payment_ready)
+        else -> stringResource(Res.string.payment_link_ready)
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -48,7 +61,7 @@ fun PaymentRequestCreatedDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "${request.invoiceClientName.uppercase()} · ${request.providerLabel} · ${request.formattedAmount}",
+                    "${request.invoiceClientName.uppercase()} · ${request.provider.localizedLabel()} · ${request.formattedAmount}",
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.align(Alignment.Start)
                 )
@@ -61,32 +74,62 @@ fun PaymentRequestCreatedDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Start)
                 )
-                
-                if (request.paymentLink.value.isNotBlank()) {
+                if (isLiveStripe && checkoutLinkCanPay) {
+                    Text(
+                        clientScanHint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                }
+                if (isResolvingCheckoutLink) {
+                    CircularProgressIndicator(modifier = Modifier.padding(vertical = 8.dp))
+                    Text(refreshingText, style = MaterialTheme.typography.bodySmall)
+                }
+                localizedCheckoutMessage?.let { message ->
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                }
+                displayUrl?.let { url ->
                     Spacer(modifier = Modifier.height(8.dp))
                     ContractorQrPaymentDisplay(
-                        checkoutUrl = PaymentCheckoutUrl(request.paymentLink.value),
-                        modifier = Modifier.size(200.dp)
+                        checkoutUrl = PaymentCheckoutUrl.forQrEncoding(url),
+                        modifier = Modifier.size(200.dp),
+                        onOpenCheckout = { onOpenPaymentLink(url) }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        url,
+                        color = BrandOrange,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
                 }
-
-                Text(
-                    request.paymentLink.value,
-                    color = BrandOrange,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.Start)
-                )
             }
         },
         confirmButton = {
-            TacticalButton(
-                onClick = { onOpenPaymentLink(request.paymentLink.value) },
-                text = "OPEN LINK",
-                icon = { Icon(Icons.Default.OpenInBrowser, null) }
-            )
+            when {
+                checkoutLinkCanPay && !displayUrl.isNullOrBlank() -> {
+                    TacticalButton(
+                        onClick = { onOpenPaymentLink(displayUrl) },
+                        text = stringResource(Res.string.open_link),
+                        icon = { Icon(Icons.Default.OpenInBrowser, null) }
+                    )
+                }
+                !checkoutLinkCanPay -> {
+                    TacticalButton(
+                        onClick = onRegenerateLink,
+                        text = newLinkText,
+                        icon = { Icon(Icons.Default.Refresh, null) }
+                    )
+                }
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("DONE") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.done)) } }
     )
 }
 
@@ -96,48 +139,64 @@ fun PaymentMethodPickerSheet(
     onDismiss: () -> Unit,
     onProviderSelected: (PaymentProviderType) -> Unit
 ) {
-    val providers = remember {
+    val googlePayDesc = stringResource(Res.string.google_pay_picker_desc)
+    val applePayDesc = stringResource(Res.string.apple_pay_picker_desc)
+    val stellarUsdcDesc = stringResource(Res.string.stellar_usdc_picker_desc)
+    val cardLinkTitle = stringResource(Res.string.card_link_picker_title)
+    val cardLinkDesc = stringResource(Res.string.card_link_picker_desc)
+    val cardTerminalTitle = stringResource(Res.string.card_terminal_picker_title)
+    val cardTerminalDesc = stringResource(Res.string.card_terminal_picker_desc)
+    val tapToPayTitle = stringResource(Res.string.tap_to_pay_picker_title)
+    val tapToPayDesc = stringResource(Res.string.tap_to_pay_picker_desc)
+    val bluetoothReaderTitle = stringResource(Res.string.bluetooth_reader_picker_title)
+    val bluetoothReaderDesc = stringResource(Res.string.bluetooth_reader_picker_desc)
+
+    val providers = remember(
+        googlePayDesc, applePayDesc, stellarUsdcDesc, cardLinkTitle, cardLinkDesc,
+        cardTerminalTitle, cardTerminalDesc, tapToPayTitle, tapToPayDesc,
+        bluetoothReaderTitle, bluetoothReaderDesc
+    ) {
         listOf(
             PaymentPickerRow(
                 PaymentProviderType.GooglePay,
                 "Google Pay",
-                "Future processor-backed wallet payment.",
+                googlePayDesc,
                 PaymentPickerIcon.Wallet
             ),
             PaymentPickerRow(
                 PaymentProviderType.ApplePay,
                 "Apple Pay",
-                "iOS-ready provider slot for native checkout.",
+                applePayDesc,
                 PaymentPickerIcon.Phone
             ),
             PaymentPickerRow(
                 PaymentProviderType.StellarUsdc,
                 "Stellar USDC",
-                "Stablecoin settlement rail for SCF demo path.",
+                stellarUsdcDesc,
                 PaymentPickerIcon.Globe
             ),
             PaymentPickerRow(
                 PaymentProviderType.CardLink,
-                "Card / Payment Link",
-                "Hosted fallback link for clients without wallets.",
+                cardLinkTitle,
+                cardLinkDesc,
                 PaymentPickerIcon.Card
             ),
             PaymentPickerRow(
                 PaymentProviderType.CardTerminal,
-                "Card Terminal",
-                "Type card on-site (free). Stripe backend enables PCI-safe checkout.",
+                cardTerminalTitle,
+                cardTerminalDesc,
                 PaymentPickerIcon.Card
             ),
             PaymentPickerRow(
                 PaymentProviderType.TapToPay,
-                "Tap to Pay",
-                "Phone NFC checkout — free tier (platform fee via Stripe Connect).",
+                tapToPayTitle,
+                tapToPayDesc,
                 PaymentPickerIcon.Phone
             ),
             PaymentPickerRow(
                 PaymentProviderType.BluetoothReader,
-                "Bluetooth Reader (Pro)",
-                "External card reader — Pro subscription required.",
+                bluetoothReaderTitle,
+                bluetoothReaderDesc,
                 PaymentPickerIcon.Card
             )
         )
@@ -162,12 +221,12 @@ fun PaymentMethodPickerSheet(
             ) {
                 item {
                     Text(
-                        text = if (requestType == PaymentRequestType.Deposit) "REQUEST DEPOSIT" else "REQUEST FULL PAYMENT",
+                        text = if (requestType == PaymentRequestType.Deposit) stringResource(Res.string.deposit_type_label) else stringResource(Res.string.request_full_payment),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        "Stellar USDC → PowerPay. Google Pay, Apple Pay, and Card Link → Stripe. On-site options below.",
+                        stringResource(Res.string.payment_picker_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
@@ -271,7 +330,7 @@ internal fun PaymentLedgerRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(request.invoiceClientName.uppercase(), fontWeight = FontWeight.Black)
                 Text(
-                    "${request.type.label()} • ${request.providerLabel} • ${request.statusLabel}",
+                    "${request.type.label()} • ${request.provider.localizedLabel()} • ${request.status.localizedLabel()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
@@ -281,12 +340,12 @@ internal fun PaymentLedgerRow(
                 Text(request.formattedAmount, color = BrandOrange, fontWeight = FontWeight.Black)
                 if (request.paymentLink.value.isNotBlank()) {
                     TextButton(onClick = { onOpenPaymentLink(request.paymentLink.value) }) {
-                        Text("PAY", fontWeight = FontWeight.Black)
+                        Text(stringResource(Res.string.pay_label), fontWeight = FontWeight.Black)
                     }
                 }
                 request.onChainProofUrl?.let { explorer ->
                     TextButton(onClick = { onOpenExplorer(explorer) }) {
-                        Text("TX", fontWeight = FontWeight.Black)
+                        Text(stringResource(Res.string.tx_label), fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -294,7 +353,60 @@ internal fun PaymentLedgerRow(
     }
 }
 
+@Composable
 internal fun PaymentRequestType.label(): String = when (this) {
-    PaymentRequestType.Deposit -> "DEPOSIT"
-    PaymentRequestType.FullBalance -> "FULL PAY"
+    PaymentRequestType.Deposit -> stringResource(Res.string.deposit_type_label)
+    PaymentRequestType.FullBalance -> stringResource(Res.string.full_pay_type_label)
+}
+
+@Composable
+fun PaymentProviderType.localizedLabel(): String = when (this) {
+    PaymentProviderType.GooglePay -> "Google Pay"
+    PaymentProviderType.ApplePay -> "Apple Pay"
+    PaymentProviderType.StellarUsdc -> "Stellar USDC"
+    PaymentProviderType.CardLink -> stringResource(Res.string.card_link_picker_title)
+    PaymentProviderType.CardTerminal -> stringResource(Res.string.card_terminal_picker_title)
+    PaymentProviderType.TapToPay -> stringResource(Res.string.tap_to_pay_picker_title)
+    PaymentProviderType.BluetoothReader -> stringResource(Res.string.bluetooth_reader_picker_title)
+}
+
+@Composable
+fun InvoicePaymentStatus.localizedLabel(): String = when (this) {
+    InvoicePaymentStatus.Requested -> stringResource(Res.string.status_requested)
+    InvoicePaymentStatus.Pending -> stringResource(Res.string.status_pending)
+    InvoicePaymentStatus.Paid -> stringResource(Res.string.status_paid)
+    InvoicePaymentStatus.Failed -> stringResource(Res.string.status_failed)
+    InvoicePaymentStatus.Expired -> stringResource(Res.string.status_expired)
+}
+
+@Composable
+fun PaymentProviderType.checkoutInstructions(
+    isStellarLive: Boolean,
+    isStripeLive: Boolean
+): String = when (this) {
+    PaymentProviderType.StellarUsdc ->
+        if (isStellarLive) {
+            stringResource(Res.string.checkout_instr_stellar_live)
+        } else {
+            stringResource(Res.string.checkout_instr_stellar_demo)
+        }
+    PaymentProviderType.GooglePay ->
+        if (isStripeLive) {
+            stringResource(Res.string.checkout_instr_gpay_live)
+        } else {
+            stringResource(Res.string.checkout_instr_gpay_demo)
+        }
+    PaymentProviderType.ApplePay ->
+        if (isStripeLive) {
+            stringResource(Res.string.checkout_instr_apay_live)
+        } else {
+            stringResource(Res.string.checkout_instr_apay_demo)
+        }
+    PaymentProviderType.CardLink ->
+        if (isStripeLive) {
+            stringResource(Res.string.checkout_instr_card_live)
+        } else {
+            stringResource(Res.string.checkout_instr_card_demo)
+        }
+    else -> stringResource(Res.string.checkout_instr_fallback)
 }

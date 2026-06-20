@@ -40,12 +40,15 @@ import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.PaymentRequestType
 import com.fordham.toolbelt.domain.model.cardterminal.CardBrand
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 import com.fordham.toolbelt.domain.model.cardterminal.CardTerminalDraft
 import com.fordham.toolbelt.domain.model.cardterminal.CardTerminalPhase
 import com.fordham.toolbelt.domain.model.cardterminal.phaseLabel
 import com.fordham.toolbelt.domain.model.stripe.StripePaymentMode
 import com.fordham.toolbelt.domain.util.CardTerminalValidator
 import com.fordham.toolbelt.ui.theme.BrandOrange
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.ui.viewmodel.CardTerminalUiState
 import com.fordham.toolbelt.util.DateTimeUtil
 
@@ -88,25 +91,25 @@ fun CardTerminalSheet(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Default.CreditCard, null, tint = BrandOrange)
                 Column {
-                    Text("CARD TERMINAL", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    Text(stringResource(Res.string.card_terminal_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     Text(
-                        "On-site entry · ${invoice.clientName.uppercase()} · ${DateTimeUtil.formatMoney(amount)}",
+                        stringResource(Res.string.on_site_entry_desc, invoice.clientName.uppercase(), DateTimeUtil.formatMoney(amount)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
+ 
             if (stripePaymentMode == StripePaymentMode.PaymentSheet) {
                 Text(
-                    "Stripe secure checkout — card data never touches Invoice Hammer servers.",
+                    stringResource(Res.string.stripe_secure_checkout_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 TacticalButton(
                     onClick = onSecureCheckout,
-                    text = "SECURE CHECKOUT ${DateTimeUtil.formatMoney(amount)}",
+                    text = stringResource(Res.string.secure_checkout_btn, DateTimeUtil.formatMoney(amount)),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isProcessing
                 )
@@ -115,72 +118,72 @@ fun CardTerminalSheet(
 
             if (stripePaymentMode == StripePaymentMode.ManualEntrySimulator) {
                 VirtualCardPreview(
-                brand = brand,
-                panDisplay = CardTerminalValidator.formatPanDisplay(panDigits).ifBlank { "•••• •••• •••• ••••" },
-                cardholder = uiState.draft.cardholderName.ifBlank { "CARDHOLDER NAME" },
-                expiry = uiState.draft.expiryInput.ifBlank { "MM/YY" }
-            )
-
+                    brand = brand,
+                    panDisplay = CardTerminalValidator.formatPanDisplay(panDigits).ifBlank { "•••• •••• •••• ••••" },
+                    cardholder = uiState.draft.cardholderName.ifBlank { stringResource(Res.string.cardholder_placeholder) },
+                    expiry = uiState.draft.expiryInput.ifBlank { stringResource(Res.string.mmyy_placeholder) }
+                )
+ 
                 Spacer(Modifier.height(16.dp))
-
+ 
                 OutlinedTextField(
-                value = CardTerminalValidator.formatPanDisplay(panDigits),
-                onValueChange = { raw ->
-                    val digits = raw.filter { it.isDigit() }.take(19)
-                    onDraftChange(uiState.draft.copy(panDigits = digits))
-                },
-                label = { Text("Card number") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !uiState.isProcessing
-            )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = uiState.draft.expiryInput,
+                    value = CardTerminalValidator.formatPanDisplay(panDigits),
                     onValueChange = { raw ->
-                        onDraftChange(uiState.draft.copy(expiryInput = CardTerminalValidator.formatExpiryInput(raw)))
+                        val digits = raw.filter { it.isDigit() }.take(19)
+                        onDraftChange(uiState.draft.copy(panDigits = digits))
                     },
-                    label = { Text("Expiry") },
+                    label = { Text(stringResource(Res.string.card_number)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !uiState.isProcessing
                 )
+ 
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = uiState.draft.expiryInput,
+                        onValueChange = { raw ->
+                            onDraftChange(uiState.draft.copy(expiryInput = CardTerminalValidator.formatExpiryInput(raw)))
+                        },
+                        label = { Text(stringResource(Res.string.expiry)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        enabled = !uiState.isProcessing
+                    )
+                    OutlinedTextField(
+                        value = uiState.draft.cvvDigits,
+                        onValueChange = { raw ->
+                            val max = if (brand == CardBrand.Amex) 4 else 3
+                            onDraftChange(uiState.draft.copy(cvvDigits = raw.filter { it.isDigit() }.take(max)))
+                        },
+                        label = { Text(stringResource(Res.string.cvv)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        enabled = !uiState.isProcessing
+                    )
+                }
+ 
                 OutlinedTextField(
-                    value = uiState.draft.cvvDigits,
-                    onValueChange = { raw ->
-                        val max = if (brand == CardBrand.Amex) 4 else 3
-                        onDraftChange(uiState.draft.copy(cvvDigits = raw.filter { it.isDigit() }.take(max)))
-                    },
-                    label = { Text("CVV") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    modifier = Modifier.weight(1f),
+                    value = uiState.draft.cardholderName,
+                    onValueChange = { onDraftChange(uiState.draft.copy(cardholderName = it.uppercase())) },
+                    label = { Text(stringResource(Res.string.cardholder_name)) },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !uiState.isProcessing
                 )
-            }
-
-                OutlinedTextField(
-                value = uiState.draft.cardholderName,
-                onValueChange = { onDraftChange(uiState.draft.copy(cardholderName = it.uppercase())) },
-                label = { Text("Cardholder name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !uiState.isProcessing
-            )
-
+ 
                 TacticalButton(
                     onClick = onManualCharge,
-                    text = if (uiState.isProcessing) "PROCESSING…" else "CHARGE ${DateTimeUtil.formatMoney(amount)}",
+                    text = if (uiState.isProcessing) stringResource(Res.string.processing_progress) else stringResource(Res.string.charge_btn, DateTimeUtil.formatMoney(amount)),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isProcessing
                 )
-
+ 
                 Text(
-                    "Beta simulator — add Stripe keys for live PCI-safe checkout. Use ••••0002 to simulate decline.",
+                    stringResource(Res.string.beta_simulator_desc),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 10.dp)
@@ -194,9 +197,9 @@ fun CardTerminalSheet(
                     .padding(top = 8.dp)
             ) {
                 uiState.errorMessage?.let { msg ->
-                    Text(msg, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Text(localizeUiMessage(msg), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 } ?: uiState.successMessage?.let { msg ->
-                    Text(msg, color = BrandOrange, fontWeight = FontWeight.Bold)
+                    Text(localizeUiMessage(msg), color = BrandOrange, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -244,7 +247,7 @@ private fun VirtualCardPreview(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                brand.name.uppercase().ifBlank { "CARD" },
+                brand.name.uppercase().ifBlank { stringResource(Res.string.card_label) },
                 color = Color.White.copy(alpha = 0.9f),
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp

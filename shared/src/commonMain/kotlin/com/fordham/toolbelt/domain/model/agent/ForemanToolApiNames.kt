@@ -29,6 +29,10 @@ fun ToolName.toApiName(): String = when (this) {
     ToolName.DeleteInvoiceForApproval -> ToolType.DELETE_INVOICE.name
     ToolName.OpenLastInvoice -> ToolType.OPEN_LAST_INVOICE.name
     ToolName.OpenSupplier -> ToolType.OPEN_SUPPLIER.name
+    ToolName.GetProfitGuardianStatus -> ToolType.GET_PROFIT_GUARDIAN_STATUS.name
+    ToolName.DetectChangeOrders -> ToolType.DETECT_CHANGE_ORDERS.name
+    ToolName.GetDailyBriefing -> ToolType.GET_DAILY_BRIEFING.name
+    ToolName.CreateChangeOrder -> ToolType.CREATE_CHANGE_ORDER.name
 }
 
 fun apiNameToToolType(name: String): ToolType? =

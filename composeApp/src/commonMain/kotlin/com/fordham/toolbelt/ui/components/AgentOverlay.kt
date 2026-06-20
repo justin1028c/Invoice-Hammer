@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,9 @@ import com.fordham.toolbelt.domain.model.agent.AgentOutcome
 import com.fordham.toolbelt.domain.model.agent.ClientSearchHit
 import com.fordham.toolbelt.domain.model.agent.ForemanAgentPresentation
 import com.fordham.toolbelt.domain.model.agent.InvoiceSavePreview
+import com.fordham.toolbelt.ui.localizeUiMessage
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun AgentOverlay(
@@ -116,13 +120,26 @@ fun AgentOverlay(
 
             Spacer(Modifier.height(8.dp))
 
+            if (!isListening && !isProcessing && transcript.isNotBlank()) {
+                Text(
+                    text = "\"$transcript\"",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = FontStyle.Italic
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
             when {
                 isProcessing -> {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Text("Working on: \"$transcript\"", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(Res.string.working_on).replace("%s", transcript),
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
                 clientChoices.isNotEmpty() -> {
-                    Text("Which client?", fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.which_client), fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -136,21 +153,21 @@ fun AgentOverlay(
                             )
                         }
                     }
-                    TextButton(onClick = onDismissClientChoices) { Text("Cancel") }
+                    TextButton(onClick = onDismissClientChoices) { Text(stringResource(Res.string.cancel)) }
                 }
                 savePreview != null -> {
-                    Text("Save invoice?", fontWeight = FontWeight.Black)
+                    Text(stringResource(Res.string.save_invoice_q), fontWeight = FontWeight.Black)
                     Text(
                         "${savePreview.clientName.value} · ${savePreview.lineItemCount} line(s) · " +
-                            "~$${(savePreview.estimatedTotal * 100).toInt() / 100.0}" +
-                            if (savePreview.isEstimate) " (estimate)" else "",
+                            "~${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(savePreview.estimatedTotal)}" +
+                            if (savePreview.isEstimate) " (${stringResource(Res.string.estimate)})" else "",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                        TextButton(onClick = onDismissSavePreview) { Text("Edit draft") }
+                        TextButton(onClick = onDismissSavePreview) { Text(stringResource(Res.string.edit_draft)) }
                         Spacer(Modifier.width(8.dp))
-                        Button(onClick = onConfirmSave) { Text("Save PDF") }
+                        Button(onClick = onConfirmSave) { Text(stringResource(Res.string.save_pdf)) }
                     }
                 }
                 pendingApproval != null -> {
@@ -164,14 +181,19 @@ fun AgentOverlay(
                             .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            lastResponse ?: if (isListening) "Speak now..." else "Ready.",
+                            text = lastResponse?.let { localizeUiMessage(it) }
+                                ?: if (isListening) {
+                                    if (transcript.isNotBlank()) transcript else stringResource(Res.string.speak_now)
+                                } else {
+                                    stringResource(Res.string.ready)
+                                },
                             fontWeight = FontWeight.Bold
                         )
                         if (stepSummaries.isNotEmpty()) {
                             Spacer(Modifier.height(6.dp))
                             stepSummaries.forEach { step ->
                                 Text(
-                                    "• $step",
+                                    "• ${localizeUiMessage(step)}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -184,31 +206,31 @@ fun AgentOverlay(
                             value = typedCommand,
                             onValueChange = onTypedCommandChange,
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Type a command…") },
+                            placeholder = { Text(stringResource(Res.string.type_command)) },
                             singleLine = true,
                             trailingIcon = {
                                 IconButton(
                                     onClick = onSendTypedCommand,
                                     enabled = typedCommand.isNotBlank() && !isProcessing
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send))
                                 }
                             }
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "QUICK WORKFLOWS (TAP TO FILL)",
+                            stringResource(Res.string.quick_workflows),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Black
                         )
                         Spacer(Modifier.height(4.dp))
                         val suggestions = listOf(
-                            "Invoice Bob 3h labor at 85",
-                            "Go to stats",
-                            "Go to history",
-                            "Bill Joe 500",
-                            "Same as last time for Mike"
+                            stringResource(Res.string.agent_suggestion_invoice_bob),
+                            stringResource(Res.string.agent_suggestion_go_stats),
+                            stringResource(Res.string.agent_suggestion_go_history),
+                            stringResource(Res.string.agent_suggestion_bill_joe),
+                            stringResource(Res.string.agent_suggestion_same_as_mike)
                         )
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -263,12 +285,12 @@ private fun AgentOverlayHeader(
             Spacer(Modifier.width(8.dp))
             Text(
                 when {
-                    clientChoices.isNotEmpty() -> "PICK CLIENT"
-                    pendingApproval != null -> "APPROVAL NEEDED"
-                    isListening -> "LISTENING"
-                    isProcessing -> "WORKING"
-                    currentMode == AgentMode.ACTION -> "AI ACTION"
-                    else -> "FOREMAN"
+                    clientChoices.isNotEmpty() -> stringResource(Res.string.pick_client)
+                    pendingApproval != null -> stringResource(Res.string.approval_needed)
+                    isListening -> stringResource(Res.string.listening)
+                    isProcessing -> stringResource(Res.string.working)
+                    currentMode == AgentMode.ACTION -> stringResource(Res.string.ai_action)
+                    else -> stringResource(Res.string.foreman)
                 },
                 fontWeight = FontWeight.Black,
                 style = MaterialTheme.typography.labelSmall
@@ -278,15 +300,15 @@ private fun AgentOverlayHeader(
             if (showMic) {
                 IconButton(onClick = onMicClick, modifier = Modifier.size(32.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Speak",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                          imageVector = Icons.Default.Mic,
+                          contentDescription = stringResource(Res.string.speak),
+                          tint = MaterialTheme.colorScheme.primary,
+                          modifier = Modifier.size(20.dp)
                     )
                 }
             }
             IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.Default.Close, contentDescription = "Close")
+                Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.close))
             }
         }
     }
@@ -305,7 +327,7 @@ private fun AgentApprovalCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                ForemanAgentPresentation.approvalMessage(pendingApproval),
+                localizeUiMessage(ForemanAgentPresentation.approvalMessage(pendingApproval)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -313,13 +335,13 @@ private fun AgentApprovalCard(
     }
     Spacer(Modifier.height(12.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        TextButton(onClick = onDismiss) { Text("REJECT") }
+        TextButton(onClick = onDismiss) { Text(stringResource(Res.string.reject)) }
         Spacer(Modifier.width(8.dp))
         Button(
             onClick = onApprove,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
         ) {
-            Text("APPROVE", fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.approve), fontWeight = FontWeight.Bold)
         }
     }
 }

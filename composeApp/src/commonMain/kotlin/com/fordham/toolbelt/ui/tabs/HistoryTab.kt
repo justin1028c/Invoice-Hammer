@@ -22,6 +22,8 @@ import com.fordham.toolbelt.ui.components.HistoryItemCard
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.viewmodel.HistoryUiState
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,27 +41,30 @@ fun HistoryTab(
     onShowPaidOnlyChange: (Boolean) -> Unit,
     onUpdateInvoice: (Invoice) -> Unit,
     onConvertEstimateToInvoice: (Invoice) -> Unit,
+    onSendAiReminder: (Invoice) -> Unit,
     platformActions: PlatformActions,
     listScrollEnabled: Boolean = true
 ) {
+    val convertedToast = stringResource(Res.string.converted)
     if (uiState.invoiceToDelete != null) {
+        val recordType = if (uiState.invoiceToDelete!!.isEstimate) stringResource(Res.string.estimate) else stringResource(Res.string.invoice)
         AlertDialog(
             onDismissRequest = { onSetInvoiceToDelete(null) },
-            title = { Text("Delete Record?", fontWeight = FontWeight.Black) },
-            text = { Text("This will permanently remove this ${if (uiState.invoiceToDelete!!.isEstimate) "estimate" else "invoice"} from your records. The PDF file will remain on your device.") },
+            title = { Text(stringResource(Res.string.delete_record), fontWeight = FontWeight.Black) },
+            text = { Text(stringResource(Res.string.delete_record_desc, recordType)) },
             confirmButton = { 
                 TacticalButton(
                     onClick = { 
                         onDeleteInvoice(uiState.invoiceToDelete!!)
                         onSetInvoiceToDelete(null)
                     }, 
-                    text = "DELETE", 
+                    text = stringResource(Res.string.delete), 
                     containerColor = MaterialTheme.colorScheme.error
                 ) 
             },
             dismissButton = { 
                 TextButton(onClick = { onSetInvoiceToDelete(null) }) {
-                    Text("CANCEL") 
+                    Text(stringResource(Res.string.cancel)) 
                 } 
             }
         )
@@ -72,14 +77,14 @@ fun HistoryTab(
         item { 
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "ARCHIVED RECORDS", 
+                    stringResource(Res.string.archived_records), 
                     style = MaterialTheme.typography.headlineSmall, 
                     color = MaterialTheme.colorScheme.onBackground, 
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    "Track your cash flow history.", 
+                    stringResource(Res.string.track_cash_flow), 
                     style = MaterialTheme.typography.bodySmall, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -92,7 +97,7 @@ fun HistoryTab(
                     value = uiState.searchQuery,
                     onValueChange = { onSearchQueryChange(it) },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("SEARCH CLIENTS OR ITEMS...") },
+                    placeholder = { Text(stringResource(Res.string.search_clients_items)) },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     trailingIcon = if (uiState.searchQuery.isNotEmpty()) {
                         { IconButton(onClick = { onSearchQueryChange("") }) { Icon(Icons.Default.Close, null) } }
@@ -115,7 +120,7 @@ fun HistoryTab(
                     FilterChip(
                         selected = uiState.showPaidOnly,
                         onClick = { onShowPaidOnlyChange(!uiState.showPaidOnly) },
-                        label = { Text("PAID ONLY", fontWeight = FontWeight.Black) },
+                        label = { Text(stringResource(Res.string.paid_only), fontWeight = FontWeight.Black) },
                         shape = RoundedCornerShape(4.dp),
                         leadingIcon = if (uiState.showPaidOnly) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
@@ -148,10 +153,11 @@ fun HistoryTab(
                 onShare = { onSharePdf(it.pdfPath, if (it.isEstimate) "Estimate" else "Invoice") },
                 onRequestDeposit = onRequestDeposit,
                 onRequestFullPayment = onRequestFullPayment,
+                onSendAiReminder = onSendAiReminder,
                 onConvert = if (invoice.isEstimate) { 
                     { est -> 
                         onConvertEstimateToInvoice(est)
-                        platformActions.showToast("Converted!")
+                        platformActions.showToast(convertedToast)
                     } 
                 } else null
             ) 

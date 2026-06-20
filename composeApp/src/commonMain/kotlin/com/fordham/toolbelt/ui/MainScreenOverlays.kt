@@ -3,6 +3,11 @@ package com.fordham.toolbelt.ui
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.fordham.toolbelt.domain.model.Invoice
@@ -17,6 +22,7 @@ import kotlinx.coroutines.launch
 import com.fordham.toolbelt.domain.model.stripe.StripePaymentMode
 import com.fordham.toolbelt.ui.components.*
 import com.fordham.toolbelt.ui.viewmodel.*
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.util.PlatformActions
 
 @Composable
@@ -47,8 +53,25 @@ fun BoxScope.MainScreenOverlays(
     buildForemanAppContext: suspend () -> ForemanAppContextBundle,
     handleAgentIntent: (AiAgentIntent) -> Unit,
     handleAgentEffect: (AgentUiEffect) -> Unit,
-    platformActions: PlatformActions
+    platformActions: PlatformActions,
+    historyUiState: HistoryUiState,
+    onDismissReminder: () -> Unit,
+    onToneChange: (com.fordham.toolbelt.domain.usecase.ReminderTone) -> Unit,
+    onChannelChange: (com.fordham.toolbelt.domain.usecase.ReminderChannel) -> Unit,
+    onGenerateReminder: () -> Unit,
+    onUpdateGeneratedText: (String, String) -> Unit,
+    onSendShareReminder: () -> Unit
 ) {
+    var pendingToastKey by remember { mutableStateOf<String?>(null) }
+    val localizedToast = pendingToastKey?.let { localizeUiMessage(it) }
+
+    LaunchedEffect(localizedToast) {
+        localizedToast?.let {
+            platformActions.showToast(it)
+            pendingToastKey = null
+        }
+    }
+
     if (showPaymentLedger) {
         PaymentLedgerSheet(
             uiState = paymentState,
@@ -75,7 +98,7 @@ fun BoxScope.MainScreenOverlays(
                             type = paymentType,
                             onSuccess = onClearPendingPayment,
                             onError = { msg ->
-                                platformActions.showToast(msg)
+                                pendingToastKey = msg
                                 onClearPendingPayment()
                             }
                         )
@@ -87,7 +110,7 @@ fun BoxScope.MainScreenOverlays(
                             onSuccess = onClearPendingPayment,
                             onPremiumRequired = onShowPremiumLock,
                             onError = { msg ->
-                                platformActions.showToast(msg)
+                                pendingToastKey = msg
                                 onClearPendingPayment()
                             }
                         )
@@ -155,8 +178,13 @@ fun BoxScope.MainScreenOverlays(
             request = request,
             isLivePowerPay = paymentState.isLivePowerPay,
             isLiveStripe = stripePaymentMode == StripePaymentMode.PaymentSheet,
+            checkoutUrl = paymentState.activeCheckoutUrl ?: request.paymentLink.value,
+            checkoutLinkCanPay = paymentState.checkoutLinkCanPay,
+            checkoutLinkMessage = paymentState.checkoutLinkMessage,
+            isResolvingCheckoutLink = paymentState.isResolvingCheckoutLink,
             onDismiss = { paymentViewModel.clearLatestRequest() },
-            onOpenPaymentLink = { platformActions.openUrl(it) }
+            onOpenPaymentLink = { platformActions.openUrl(it) },
+            onRegenerateLink = { paymentViewModel.regenerateCheckoutLink() }
         )
     }
 
@@ -216,4 +244,24 @@ fun BoxScope.MainScreenOverlays(
         stepSummaries = agentState.stepSummaries,
         modifier = Modifier.align(Alignment.BottomStart).imePadding()
     )
+
+    if (historyUiState.showReminderSheet) {
+        historyUiState.reminderInvoice?.let { invoice ->
+            AiReminderSheet(
+                invoice = invoice,
+                tone = historyUiState.reminderTone,
+                channel = historyUiState.reminderChannel,
+                generatedSubject = historyUiState.generatedSubject,
+                generatedBody = historyUiState.generatedBody,
+                isGenerating = historyUiState.isGeneratingReminder,
+                error = historyUiState.reminderError,
+                onToneChange = onToneChange,
+                onChannelChange = onChannelChange,
+                onGenerate = onGenerateReminder,
+                onUpdateGeneratedText = onUpdateGeneratedText,
+                onSendShare = onSendShareReminder,
+                onDismiss = onDismissReminder
+            )
+        }
+    }
 }

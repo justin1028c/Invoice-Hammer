@@ -25,12 +25,11 @@ import com.fordham.toolbelt.domain.deeplink.DeepLinkDispatcher
 class MainActivity : FragmentActivity() {
 
     private fun googleSignInErrorMessage(e: ApiException): String = when (e.statusCode) {
-        CommonStatusCodes.DEVELOPER_ERROR, 10 -> "Google Sign-In is not configured for this APK. " +
-            "Add SHA-1 5c64756a1cd541582faaf8ddb20481eeb4446e08 to Firebase, download new google-services.json, rebuild. " +
-            "See FIREBASE_GOOGLE_SIGNIN.md."
-        CommonStatusCodes.CANCELED, 12501 -> "Sign-in cancelled. Tap SIGN IN again and choose your Google account."
-        CommonStatusCodes.NETWORK_ERROR, 7 -> "Network error during sign-in. Check connection and try again."
-        else -> e.message?.let { "$it (code ${e.statusCode})" } ?: "Sign-in failed (code ${e.statusCode})"
+        CommonStatusCodes.DEVELOPER_ERROR, 10 -> getString(R.string.google_sign_in_dev_error)
+        CommonStatusCodes.CANCELED, 12501 -> getString(R.string.google_sign_in_cancelled)
+        CommonStatusCodes.NETWORK_ERROR, 7 -> getString(R.string.google_sign_in_network_error)
+        else -> e.message?.let { getString(R.string.google_sign_in_error_code, it, e.statusCode) }
+            ?: getString(R.string.google_sign_in_failed_code, e.statusCode)
     }
     
     private val platformActions: PlatformActions by inject()
@@ -51,14 +50,12 @@ class MainActivity : FragmentActivity() {
             if (idToken != null) {
                 onGoogleSignInSuccess?.invoke(idToken)
             } else {
-                onGoogleSignInError?.invoke(
-                    "Google did not return an ID token. Add this APK's SHA-1 in Firebase (see FIREBASE_GOOGLE_SIGNIN.md)."
-                )
+                onGoogleSignInError?.invoke(getString(R.string.google_sign_in_no_token))
             }
         } catch (e: ApiException) {
             onGoogleSignInError?.invoke(googleSignInErrorMessage(e))
         } catch (e: Exception) {
-            onGoogleSignInError?.invoke(e.message ?: "Sign-in failed")
+            onGoogleSignInError?.invoke(e.message ?: getString(R.string.google_sign_in_failed))
         }
     }
 
@@ -116,7 +113,10 @@ class MainActivity : FragmentActivity() {
             (platformActions as? AndroidPlatformActions)?.handleImageResult(null)
             android.widget.Toast.makeText(
                 this,
-                "Could not open camera: ${e.message ?: "unknown error"}",
+                getString(
+                    R.string.camera_open_failed,
+                    e.message ?: getString(R.string.camera_unknown_error)
+                ),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }

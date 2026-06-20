@@ -16,6 +16,9 @@ import com.fordham.toolbelt.domain.repository.FordhamUser
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.viewmodel.CloudSyncOperation
 import com.fordham.toolbelt.ui.viewmodel.SyncState
+import com.fordham.toolbelt.ui.localizeUiMessage
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun SettingsCloudSyncSection(
@@ -29,7 +32,7 @@ fun SettingsCloudSyncSection(
     onSync: () -> Unit,
     onRequestRestoreConfirm: () -> Unit
 ) {
-    SettingsSection(title = "ACCOUNT & CLOUD SYNC") {
+    SettingsSection(title = stringResource(Res.string.account_cloud_sync_title)) {
         Column(modifier = Modifier.fillMaxWidth()) {
             if (currentUser == null) {
                 Row(
@@ -38,16 +41,16 @@ fun SettingsCloudSyncSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Cloud Backup Inactive", fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.cloud_backup_inactive), fontWeight = FontWeight.Bold)
                         Text(
-                            "Sign in with Google to enable cloud backup and syncing.",
+                            stringResource(Res.string.cloud_backup_inactive_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
                     }
                     TacticalButton(
                         onClick = onSignIn,
-                        text = "SIGN IN",
+                        text = stringResource(Res.string.sign_in),
                         containerColor = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.height(40.dp)
                     )
@@ -73,11 +76,11 @@ fun SettingsCloudSyncSection(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(currentUser.displayName?.value ?: "Contractor", fontWeight = FontWeight.Black)
+                        Text(currentUser.displayName?.value ?: stringResource(Res.string.contractor_default), fontWeight = FontWeight.Black)
                         Text(currentUser.email?.value ?: "", style = MaterialTheme.typography.bodySmall)
                     }
                     TextButton(onClick = onSignOut) {
-                        Text("SIGN OUT", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.sign_out), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                     }
                 }
                 HorizontalDivider(
@@ -89,23 +92,23 @@ fun SettingsCloudSyncSection(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text("Cloud Backup", fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.cloud_sync), fontWeight = FontWeight.Bold)
                         val defaultBackupHint = when (supabaseConnectionMode) {
                             is SupabaseConnectionMode.Live ->
-                                "Backs up to Google Drive and Supabase (${supabaseConnectionMode.projectHost})."
+                                stringResource(Res.string.backup_desc_drive_supabase, supabaseConnectionMode.projectHost)
                             SupabaseConnectionMode.Disabled ->
-                                "Backs up app data to your private Google Drive app folder."
+                                stringResource(Res.string.backup_desc_drive)
                         }
                         val statusText = when (syncState) {
                             is SyncState.Syncing -> when (syncState.operation) {
-                                CloudSyncOperation.Backup -> "Uploading encrypted app backup..."
-                                CloudSyncOperation.Restore -> "Restoring data from Supabase..."
+                                CloudSyncOperation.Backup -> stringResource(Res.string.sync_status_uploading)
+                                CloudSyncOperation.Restore -> stringResource(Res.string.sync_status_restoring)
                             }
                             is SyncState.Success -> when (syncState.operation) {
-                                CloudSyncOperation.Backup -> "Backup complete!"
-                                CloudSyncOperation.Restore -> "Restore complete!"
+                                CloudSyncOperation.Backup -> stringResource(Res.string.sync_status_backup_complete)
+                                CloudSyncOperation.Restore -> stringResource(Res.string.sync_status_restore_complete)
                             }
-                            is SyncState.Error -> "Error: ${syncState.message}"
+                            is SyncState.Error -> stringResource(Res.string.sync_status_error, localizeUiMessage(syncState.message))
                             else -> defaultBackupHint
                         }
                         val statusColor = when (syncState) {
@@ -126,7 +129,7 @@ fun SettingsCloudSyncSection(
                                 text = if (isCloudBusy && (syncState as? SyncState.Syncing)?.operation == CloudSyncOperation.Restore) {
                                     ""
                                 } else {
-                                    "RESTORE"
+                                    stringResource(Res.string.restore)
                                 },
                                 containerColor = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.height(40.dp).weight(1f),
@@ -147,7 +150,7 @@ fun SettingsCloudSyncSection(
                             text = if (isCloudBusy && (syncState as? SyncState.Syncing)?.operation == CloudSyncOperation.Backup) {
                                 ""
                             } else {
-                                "SYNC NOW"
+                                stringResource(Res.string.sync_now)
                             },
                             containerColor = if (syncState is SyncState.Success && (syncState as SyncState.Success).operation == CloudSyncOperation.Backup) {
                                 Color(0xFF4CAF50)

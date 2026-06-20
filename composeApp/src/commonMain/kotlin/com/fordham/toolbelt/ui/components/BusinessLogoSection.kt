@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun BusinessLogoSection(
@@ -22,15 +24,22 @@ fun BusinessLogoSection(
     modifier: Modifier = Modifier,
     compact: Boolean = false
 ) {
+    val businessLogoTitle = stringResource(Res.string.business_logo)
+    val businessLogoDesc = stringResource(Res.string.business_logo_desc)
+    val businessLogoCd = stringResource(Res.string.business_logo_cd)
+    val uploadLogoText = stringResource(Res.string.upload_logo)
+    val changeLogoText = stringResource(Res.string.change_logo)
+    val removeText = stringResource(Res.string.remove)
+
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "BUSINESS LOGO",
+            businessLogoTitle,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.secondary
         )
         Text(
-            "Saved on this device and used automatically on every new invoice.",
+            businessLogoDesc,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -48,7 +57,7 @@ fun BusinessLogoSection(
                 if (logoUri != null) {
                     coil3.compose.AsyncImage(
                         model = logoUri,
-                        contentDescription = "Business logo",
+                        contentDescription = businessLogoCd,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
                     )
@@ -72,7 +81,7 @@ fun BusinessLogoSection(
             ) {
                 TacticalButton(
                     onClick = onPickLogo,
-                    text = if (logoUri == null) "UPLOAD LOGO" else "CHANGE LOGO",
+                    text = if (logoUri == null) uploadLogoText else changeLogoText,
                     modifier = Modifier.fillMaxWidth(),
                     containerColor = MaterialTheme.colorScheme.primary,
                     icon = { Icon(Icons.Default.Image, null) }
@@ -85,7 +94,7 @@ fun BusinessLogoSection(
                     ) {
                         Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("REMOVE", fontWeight = FontWeight.Bold)
+                        Text(removeText, fontWeight = FontWeight.Bold)
                     }
                 }
             }

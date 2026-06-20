@@ -30,7 +30,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.ktor.client.core)
+            api(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
@@ -61,6 +61,7 @@ kotlin {
             implementation("com.google.firebase:firebase-auth:23.1.0")
             implementation("com.google.android.gms:play-services-auth:21.3.0")
             implementation(libs.mlkit.text.recognition)
+            implementation(libs.mlkit.genai.prompt)
             implementation("com.google.android.gms:play-services-location:21.2.0")
         }
         

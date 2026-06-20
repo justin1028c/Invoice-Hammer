@@ -80,6 +80,18 @@ class IosPlatformActions : PlatformActions {
         rootViewController?.presentViewController(activityViewController, animated = true, completion = null)
     }
 
+    override fun shareText(
+        text: String,
+        subject: String,
+        recipientEmail: String,
+        recipientPhone: String
+    ) {
+        val items = listOf(text)
+        val activityViewController = UIActivityViewController(items, null)
+        val rootViewController = getRootViewController()
+        rootViewController?.presentViewController(activityViewController, animated = true, completion = null)
+    }
+
     override fun openPdf(path: String) {
         val url = NSURL.fileURLWithPath(path)
         val interactionController = UIDocumentInteractionController.interactionControllerWithURL(url)
@@ -312,6 +324,13 @@ class IosPlatformActions : PlatformActions {
     override fun cancelScheduledNotification(id: String) {
         UNUserNotificationCenter.currentNotificationCenter()
             .removePendingNotificationRequestsWithIdentifiers(listOf(id, "$id:first"))
+    }
+
+    override fun triggerBackgroundSync() {
+        val success = IosPlatformActionsServiceProvider.bridge?.submitBackgroundSyncTask() ?: false
+        if (!success) {
+            AppLogger.e("IosPlatformActions", "Failed to submit background sync task via iOS bridge.")
+        }
     }
 }
 

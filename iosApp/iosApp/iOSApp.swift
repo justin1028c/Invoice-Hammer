@@ -3,6 +3,7 @@ import ComposeApp
 import FirebaseCore
 import GoogleSignIn
 import UserNotifications
+import BackgroundTasks
 
 @main
 struct iOSApp: App {
@@ -36,6 +37,40 @@ struct iOSApp: App {
         
         // Apply Hardware File Protection to the Database
         secureDatabaseFile()
+
+        // Register background sync task
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.fordham.toolbelt.syncbackup", using: nil) { task in
+            self.handleSyncBackupTask(task: task as! BGProcessingTask)
+        }
+    }
+
+    private func handleSyncBackupTask(task: BGProcessingTask) {
+        scheduleNextBackgroundSync()
+        
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 1
+        
+        task.expirationHandler = {
+            queue.cancelAllOperations()
+        }
+        
+        MainViewControllerKt.triggerIosBackgroundSync { success in
+            task.setTaskCompleted(success: success)
+        }
+    }
+    
+    private func scheduleNextBackgroundSync() {
+        let request = BGProcessingTaskRequest(identifier: "com.fordham.toolbelt.syncbackup")
+        request.requiresNetworkConnectivity = true
+        request.requiresExternalPower = false
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+        
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            print("Scheduled next background sync task.")
+        } catch {
+            print("Could not schedule background sync task: \(error)")
+        }
     }
     
     var body: some Scene {

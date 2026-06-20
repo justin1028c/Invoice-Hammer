@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.BusinessSettings
 import com.fordham.toolbelt.ui.components.BusinessLogoSection
 import com.fordham.toolbelt.ui.components.TacticalButton
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun BusinessProfileDialog(
@@ -25,7 +27,7 @@ fun BusinessProfileDialog(
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text("BUSINESS PROFILE", fontWeight = FontWeight.Black) },
+        title = { Text(stringResource(Res.string.business_profile_title), fontWeight = FontWeight.Black) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -41,35 +43,35 @@ fun BusinessProfileDialog(
                 OutlinedTextField(
                     value = tempSettings.businessName,
                     onValueChange = { tempSettings = tempSettings.copy(businessName = it) },
-                    label = { Text("BUSINESS NAME") },
+                    label = { Text(stringResource(Res.string.business_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
                 OutlinedTextField(
                     value = tempSettings.businessSlogan,
                     onValueChange = { tempSettings = tempSettings.copy(businessSlogan = it) },
-                    label = { Text("SLOGAN") },
+                    label = { Text(stringResource(Res.string.slogan)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
                 OutlinedTextField(
                     value = tempSettings.businessPhone,
                     onValueChange = { tempSettings = tempSettings.copy(businessPhone = it) },
-                    label = { Text("PHONE") },
+                    label = { Text(stringResource(Res.string.phone)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
                 OutlinedTextField(
                     value = tempSettings.businessEmail,
                     onValueChange = { tempSettings = tempSettings.copy(businessEmail = it) },
-                    label = { Text("EMAIL") },
+                    label = { Text(stringResource(Res.string.email)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
                 OutlinedTextField(
                     value = tempSettings.businessAddress,
                     onValueChange = { tempSettings = tempSettings.copy(businessAddress = it) },
-                    label = { Text("ADDRESS") },
+                    label = { Text(stringResource(Res.string.address)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
@@ -81,12 +83,12 @@ fun BusinessProfileDialog(
                     onSave(tempSettings)
                     onDismiss()
                 },
-                text = "SAVE"
+                text = stringResource(Res.string.save)
             )
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("CANCEL")
+                Text(stringResource(Res.string.cancel))
             }
         }
     )

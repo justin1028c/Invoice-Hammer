@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.JobPhoto
 import com.fordham.toolbelt.domain.model.JobPhotoPhase
 import com.fordham.toolbelt.ui.components.JobPhotoCaptureButtons
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 /**
  * Responsibility: Display a horizontal carousel of photos linked to the client's jobs.
@@ -28,7 +30,7 @@ fun ClientPhotosSection(
     onCapturePhoto: (JobPhotoPhase) -> Unit
 ) {
     Column {
-        Text("JOB PHOTOS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+        Text(stringResource(Res.string.job_photos), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
         if (canCapture) {
             Spacer(Modifier.height(6.dp))
             JobPhotoCaptureButtons(onCapture = onCapturePhoto)
@@ -67,7 +69,7 @@ fun ClientPhotosSection(
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = if (photo.phase == JobPhotoPhase.Before) "BEFORE" else "AFTER",
+                                text = if (photo.phase == JobPhotoPhase.Before) stringResource(Res.string.before) else stringResource(Res.string.after),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Black,

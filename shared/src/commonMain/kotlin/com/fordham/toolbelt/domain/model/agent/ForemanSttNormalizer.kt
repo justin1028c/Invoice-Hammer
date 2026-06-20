@@ -30,8 +30,41 @@ object ForemanSttNormalizer {
         Regex("""\bexpenses\b""", RegexOption.IGNORE_CASE) to "receipts",
     )
 
+    private fun replaceNumberWords(input: String): String {
+        val wordsMap = mapOf(
+            "zero" to "0", "one" to "1", "two" to "2", "three" to "3", "four" to "4",
+            "five" to "5", "six" to "6", "seven" to "7", "eight" to "8", "nine" to "9",
+            "ten" to "10", "eleven" to "11", "twelve" to "12", "thirteen" to "13",
+            "fourteen" to "14", "fifteen" to "15", "sixteen" to "16", "seventeen" to "17",
+            "eighteen" to "18", "nineteen" to "19", "twenty" to "20", "thirty" to "30",
+            "forty" to "40", "fifty" to "50", "sixty" to "60", "seventy" to "70",
+            "eighty" to "80", "ninety" to "90", "hundred" to "100"
+        )
+        val tokens = input.split(" ")
+        val newTokens = tokens.map { token ->
+            val cleanWord = token.lowercase().replace(Regex("""[^a-z0-9]"""), "")
+            if (wordsMap.containsKey(cleanWord)) {
+                token.replace(cleanWord, wordsMap[cleanWord]!!, ignoreCase = true)
+            } else {
+                token
+            }
+        }
+        var result = newTokens.joinToString(" ")
+        val prefixes = listOf("20", "30", "40", "50", "60", "70", "80", "90")
+        for (prefix in prefixes) {
+            for (i in 1..9) {
+                val prefixWord = wordsMap.entries.first { it.value == prefix }.key
+                val suffixWord = wordsMap.entries.first { it.value == i.toString() }.key
+                result = result.replace("$prefix $i", "${prefix.toInt() + i}")
+                result = result.replace(Regex("""\b$prefixWord-$suffixWord\b""", RegexOption.IGNORE_CASE), "${prefix.toInt() + i}")
+                result = result.replace(Regex("""\b$prefixWord\s+$suffixWord\b""", RegexOption.IGNORE_CASE), "${prefix.toInt() + i}")
+            }
+        }
+        return result
+    }
+
     fun normalize(raw: String): String {
-        var text = raw.trim()
+        var text = replaceNumberWords(raw.trim())
             .replace(Regex("""[.!?]+$"""), "")
             .replace(Regex("""\s+"""), " ")
         repeat(3) {

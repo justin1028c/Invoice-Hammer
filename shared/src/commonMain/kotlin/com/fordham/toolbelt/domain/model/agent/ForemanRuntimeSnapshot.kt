@@ -15,7 +15,8 @@ data class ForemanRuntimeSnapshot(
     val pendingReceiptImageBytes: ByteArray? = null,
     val lastSavedInvoiceId: InvoiceId? = null,
     val lastSavedInvoiceClientName: String? = null,
-    val voiceTranscriptMeta: VoiceTranscriptMeta? = null
+    val voiceTranscriptMeta: VoiceTranscriptMeta? = null,
+    val activeTab: AppTab? = null
 ) {
     fun withoutTransient(): ForemanRuntimeSnapshot = copy(
         pendingReceiptImageBytes = null,
@@ -32,7 +33,8 @@ data class ForemanRuntimeSnapshot(
             pendingReceiptImageBytes.contentEquals(other.pendingReceiptImageBytes) &&
             lastSavedInvoiceId == other.lastSavedInvoiceId &&
             lastSavedInvoiceClientName == other.lastSavedInvoiceClientName &&
-            voiceTranscriptMeta == other.voiceTranscriptMeta
+            voiceTranscriptMeta == other.voiceTranscriptMeta &&
+            activeTab == other.activeTab
     }
 
     override fun hashCode(): Int {
@@ -44,6 +46,7 @@ data class ForemanRuntimeSnapshot(
         result = 31 * result + (lastSavedInvoiceId?.hashCode() ?: 0)
         result = 31 * result + (lastSavedInvoiceClientName?.hashCode() ?: 0)
         result = 31 * result + (voiceTranscriptMeta?.hashCode() ?: 0)
+        result = 31 * result + (activeTab?.hashCode() ?: 0)
         return result
     }
 

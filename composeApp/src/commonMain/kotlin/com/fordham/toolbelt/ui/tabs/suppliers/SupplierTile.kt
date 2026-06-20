@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 /**
  * Responsibility: Display a single supplier in a high-fidelity tile with action menu.
@@ -192,7 +194,7 @@ fun SupplierTile(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = supplier.category.name,
+                        text = localizeSupplierCategory(supplier.category),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -208,17 +210,17 @@ fun SupplierTile(
             modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             DropdownMenuItem(
-                text = { Text("Log Expense", fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(Res.string.log_expense), fontWeight = FontWeight.Bold) },
                 leadingIcon = { Icon(Icons.Default.AddCard, null) },
                 onClick = { onLogExpense(); showMenu = false }
             )
             DropdownMenuItem(
-                text = { Text(if (supplier.isPinned) "Unpin from Top" else "Pin to Top", fontWeight = FontWeight.Bold) },
+                text = { Text(if (supplier.isPinned) stringResource(Res.string.unpin_top) else stringResource(Res.string.pin_top), fontWeight = FontWeight.Bold) },
                 leadingIcon = { Icon(Icons.Default.PushPin, null) },
                 onClick = { onTogglePin(); showMenu = false }
             )
             DropdownMenuItem(
-                text = { Text("Hide Store", fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(Res.string.hide_store), fontWeight = FontWeight.Bold) },
                 leadingIcon = { Icon(Icons.Default.VisibilityOff, null) },
                 onClick = { onHide(); showMenu = false }
             )

@@ -156,7 +156,10 @@ class RoutedPaymentRepository(
                         provider = provider,
                         amount = amount,
                         paymentLink = hostedUrl,
-                        externalId = intentOutcome.response.paymentIntentId
+                        externalId = intentOutcome.response.checkoutSessionId
+                            ?.takeIf { it.isNotBlank() }
+                            ?: intentOutcome.response.paymentIntentId.takeIf { it.isNotBlank() }
+                            ?: "stripe-${randomUUID()}"
                     )
                     paymentRequestDao.upsert(request.toEntity())
                     return PaymentRequestOutcome.Success(request)

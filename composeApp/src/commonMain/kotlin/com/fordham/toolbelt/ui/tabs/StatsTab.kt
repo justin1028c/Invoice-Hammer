@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.domain.model.BusinessSettings
 import com.fordham.toolbelt.domain.model.BusinessStats
 import com.fordham.toolbelt.ui.components.TacticalButton
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 import com.fordham.toolbelt.ui.tabs.stats.*
 
 /**
@@ -38,19 +40,19 @@ fun StatsTab(
     if (showLockDialog) {
         AlertDialog(
             onDismissRequest = { showLockDialog = false },
-            title = { Text("PRO FEATURE LOCKED", fontWeight = FontWeight.Black) },
-            text = { Text("Bento Reporting and Tax Bundles are premium features. Upgrade to Pro in Settings to unlock these tools.") },
+            title = { Text(stringResource(Res.string.pro_feature_locked), fontWeight = FontWeight.Black) },
+            text = { Text(stringResource(Res.string.pro_feature_locked_desc)) },
             confirmButton = {
                 TacticalButton(
                     onClick = { 
                         showLockDialog = false
                         onNavigateToSettings()
                     },
-                    text = "GO TO SETTINGS"
+                    text = stringResource(Res.string.go_to_settings)
                 )
             },
             dismissButton = {
-                TextButton(onClick = { showLockDialog = false }) { Text("CANCEL") }
+                TextButton(onClick = { showLockDialog = false }) { Text(stringResource(Res.string.cancel)) }
             }
         )
     }
@@ -67,7 +69,7 @@ fun StatsTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "BUSINESS ANALYTICS",
+                stringResource(Res.string.business_analytics),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Black,
@@ -78,7 +80,7 @@ fun StatsTab(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    if (settings.isPremium) "PRO ACCOUNT" else "FREE ACCOUNT",
+                    if (settings.isPremium) stringResource(Res.string.pro_account) else stringResource(Res.string.free_account),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (settings.isPremium) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -100,7 +102,7 @@ fun StatsTab(
         ) {
             TacticalButton(
                 onClick = { if (settings.isPremium) onExportCsv() else showLockDialog = true },
-                text = "BENTO REPORT", 
+                text = stringResource(Res.string.bento_report), 
                 modifier = Modifier.weight(1f), 
                 containerColor = if (settings.isPremium) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
                 icon = { Icon(Icons.Default.TableChart, null) }
@@ -117,7 +119,7 @@ fun StatsTab(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    if (settings.isPremium) "PRO" else "LOCK", 
+                    if (settings.isPremium) stringResource(Res.string.pro_label) else stringResource(Res.string.lock_label), 
                     style = MaterialTheme.typography.labelSmall, 
                     fontWeight = FontWeight.Black, 
                     color = if (settings.isPremium) MaterialTheme.colorScheme.primary else Color.Gray
@@ -126,7 +128,7 @@ fun StatsTab(
 
             TacticalButton(
                 onClick = { if (settings.isPremium) onExportZip() else showLockDialog = true },
-                text = "TAX BUNDLE", 
+                text = stringResource(Res.string.tax_bundle), 
                 modifier = Modifier.weight(1f), 
                 containerColor = if (settings.isPremium) MaterialTheme.colorScheme.secondary else Color.Gray.copy(alpha = 0.5f), 
                 icon = { Icon(Icons.Default.Archive, null) }
@@ -135,7 +137,7 @@ fun StatsTab(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "SYSTEM DIAGNOSTICS & STRESS TESTING",
+            stringResource(Res.string.system_diagnostics_stress),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.error
@@ -148,14 +150,14 @@ fun StatsTab(
         ) {
             TacticalButton(
                 onClick = onInsertStressInvoices,
-                text = "SIMULATE 1000",
+                text = stringResource(Res.string.simulate_1000),
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.tertiary,
                 icon = { Icon(Icons.Default.Bolt, null) }
             )
             TacticalButton(
                 onClick = onEraseAllInvoices,
-                text = "PURGE VAULT",
+                text = stringResource(Res.string.purge_vault),
                 modifier = Modifier.weight(1f),
                 containerColor = MaterialTheme.colorScheme.error,
                 icon = { Icon(Icons.Default.Delete, null) }
@@ -163,7 +165,7 @@ fun StatsTab(
         }
 
         Spacer(Modifier.height(32.dp))
-        Text("PROJECT PROFITABILITY", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Text(stringResource(Res.string.project_profitability), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
         
         stats.projectStats.forEach { project ->

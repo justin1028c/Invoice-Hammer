@@ -11,11 +11,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.fordham.toolbelt.domain.repository.InvoiceRepository
-import com.fordham.toolbelt.navigation.MainTabNavigation
 import com.fordham.toolbelt.domain.repository.AuthRepository
-import com.fordham.toolbelt.util.UnpaidInvoiceReminderFormatter
-import com.fordham.toolbelt.domain.usecase.ForemanOrchestrator
+import com.fordham.toolbelt.domain.repository.InvoiceRepository
+import com.fordham.toolbelt.domain.usecase.ComposeUnpaidInvoiceReminderUseCase
+import com.fordham.toolbelt.navigation.MainTabNavigation
+import com.fordham.toolbelt.util.UserFacingCopy
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlinx.coroutines.flow.first
@@ -26,8 +26,8 @@ class UnpaidInvoiceWorker(
     private val invoiceRepository: InvoiceRepository
 ) : CoroutineWorker(context, params), KoinComponent {
 
-    private val foremanOrchestrator: ForemanOrchestrator by inject()
     private val authRepository: AuthRepository by inject()
+    private val composeUnpaidInvoiceReminder: ComposeUnpaidInvoiceReminderUseCase by inject()
 
     override suspend fun doWork(): Result {
         if (!canPostNotifications()) {
@@ -36,41 +36,10 @@ class UnpaidInvoiceWorker(
 
         return try {
             val invoices = invoiceRepository.allInvoices.first()
-            val unpaid = invoices.firstOrNull { !it.isPaid && !it.isEstimate }
-            if (unpaid != null) {
-                var message = UnpaidInvoiceReminderFormatter.formatBody(invoices)
-                try {
-                    val user = authRepository.currentUser.value
-                    val contractorName = user?.displayName?.value?.takeIf { it.isNotBlank() } ?: "Justin"
-                    val prompt = "You are drafting an unpaid invoice notification reminder for the contractor, $contractorName. " +
-                        "The client, ${unpaid.clientName}, owes $contractorName a total of $${unpaid.totalAmount} for unpaid invoice with ID ${unpaid.id.value}. " +
-                        "Draft a notification body addressing the contractor directly (e.g., 'Hi $contractorName,') " +
-                        "and reminding them that ${unpaid.clientName} owes $${unpaid.totalAmount} for invoice ${unpaid.id.value}. " +
-                        "Keep the greeting to the contractor ($contractorName), and clearly specify that ${unpaid.clientName} is the debtor (the one who owes the money)."
-                    val result = foremanOrchestrator.run(
-                        command = com.fordham.toolbelt.domain.model.agent.NaturalLanguage(prompt),
-                        systemPrompt = com.fordham.toolbelt.domain.model.agent.NaturalLanguage("You are Foreman AI, drafting billing reminders for $contractorName."),
-                        runtime = com.fordham.toolbelt.domain.model.agent.ForemanRuntimeSnapshot(
-                            lastSavedInvoiceId = unpaid.id,
-                            lastSavedInvoiceClientName = unpaid.clientName
-                        )
-                    )
-                    when (val outcome = result.outcome) {
-                        is com.fordham.toolbelt.domain.model.agent.AgentOutcome.TextResponse -> {
-                            message = outcome.response.value
-                        }
-                        is com.fordham.toolbelt.domain.model.agent.AgentOutcome.ToolChainExecuted -> {
-                            outcome.finalMessage?.value?.let {
-                                message = it
-                            }
-                        }
-                        else -> {}
-                    }
-                } catch (_: Exception) {
-                    // Fallback to static reminder
-                }
-                val title = "Payment Reminder: ${unpaid.clientName}"
-                showNotification(title, message)
+            val contractorName = authRepository.currentUser.value?.displayName?.value
+            val content = composeUnpaidInvoiceReminder(invoices, contractorName)
+            if (content != null) {
+                showNotification(content.title, content.body)
             }
             Result.success()
         } catch (e: Exception) {
@@ -93,10 +62,10 @@ class UnpaidInvoiceWorker(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Unpaid Invoices",
+                UserFacingCopy.Notifications.channelName(),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Reminders for unpaid invoices"
+                description = UserFacingCopy.Notifications.channelDescription()
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -120,7 +89,7 @@ class UnpaidInvoiceWorker(
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(iconId)
             .setContentTitle(title)
-            .setContentText("Tap to review unpaid invoices")
+            .setContentText(UserFacingCopy.Notifications.tapToReview())
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)

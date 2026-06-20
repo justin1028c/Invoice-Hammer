@@ -4,6 +4,7 @@ import com.fordham.toolbelt.domain.model.AgentMode
 import com.fordham.toolbelt.domain.model.agent.AgentOutcome
 import com.fordham.toolbelt.domain.model.agent.ForemanAgentPresentation
 import com.fordham.toolbelt.domain.model.agent.ForemanUserMessageMapper
+import com.fordham.toolbelt.util.UiMessageKeys
 
 object ForemanUiReducer {
     fun applyOutcome(
@@ -54,7 +55,7 @@ object ForemanUiReducer {
         is AgentOutcome.ClientChoiceRequired -> current.copy(
             isProcessing = false,
             clientChoices = outcome.candidates,
-            lastResponse = "Which client did you mean?",
+            lastResponse = UiMessageKeys.WHICH_CLIENT_MEANT,
             isActive = true,
             stepSummaries = emptyList(),
             completedStepCount = completedStepCount,
@@ -67,7 +68,7 @@ object ForemanUiReducer {
             isProcessing = false,
             savePreview = outcome.preview,
             pendingSaveApproval = outcome,
-            lastResponse = "Review invoice for ${outcome.preview.clientName.value} before saving.",
+            lastResponse = UiMessageKeys.reviewInvoice(outcome.preview.clientName.value),
             isActive = true,
             stepSummaries = emptyList(),
             completedStepCount = completedStepCount,
@@ -96,7 +97,7 @@ object ForemanUiReducer {
         is AgentOutcome.ToolExecuted,
         is AgentOutcome.ToolExecutionRequested -> current.copy(
             isProcessing = false,
-            errorMessage = "Agent returned an unhandled tool request.",
+            errorMessage = UiMessageKeys.UNHANDLED_TOOL_REQUEST,
             isActive = true
         )
     }

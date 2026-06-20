@@ -6,9 +6,15 @@ import com.fordham.toolbelt.domain.repository.SupplierRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.datetime.*
 
+import com.fordham.toolbelt.data.SyncQueueDao
+import com.fordham.toolbelt.data.SyncQueueEntity
+import com.fordham.toolbelt.util.PlatformActions
+
 class SupplierRepositoryImpl(
     private val supplierDao: SupplierDao,
-    private val receiptDao: ReceiptDao
+    private val receiptDao: ReceiptDao,
+    private val syncQueueDao: SyncQueueDao,
+    private val platformActions: PlatformActions
 ) : SupplierRepository {
 
     override fun getVisibleSuppliers(): Flow<SupplierListOutcome> {
@@ -64,6 +70,13 @@ class SupplierRepositoryImpl(
 
     override suspend fun upsertSupplier(supplier: Supplier): SupplierOutcome = try {
         supplierDao.insertSupplier(supplier.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
     logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
@@ -84,6 +97,13 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
 
     override suspend fun hideSupplier(id: SupplierId): SupplierOutcome = try {
         supplierDao.hideSupplier(id.value)
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
     logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
@@ -92,6 +112,13 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
 
     override suspend fun restoreSupplier(id: SupplierId): SupplierOutcome = try {
         supplierDao.restoreSupplier(id.value)
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure(TAG, "repository", e)
@@ -100,6 +127,13 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
 
     override suspend fun updateOrder(id: SupplierId, newOrder: Int): SupplierOutcome = try {
         supplierDao.updateOrder(id.value, newOrder)
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure(TAG, "repository", e)
@@ -111,6 +145,13 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         supplier?.let {
             supplierDao.insertSupplier(it.copy(isPinned = isPinned))
         }
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
             logRepositoryFailure(TAG, "repository", e)
@@ -121,6 +162,13 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         val suppliers = supplierDao.getVisibleSuppliersOnce()
         if (suppliers.isEmpty()) {
             supplierDao.insertSuppliers(com.fordham.toolbelt.data.defaultSupplierEntities())
+            syncQueueDao.enqueue(
+                SyncQueueEntity(
+                    operationType = "BACKUP",
+                    createdAtMillis = Clock.System.now().toEpochMilliseconds()
+                )
+            )
+            platformActions.triggerBackgroundSync()
         }
         SupplierOutcome.Success
     } catch (e: Exception) {

@@ -7,18 +7,31 @@ import com.fordham.toolbelt.domain.model.InvoiceOutcome
 import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.InvoiceId
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
+import com.fordham.toolbelt.data.SyncQueueDao
+import com.fordham.toolbelt.data.SyncQueueEntity
+import com.fordham.toolbelt.util.PlatformActions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
 
 class RoomInvoiceRepository(
-    private val invoiceDao: InvoiceDao
+    private val invoiceDao: InvoiceDao,
+    private val syncQueueDao: SyncQueueDao,
+    private val platformActions: PlatformActions
 ) : InvoiceRepository {
     override val allInvoices: Flow<List<Invoice>> =
         invoiceDao.getAllInvoices().map { list -> list.map { it.toDomain() } }
 
     override suspend fun insertInvoice(invoice: Invoice): InvoiceOutcome = try {
         invoiceDao.insertInvoice(invoice.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         InvoiceOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure("RoomInvoiceRepository", "repository", e)
@@ -35,6 +48,13 @@ class RoomInvoiceRepository(
 
     override suspend fun updateInvoice(invoice: Invoice): InvoiceOutcome = try {
         invoiceDao.updateInvoice(invoice.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         InvoiceOutcome.Success
     } catch (e: Exception) {
 
@@ -44,6 +64,13 @@ logRepositoryFailure("RoomInvoiceRepository", "repository", e)
 
     override suspend fun deleteInvoice(invoice: Invoice): InvoiceOutcome = try {
         invoiceDao.deleteInvoice(invoice.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         InvoiceOutcome.Success
     } catch (e: Exception) {
     logRepositoryFailure("RoomInvoiceRepository", "repository", e)

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="deeplink_payment_return">Retorno de pago de Invoice Hammer</string>
+    <string name="google_sign_in_dev_error">Google Sign-In no está configurado para este APK. Agregue SHA-1 5c64756a1cd541582faaf8ddb20481eeb4446e08 a Firebase, descargue un nuevo google-services.json y vuelva a compilar. Consulte FIREBASE_GOOGLE_SIGNIN.md.</string>
+    <string name="google_sign_in_cancelled">Inicio de sesión cancelado. Toque INICIAR SESIÓN de nuevo y elija su cuenta de Google.</string>
+    <string name="google_sign_in_network_error">Error de red durante el inicio de sesión. Compruebe la conexión e inténtelo de nuevo.</string>
+    <string name="google_sign_in_no_token">Google no devolvió un token de ID. Agregue el SHA-1 de este APK en Firebase (consulte FIREBASE_GOOGLE_SIGNIN.md).</string>
+    <string name="google_sign_in_failed">Error al iniciar sesión</string>
+    <string name="google_sign_in_failed_code">Error al iniciar sesión (código %1$d)</string>
+    <string name="google_sign_in_error_code">%1$s (código %2$d)</string>
+    <string name="camera_open_failed">No se pudo abrir la cámara: %1$s</string>
+    <string name="camera_unknown_error">error desconocido</string>
+</resources>

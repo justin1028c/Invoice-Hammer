@@ -19,6 +19,7 @@ import com.fordham.toolbelt.ui.theme.ToolbeltTheme
 import com.fordham.toolbelt.ui.viewmodel.*
 import com.fordham.toolbelt.util.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 
@@ -49,33 +50,69 @@ fun MainScreen(
     val newInvoiceUiState by newInvoiceViewModel.uiState.collectAsStateWithLifecycle()
     val agentState by agentViewModel.uiState.collectAsStateWithLifecycle()
     val paymentState by paymentViewModel.uiState.collectAsStateWithLifecycle()
+    val historyUiState by historyViewModel.uiState.collectAsStateWithLifecycle()
     val paymentRequests = remember(paymentState.requests) { paymentState.requests }
     val currentBusinessSettings by sharedViewModel.businessSettings.collectAsStateWithLifecycle(initialValue = BusinessSettings())
 
-    LaunchedEffect(agentState.lastResponse) {
-        agentState.lastResponse?.let { voiceAssistant.speak(it) }
+    var pendingLogoToast by remember { mutableStateOf<String?>(null) }
+    var pendingAuthToast by remember { mutableStateOf<String?>(null) }
+    var pendingPaymentToast by remember { mutableStateOf<String?>(null) }
+
+    val localizedLogoToast = pendingLogoToast?.let { localizeUiMessage(it) }
+    val localizedAuthToast = pendingAuthToast?.let { localizeUiMessage(it) }
+    val localizedPaymentToast = pendingPaymentToast?.let { localizeUiMessage(it) }
+    val spokenAgentResponse = agentState.lastResponse?.let { localizeUiMessage(it) }
+
+    LaunchedEffect(spokenAgentResponse) {
+        spokenAgentResponse?.let { voiceAssistant.speak(it) }
     }
 
     LaunchedEffect(Unit) {
-        sharedViewModel.logoMessage.collect { message ->
-            platformActions.showToast(message)
+        sharedViewModel.logoMessage.collect { pendingLogoToast = it }
+    }
+
+    LaunchedEffect(localizedLogoToast) {
+        localizedLogoToast?.let {
+            platformActions.showToast(it)
+            pendingLogoToast = null
         }
     }
 
     val authMessage by authViewModel.authMessage.collectAsStateWithLifecycle()
     LaunchedEffect(authMessage) {
-        authMessage?.let { message ->
-            platformActions.showToast(message)
-            authViewModel.clearAuthMessage()
+        authMessage?.let { pendingAuthToast = it }
+        authViewModel.clearAuthMessage()
+    }
+
+    LaunchedEffect(localizedAuthToast) {
+        localizedAuthToast?.let {
+            platformActions.showToast(it)
+            pendingAuthToast = null
         }
     }
 
     val paymentError = paymentState.errorMessage
     LaunchedEffect(paymentError) {
-        paymentError?.let { message ->
-            platformActions.showToast(message)
-            paymentViewModel.clearError()
+        paymentError?.let { pendingPaymentToast = it }
+        paymentViewModel.clearError()
+    }
+
+    val paymentSuccess = paymentState.paymentSuccessMessage
+    LaunchedEffect(paymentSuccess) {
+        paymentSuccess?.let { pendingPaymentToast = it }
+        paymentViewModel.clearPaymentSuccessMessage()
+    }
+
+    LaunchedEffect(localizedPaymentToast) {
+        localizedPaymentToast?.let {
+            platformActions.showToast(it)
+            pendingPaymentToast = null
         }
+    }
+
+    LifecycleResumeEffect(Unit) {
+        paymentViewModel.refreshPendingStripeCheckout()
+        onPauseOrDispose { }
     }
 
     val paymentOpenUrl = paymentState.openUrlOnce
@@ -206,6 +243,8 @@ fun MainScreen(
 
         val runtimeBinding = ForemanRuntimeBinding.current()
         val pendingReceiptBytes = receiptsUiState.capturedImageBytes
+        val activeTab = com.fordham.toolbelt.domain.model.agent.AppTab.entries
+            .firstOrNull { it.pageIndex == pagerState.currentPage }
         return buildForemanAppContextBundle(
             buildSystemPrompt = {
                 buildForemanSystemPrompt(
@@ -227,7 +266,8 @@ fun MainScreen(
             pendingReceiptImageBytes = pendingReceiptBytes,
             lastSavedInvoiceId = runtimeBinding.lastSavedInvoiceId,
             lastSavedInvoiceClientName = runtimeBinding.lastSavedInvoiceClientName,
-            voiceTranscriptMeta = voiceTranscriptMeta
+            voiceTranscriptMeta = voiceTranscriptMeta,
+            activeTab = activeTab
         )
     }
 
@@ -249,7 +289,10 @@ fun MainScreen(
                         )
                     }
                 },
-                onEnd = { agentViewModel.setListening(false) }
+                onEnd = { agentViewModel.setListening(false) },
+                onPartialResult = { partial ->
+                    agentViewModel.updateTranscript(partial)
+                }
             )
         } else {
             platformActions.requestPermission(Permission.RECORD_AUDIO) {}
@@ -403,7 +446,29 @@ fun MainScreen(
                     buildForemanAppContext = { buildForemanAppContext() },
                     handleAgentIntent = handleAgentIntent,
                     handleAgentEffect = handleAgentEffect,
-                    platformActions = platformActions
+                    platformActions = platformActions,
+                    historyUiState = historyUiState,
+                    onDismissReminder = { historyViewModel.selectInvoiceForReminder(null) },
+                    onToneChange = { historyViewModel.updateReminderTone(it) },
+                    onChannelChange = { historyViewModel.updateReminderChannel(it) },
+                    onGenerateReminder = {
+                        val activeRequest = paymentRequests.firstOrNull { it.invoiceId == historyUiState.reminderInvoice?.id }
+                        historyViewModel.generateReminder(
+                            contractorName = currentBusinessSettings.businessName,
+                            paymentLink = activeRequest?.paymentLink?.value
+                        )
+                    },
+                    onUpdateGeneratedText = { subject, body ->
+                        historyViewModel.updateGeneratedText(subject, body)
+                    },
+                    onSendShareReminder = {
+                        platformActions.shareText(
+                            text = historyUiState.generatedBody,
+                            subject = historyUiState.generatedSubject,
+                            recipientEmail = historyUiState.reminderInvoice?.clientEmail?.value.orEmpty(),
+                            recipientPhone = historyUiState.reminderInvoice?.clientPhone?.value.orEmpty()
+                        )
+                    }
                 )
             }
         }

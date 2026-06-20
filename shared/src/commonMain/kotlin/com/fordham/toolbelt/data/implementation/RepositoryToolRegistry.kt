@@ -1,46 +1,28 @@
 package com.fordham.toolbelt.data.implementation
 
-
-
 import com.fordham.toolbelt.domain.model.agent.*
-
 import com.fordham.toolbelt.domain.repository.*
-
 import com.fordham.toolbelt.domain.usecase.AddJobNoteUseCase
-
 import com.fordham.toolbelt.domain.usecase.GenerateAndSaveInvoiceUseCase
-
 import com.fordham.toolbelt.domain.usecase.ProcessReceiptUseCase
-
 import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
-
-
+import com.fordham.toolbelt.domain.usecase.agent.*
 
 class RepositoryToolRegistry(
-
     private val clientRepository: ClientRepository,
-
     private val receiptRepository: ReceiptRepository,
-
     private val draftRepository: DraftRepository,
-
     private val invoiceRepository: InvoiceRepository,
-
     private val settingsRepository: SettingsRepository,
-
     private val supplierRepository: SupplierRepository,
-
     private val addJobNoteUseCase: AddJobNoteUseCase,
-
     private val generateAndSaveInvoiceUseCase: GenerateAndSaveInvoiceUseCase,
-
     private val processReceiptUseCase: ProcessReceiptUseCase,
-
-    private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase
-
+    private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase,
+    private val getProfitGuardianStatus: GetProfitGuardianStatusUseCase,
+    private val detectChangeOrders: DetectChangeOrdersUseCase,
+    private val getDailyBriefing: GetDailyBriefingUseCase
 ) : ToolRegistry {
-
-
 
     override fun availableFunctions(): List<AgentFunction> = listOf(
 
@@ -178,34 +160,29 @@ class RepositoryToolRegistry(
 
         fn(ToolName.SendInvoiceSms, "[APPROVAL] Text an invoice PDF.", "invoiceId", "recipientPhone", "message"),
         fn(ToolName.DeleteInvoiceForApproval, "[APPROVAL] Delete an invoice.", "invoiceId"),
-        fn(ToolName.OpenLastInvoice, "Open the PDF of the most recently saved invoice instantly.", "invoiceId")
-
+        fn(ToolName.OpenLastInvoice, "Open the PDF of the most recently saved invoice instantly.", "invoiceId"),
+        fn(ToolName.GetProfitGuardianStatus, "Check real-time material cost warnings and projected profit anomalies.", "invoiceId"),
+        fn(ToolName.DetectChangeOrders, "Analyze job logs against estimates to identify unbilled work.", "invoiceId"),
+        fn(ToolName.GetDailyBriefing, "Retrieve active contractor daily summaries, overdue invoices, and recommended recovery actions."),
+        fn(ToolName.CreateChangeOrder, "[APPROVAL] Append a recommended change order to an invoice draft.", "invoiceId", "description", "amount")
     )
 
 
 
     private val executions = RepositoryToolRegistryExecutions(
-
-        clientRepository,
-
-        receiptRepository,
-
-        draftRepository,
-
-        invoiceRepository,
-
-        settingsRepository,
-
-        supplierRepository,
-
-        addJobNoteUseCase,
-
-        generateAndSaveInvoiceUseCase,
-
-        processReceiptUseCase,
-
-        hasSubscriptionFeature
-
+        clientRepository = clientRepository,
+        receiptRepository = receiptRepository,
+        draftRepository = draftRepository,
+        invoiceRepository = invoiceRepository,
+        settingsRepository = settingsRepository,
+        supplierRepository = supplierRepository,
+        addJobNoteUseCase = addJobNoteUseCase,
+        generateAndSaveInvoiceUseCase = generateAndSaveInvoiceUseCase,
+        processReceiptUseCase = processReceiptUseCase,
+        hasSubscriptionFeature = hasSubscriptionFeature,
+        getProfitGuardianStatus = getProfitGuardianStatus,
+        detectChangeOrders = detectChangeOrders,
+        getDailyBriefing = getDailyBriefing
     )
 
 
@@ -261,7 +238,10 @@ class RepositoryToolRegistry(
             is DeleteInvoiceApprovalArgs -> executions.executeDeleteInvoice(arguments)
             is OpenLastInvoiceArgs -> executions.executeOpenLastInvoice(arguments)
             is OpenSupplierArgs -> executions.executeOpenSupplier(arguments)
-
+            is GetProfitGuardianStatusArgs -> executions.executeGetProfitGuardianStatus(arguments)
+            is DetectChangeOrdersArgs -> executions.executeDetectChangeOrders(arguments)
+            is GetDailyBriefingArgs -> executions.executeGetDailyBriefing(arguments)
+            is CreateChangeOrderArgs -> executions.executeCreateChangeOrder(arguments)
         }
 
     }

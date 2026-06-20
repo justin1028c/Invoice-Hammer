@@ -3,6 +3,8 @@ package com.fordham.toolbelt.ui.components
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PremiumLockDialog(
@@ -12,20 +14,18 @@ fun PremiumLockDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("PRO FEATURE LOCKED", fontWeight = FontWeight.Black) },
+        title = { Text(stringResource(Res.string.pro_feature_locked), fontWeight = FontWeight.Black) },
         text = {
-            Text(
-                "Subscribe via Google Play or the App Store to unlock AI Command Center, receipt OCR, Bento reports, and tax exports. Entitlements sync to Supabase."
-            )
+            Text(stringResource(Res.string.premium_lock_dialog_desc))
         },
         confirmButton = {
             TacticalButton(
                 onClick = onOpenPaywall,
-                text = "VIEW PLANS"
+                text = stringResource(Res.string.view_plans)
             )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL") }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
         }
     )
 }

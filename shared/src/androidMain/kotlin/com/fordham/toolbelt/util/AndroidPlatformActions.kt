@@ -53,6 +53,31 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
         })
     }
 
+    override fun shareText(
+        text: String,
+        subject: String,
+        recipientEmail: String,
+        recipientPhone: String
+    ) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            if (recipientEmail.isNotBlank()) {
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
+            }
+            if (subject.isNotBlank()) {
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+            }
+            if (recipientPhone.isNotBlank()) {
+                putExtra("address", recipientPhone)
+            }
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
+    }
+
     override fun openPdf(path: String) {
         val file = File(path)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
@@ -122,7 +147,16 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     }
 
     override fun showToast(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, localizePlatformToast(message), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun localizePlatformToast(message: String): String {
+        if (!message.startsWith(UiMessageKeys.PREFIX)) return message
+        return when (message) {
+            UiMessageKeys.CAMERA_UNAVAILABLE -> UserFacingCopy.Platform.cameraUnavailable()
+            UiMessageKeys.CAMERA_PERMISSION_REQUIRED -> UserFacingCopy.Platform.cameraPermissionRequired()
+            else -> message
+        }
     }
 
     override fun launchApp(packageName: String, fallbackUrl: String) {
@@ -150,7 +184,8 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
     var runtimePermissionRequester: ((permission: String, onGranted: () -> Unit) -> Unit)? = null
 
     override fun signInWithGoogle(onSuccess: (String) -> Unit, onError: (String) -> Unit) {
-        googleSignInLauncher?.invoke(onSuccess, onError) ?: onError("Sign-in launcher not registered")
+        googleSignInLauncher?.invoke(onSuccess, onError)
+            ?: onError(UserFacingCopy.Platform.signInLauncherNotRegistered())
     }
 
     override fun signOut() {
@@ -180,7 +215,7 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
             }
             val authenticator = BiometricAuthenticator(it)
             authenticator.promptAuthenticate(title, subtitle, cipher, onSuccess, onError)
-        } ?: onError("No active activity context")
+        } ?: onError(UserFacingCopy.Platform.noActiveActivity())
     }
 
     override fun isBiometricAvailable(): Boolean {
@@ -211,7 +246,7 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
         val launch = {
             val launcher = cameraLauncher
             if (launcher == null) {
-                showToast("Camera unavailable")
+                showToast(UiMessageKeys.CAMERA_UNAVAILABLE)
                 onResult(null)
             } else {
                 launcher.invoke()
@@ -224,7 +259,7 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
                 if (isPermissionGranted(Permission.CAMERA)) {
                     launch()
                 } else {
-                    showToast("Camera permission is required to snap receipts")
+                    showToast(UiMessageKeys.CAMERA_PERMISSION_REQUIRED)
                     onResult(null)
                 }
             }
@@ -267,6 +302,21 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
         val workManager = androidx.work.WorkManager.getInstance(context)
         workManager.cancelUniqueWork(id)
         workManager.cancelUniqueWork("${id}_immediate")
+    }
+
+    override fun triggerBackgroundSync() {
+        val constraints = androidx.work.Constraints.Builder()
+            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .build()
+        val workRequest = androidx.work.OneTimeWorkRequestBuilder<com.fordham.toolbelt.worker.SyncQueueWorker>()
+            .setConstraints(constraints)
+            .build()
+        androidx.work.WorkManager.getInstance(context)
+            .enqueueUniqueWork(
+                "sync_queue_backup",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                workRequest
+            )
     }
 }
 

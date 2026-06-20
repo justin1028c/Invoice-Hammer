@@ -44,10 +44,16 @@ class AndroidSecretProvider(private val context: Context) : SecretProvider {
 
         val fallback = try {
             val clazz = Class.forName("${context.packageName}.BuildConfig")
-            clazz.getField(key).get(null) as? String ?: ""
+            val buildConfigKey = resolveBuildConfigKey(key)
+            clazz.getField(buildConfigKey).get(null) as? String ?: ""
         } catch (_: Exception) {
             ""
         }
         return fallback
+    }
+
+    private fun resolveBuildConfigKey(key: String): String {
+        if (key == "GOOGLE_CLIENT_ID") return "GOOGLE_CLIENT_ID"
+        return key.uppercase().replace('.', '_')
     }
 }

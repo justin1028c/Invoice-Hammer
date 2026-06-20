@@ -21,7 +21,8 @@ class KtorGeminiRepository(
     private val httpClient: HttpClient,
     private val geminiConfig: ForemanGeminiConfig,
     private val jobNoteDao: com.fordham.toolbelt.data.JobNoteDao,
-    private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository
+    private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository,
+    private val localLlmEngine: com.fordham.toolbelt.data.local.LocalLlmEngine
 ) : GeminiRepository {
 
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
@@ -61,9 +62,10 @@ class KtorGeminiRepository(
         type = "OBJECT",
         properties = mapOf(
             "description" to GeminiSchema(type = "STRING", description = "verbatim item name or description"),
-            "totalPrice" to GeminiSchema(type = "NUMBER", description = "item total price/cost as a decimal")
+            "totalPrice" to GeminiSchema(type = "NUMBER", description = "item total price/cost as a decimal"),
+            "category" to GeminiSchema(type = "STRING", description = "the construction category, select from: 'Drywall', 'Flooring', 'Roofing', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'General Repair'")
         ),
-        required = listOf("description", "totalPrice")
+        required = listOf("description", "totalPrice", "category")
     )
 
     private val receiptResponseSchema = GeminiSchema(
@@ -94,84 +96,143 @@ class KtorGeminiRepository(
         required = listOf("clientName", "clientAddress", "items")
     )
 
-    override suspend fun processTask(type: TaskType, data: String): GeminiOutcome = try {
-        val contextString = if (type == TaskType.PARSE_VOICE_FRAGMENT) {
-            ""
-        } else {
-            val queryTerm = extractSearchKeyword(data)
-            val context = jobNoteDao.getRelevantContext(queryTerm)
-            context.joinToString("\n") { it.text }
-        }
+    private val changeOrderOpportunitySchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "detectedTask" to GeminiSchema(type = "STRING", description = "Verbatim name of extra work/task done"),
+            "confidence" to GeminiSchema(type = "STRING", description = "Confidence level, select from: 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'"),
+            "minPrice" to GeminiSchema(type = "NUMBER", description = "Minimum estimated cost in USD"),
+            "maxPrice" to GeminiSchema(type = "NUMBER", description = "Maximum estimated cost in USD"),
+            "recommendedItems" to GeminiSchema(
+                type = "ARRAY",
+                items = lineItemSchema,
+                description = "Recommended line item(s) to add to the change order"
+            )
+        ),
+        required = listOf("detectedTask", "confidence", "minPrice", "maxPrice", "recommendedItems")
+    )
 
-        val (taskInstruction, outputSchema, schemaObj) = when (type) {
-            TaskType.SUMMARIZE -> Triple(
-                "You are a concise job-summary writer for a contractor app.",
-                "Return a JSON object with the summary description.",
-                summarizeSchema
+    private val changeOrderResponseSchema = GeminiSchema(
+        type = "OBJECT",
+        properties = mapOf(
+            "opportunities" to GeminiSchema(
+                type = "ARRAY",
+                items = changeOrderOpportunitySchema,
+                description = "List of potential unbilled tasks detected in logs/transcripts"
             )
-            TaskType.GENERATE -> Triple(
-                "You are a professional billing reminder composer for a contractor app.",
-                "Return a JSON object with the subject and body.",
-                generateSchema
-            )
-            TaskType.PARSE_VOICE_FRAGMENT -> Triple(
-                "You are a field invoice data extraction engine for a contractor app. " +
-                "Extract structured invoice fields from a spoken voice transcript. " +
-                "You must be conservative: only populate a field if you are confident. " +
-                "Never invent data that is not present in the transcript.\n\n" +
-                "EXAMPLE:\n" +
-                "Input: \"charge eighty five fifty to john doe at twelve main street for drywall repair\"\n" +
-                "Output: {\"customerName\": \"John Doe\", \"operationalAddress\": \"12 Main Street\", \"serviceScope\": \"Drywall repair\", \"amountDollars\": 85.50, \"confidence\": 1.0}\n\n",
-                "Extract customerName, operationalAddress, serviceScope, amountDollars, and confidence.",
-                voiceFragmentSchema
-            )
-            else -> Triple(
-                "You are a helpful contractor assistant.",
-                "Return a concise plain-text answer in a JSON object.",
-                null
-            )
-        }
+        ),
+        required = listOf("opportunities")
+    )
 
-        val prompt = if (contextString.isNotBlank()) {
-            """
-                $taskInstruction
-                
-                CONTEXT (job notes):
-                $contextString
-                
-                INPUT:
-                $data
-                
-                OUTPUT CONTRACT — CRITICAL:
-                $outputSchema
-                Return ONLY raw JSON matching the schema. No explanation. No markdown fences. No preamble.
-            """.trimIndent()
-        } else {
-            """
-                $taskInstruction
-                
-                INPUT:
-                $data
-                
-                OUTPUT CONTRACT — CRITICAL:
-                $outputSchema
-                Return ONLY raw JSON matching the schema. No explanation. No markdown fences. No preamble.
-            """.trimIndent()
-        }
+    override suspend fun processTask(type: TaskType, data: String): GeminiOutcome {
+        return try {
+            val contextString = if (type == TaskType.PARSE_VOICE_FRAGMENT) {
+                ""
+            } else {
+                val queryTerm = extractSearchKeyword(data)
+                val context = jobNoteDao.getRelevantContext(queryTerm)
+                context.joinToString("\n") { it.text }
+            }
 
-        val response = callGemini(
-            prompt = prompt,
-            model = taskModelName,
-            responseMimeType = "application/json",
-            temperature = 0.0f,
-            responseSchema = schemaObj
-        )
-        val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            ?.let { AiUtil.cleanJson(it) }
-            ?: ""
-        GeminiOutcome.Success(text)
-    } catch (e: Exception) {
-        GeminiOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process task"))
+            val taskPrompt = when (type) {
+                TaskType.SUMMARIZE -> TaskPromptParts(
+                    instruction = "You are a concise job-summary writer for a contractor app.",
+                    outputSchema = "Return a JSON object with the summary description.",
+                    schemaObj = summarizeSchema,
+                    outputMode = LlmLocalePolicy.OutputMode.UserFacingProse
+                )
+                TaskType.GENERATE -> TaskPromptParts(
+                    instruction = "You are a professional billing reminder composer for a contractor app.",
+                    outputSchema = "Return a JSON object with the subject and body.",
+                    schemaObj = generateSchema,
+                    outputMode = LlmLocalePolicy.OutputMode.UserFacingProse
+                )
+                TaskType.PARSE_VOICE_FRAGMENT -> TaskPromptParts(
+                    instruction = "You are a field invoice data extraction engine for a contractor app. " +
+                        "Extract structured invoice fields from a spoken voice transcript. " +
+                        "You must be conservative: only populate a field if you are confident. " +
+                        "Never invent data that is not present in the transcript.\n\n" +
+                        "EXAMPLE:\n" +
+                        "Input: \"charge eighty five fifty to john doe at twelve main street for drywall repair\"\n" +
+                        "Output: {\"customerName\": \"John Doe\", \"operationalAddress\": \"12 Main Street\", \"serviceScope\": \"Drywall repair\", \"amountDollars\": 85.50, \"confidence\": 1.0}\n\n",
+                    outputSchema = "Extract customerName, operationalAddress, serviceScope, amountDollars, and confidence.",
+                    schemaObj = voiceFragmentSchema,
+                    outputMode = LlmLocalePolicy.OutputMode.StructuredJson
+                )
+                TaskType.DETECT_CHANGE_ORDERS -> TaskPromptParts(
+                    instruction = "You are an expert change order analysis engine for a contractor app. " +
+                        "Compare the original estimate (budgeted items) against the recent logs, transcripts, or extra customer requests. " +
+                        "Identify any tasks described in the logs/transcripts that represent work NOT covered by the original estimate. " +
+                        "For each identified task, return: " +
+                        "1. detectedTask: a concise name for the extra work. " +
+                        "2. confidence: your confidence level ('LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'). " +
+                        "3. minPrice & maxPrice: estimated cost range for this task. " +
+                        "4. recommendedItems: suggested line items to bill for this work.",
+                    outputSchema = "Return a JSON object containing an array of opportunities.",
+                    schemaObj = changeOrderResponseSchema,
+                    outputMode = LlmLocalePolicy.OutputMode.StructuredJson
+                )
+                else -> TaskPromptParts(
+                    instruction = "You are a helpful contractor assistant.",
+                    outputSchema = "Return a concise plain-text answer in a JSON object.",
+                    schemaObj = null,
+                    outputMode = LlmLocalePolicy.OutputMode.UserFacingProse
+                )
+            }
+
+            val localizedInstruction = LlmLocalePolicy.wrapPrompt(taskPrompt.instruction, taskPrompt.outputMode)
+
+            val prompt = if (contextString.isNotBlank()) {
+                """
+                    $localizedInstruction
+                    
+                    CONTEXT (job notes):
+                    $contextString
+                    
+                    INPUT:
+                    $data
+                    
+                    OUTPUT CONTRACT — CRITICAL:
+                    ${taskPrompt.outputSchema}
+                    Return ONLY raw JSON matching the schema. No explanation. No markdown fences. No preamble.
+                """.trimIndent()
+            } else {
+                """
+                    $localizedInstruction
+                    
+                    INPUT:
+                    $data
+                    
+                    OUTPUT CONTRACT — CRITICAL:
+                    ${taskPrompt.outputSchema}
+                    Return ONLY raw JSON matching the schema. No explanation. No markdown fences. No preamble.
+                """.trimIndent()
+            }
+
+            if (localLlmEngine.isSupported()) {
+                val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(prompt))
+                if (localOutcome is GeminiOutcome.Success) {
+                    AppLogger.d("KtorGeminiRepository", "Using local LLM outcome successfully.")
+                    return GeminiOutcome.Success(AiUtil.cleanJson(localOutcome.text))
+                } else {
+                    AppLogger.d("KtorGeminiRepository", "Local LLM returned failure: ${(localOutcome as GeminiOutcome.Failure).error.value}. Falling back to cloud.")
+                }
+            }
+
+            val response = callGemini(
+                prompt = prompt,
+                model = taskModelName,
+                responseMimeType = "application/json",
+                temperature = 0.0f,
+                responseSchema = taskPrompt.schemaObj
+            )
+            val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                ?.let { AiUtil.cleanJson(it) }
+                ?: ""
+            GeminiOutcome.Success(text)
+        } catch (e: Exception) {
+            GeminiOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process task"))
+        }
     }
 
     private fun extractSearchKeyword(data: String): String {
@@ -208,8 +269,10 @@ class KtorGeminiRepository(
                     session = session,
                     functions = functions,
                     imageBytes = imageBytes,
-                    systemInstruction = systemInstruction
-                        ?: com.fordham.toolbelt.domain.model.agent.ForemanOperatingRules.core(),
+                    systemInstruction = LlmLocalePolicy.wrapSystemInstruction(
+                        systemInstruction ?: com.fordham.toolbelt.domain.model.agent.ForemanOperatingRules.core(),
+                        LlmLocalePolicy.OutputMode.UserFacingProse
+                    ),
                     toolCallingMode = toolCallingMode
                 )
             }
@@ -237,7 +300,8 @@ class KtorGeminiRepository(
     }
 
     override suspend fun processInvoiceText(text: String, categories: List<String>): InvoiceTextOutcome = try {
-        val prompt = """
+        val prompt = LlmLocalePolicy.wrapPrompt(
+            """
             You are an expert invoice parsing assistant. Your task is to extract invoice details from the text below.
             You must return a JSON object with the following exact keys:
             - "clientName": string, the name of the client/customer (e.g. John Doe, Smith Enterprises). If not found, return empty string.
@@ -251,7 +315,9 @@ class KtorGeminiRepository(
             $text
 
             CRITICAL: Return ONLY raw JSON matching this schema. No explanation or code fences.
-        """.trimIndent()
+            """.trimIndent(),
+            LlmLocalePolicy.OutputMode.StructuredJson
+        )
         val response = callGemini(
             prompt = prompt,
             model = agentModelName,
@@ -273,19 +339,24 @@ class KtorGeminiRepository(
     }
 
     override suspend fun processReceiptImage(imageBytes: ByteArray): ReceiptImageOutcome = try {
-        val prompt = """
+        val prompt = LlmLocalePolicy.wrapPrompt(
+            """
             You are an expert receipt extraction assistant. Analyze this receipt image and extract the line items.
+            Classify each item into one of the following construction categories: 'Drywall', 'Flooring', 'Roofing', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'General Repair'.
             Return a JSON object with the following exact schema:
             {
               "items": [
                 {
                   "description": "string (name/description of the item)",
-                  "totalPrice": 12.34 (double, individual item cost or price)
+                  "totalPrice": 12.34 (double, individual item cost or price),
+                  "category": "string (one of: 'Drywall', 'Flooring', 'Roofing', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'General Repair')"
                 }
               ]
             }
             CRITICAL: Return ONLY raw JSON matching this schema. No explanation or code fences.
-        """.trimIndent()
+            """.trimIndent(),
+            LlmLocalePolicy.OutputMode.StructuredJson
+        )
         val response = callGemini(
             prompt = prompt,
             imageBytes = imageBytes,
@@ -303,6 +374,7 @@ class KtorGeminiRepository(
                     id = ReceiptId(randomUUID()),
                     description = it.description,
                     totalPrice = it.totalPrice,
+                    category = it.category ?: "General Repair",
                     lastUpdated = DateTimeUtil.nowEpochMillis(),
                     clientName = ""
                 )
@@ -377,6 +449,7 @@ class KtorGeminiRepository(
             }
         }
         val geminiHistory = buildGeminiHistory(session)
+        AppLogger.d("FOREMAN_DEBUG", "PROMPT:\n$userText\nSYSTEM_INSTRUCTION:\n$systemInstruction")
         val response = callGemini(
             prompt = userText,
             model = agentModelName,
@@ -391,6 +464,8 @@ class KtorGeminiRepository(
         )
         val part = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()
         val functionCall = part?.functionCall
+        val text = part?.text?.trim().orEmpty()
+        AppLogger.d("FOREMAN_DEBUG", "RESPONSE_TEXT: $text\nFUNCTION_CALL: ${functionCall?.name} args=${functionCall?.args}")
         if (functionCall != null) {
             val mapped = ForemanGeminiFunctionMapper.map(functionCall)
             AppLogger.d("FOREMAN_DEBUG", "function_call=${functionCall.name} args=${functionCall.args}")
@@ -399,7 +474,6 @@ class KtorGeminiRepository(
             }
             return ToolCallOutcome.Success(toolCall = mapped, completionReasoning = "")
         }
-        val text = part?.text?.trim().orEmpty()
         if (text.isNotBlank()) {
             return ToolCallOutcome.Success(toolCall = null, completionReasoning = text)
         }
@@ -483,15 +557,40 @@ class KtorGeminiRepository(
                             "Response details: $errorBody"
                     )
                 }
-                return response.body()
+                val geminiRes: GeminiResponse = response.body()
+                val usage = geminiRes.usageMetadata
+                if (usage != null) {
+                    val inputRate = if (currentModel.contains("lite", ignoreCase = true) || currentModel.contains("8b", ignoreCase = true)) 0.0375 else 0.075
+                    val outputRate = if (currentModel.contains("lite", ignoreCase = true) || currentModel.contains("8b", ignoreCase = true)) 0.15 else 0.30
+                    val inputCost = (usage.promptTokenCount / 1_000_000.0) * inputRate
+                    val outputCost = (usage.candidatesTokenCount / 1_000_000.0) * outputRate
+                    val totalCost = inputCost + outputCost
+                    
+                    AppLogger.d(
+                        "KtorGeminiRepository",
+                        "GEMINI_COST_TRACKER | Model: $currentModel | " +
+                            "Input: ${usage.promptTokenCount} tokens | Output: ${usage.candidatesTokenCount} tokens | " +
+                            "Cost: $$${DateTimeUtil.formatDecimal(totalCost, 6)}"
+                    )
+                    
+                    try {
+                        val currentSettings = settingsRepository.getBusinessSettings()
+                        val updatedCost = currentSettings.cumulativeLlmCostUsd + totalCost
+                        settingsRepository.saveBusinessSettings(currentSettings.copy(cumulativeLlmCostUsd = updatedCost))
+                    } catch (se: Exception) {
+                        AppLogger.e("KtorGeminiRepository", "Failed to update cumulative LLM cost in settings", se)
+                    }
+                }
+                return geminiRes
             } catch (e: Exception) {
                 lastException = e
                 val is503 = e.message?.contains("503") == true
-                val isTransient = is503 || e.message?.contains("connection") == true || e.message?.contains("network") == true
+                val is429 = e.message?.contains("429") == true
+                val isTransient = is503 || is429 || e.message?.contains("connection") == true || e.message?.contains("network") == true
                 
                 if (isTransient) {
-                    if (is503 && currentModel == agentModelName && agentModelName != taskModelName) {
-                        AppLogger.e("KtorGeminiRepository", "Primary agent model $agentModelName returned 503. Falling back to task model $taskModelName for retry.", e)
+                    if ((is503 || is429) && currentModel == agentModelName && agentModelName != taskModelName) {
+                        AppLogger.e("KtorGeminiRepository", "Primary agent model $agentModelName returned ${if (is503) "503" else "429"}. Falling back to task model $taskModelName for retry.", e)
                         currentModel = taskModelName
                     }
                     if (attempt < 3) {
@@ -510,7 +609,7 @@ class KtorGeminiRepository(
     }
 
     override suspend fun transcribeAudio(audioBytes: ByteArray, mimeType: String): GeminiOutcome = try {
-        val prompt = "Transcribe the audio exactly. Output only the verbatim transcription. No descriptions, no comments, no meta-text. If there is background noise, chatter, or music, focus solely on the primary speaker's voice and ignore the noise."
+        val prompt = UserFacingCopy.Llm.transcribeInstruction()
         val response = callGemini(
             prompt = prompt,
             audioBytes = audioBytes,
@@ -522,4 +621,11 @@ class KtorGeminiRepository(
     } catch (e: Exception) {
         GeminiOutcome.Failure(FailureMessage(e.message ?: "Failed to transcribe audio"))
     }
+
+    private data class TaskPromptParts(
+        val instruction: String,
+        val outputSchema: String,
+        val schemaObj: GeminiSchema?,
+        val outputMode: LlmLocalePolicy.OutputMode
+    )
 }

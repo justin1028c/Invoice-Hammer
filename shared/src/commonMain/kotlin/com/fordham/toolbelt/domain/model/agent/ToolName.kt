@@ -26,6 +26,10 @@ sealed interface ToolName {
     data object DeleteInvoiceForApproval : ToolName
     data object OpenLastInvoice : ToolName
     data object OpenSupplier : ToolName
+    data object GetProfitGuardianStatus : ToolName
+    data object DetectChangeOrders : ToolName
+    data object GetDailyBriefing : ToolName
+    data object CreateChangeOrder : ToolName
 }
 
 enum class ToolSafety {
@@ -56,11 +60,15 @@ object ForemanToolPolicy {
             ToolName.DuplicateAndEdit,
             ToolName.QuickInvoiceFromUnbilledReceipts,
             ToolName.OpenLastInvoice,
-            ToolName.OpenSupplier -> ToolSafety.Safe
+            ToolName.OpenSupplier,
+            ToolName.GetProfitGuardianStatus,
+            ToolName.DetectChangeOrders,
+            ToolName.GetDailyBriefing -> ToolSafety.Safe
             ToolName.QuickSendInvoice,
             ToolName.SendInvoiceEmail,
             ToolName.SendInvoiceSms,
-            ToolName.DeleteInvoiceForApproval -> ToolSafety.RequiresApproval
+            ToolName.DeleteInvoiceForApproval,
+            ToolName.CreateChangeOrder -> ToolSafety.RequiresApproval
         }
     }
 }

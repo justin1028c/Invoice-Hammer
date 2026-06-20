@@ -17,6 +17,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import com.fordham.toolbelt.ui.theme.BrandOrange
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun MainBottomBar(
@@ -45,15 +47,16 @@ fun MainBottomBar(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             val navItems = listOf(
-                Triple(0, Icons.Default.Add, "NEW"),
-                Triple(1, Icons.Default.History, "PAST"),
-                Triple(2, Icons.Default.Receipt, "RECEIPTS"),
-                Triple(3, Icons.Default.BarChart, "STATS"),
-                Triple(4, Icons.Default.Storefront, "STORES"),
-                Triple(5, Icons.Default.Person, "CLIENTS"),
-                Triple(6, Icons.Default.Settings, "SETTINGS")
+                Triple(0, Icons.Default.Add, Res.string.tab_new),
+                Triple(1, Icons.Default.History, Res.string.tab_past),
+                Triple(2, Icons.Default.Receipt, Res.string.tab_receipts),
+                Triple(3, Icons.Default.BarChart, Res.string.tab_stats),
+                Triple(4, Icons.Default.Storefront, Res.string.tab_stores),
+                Triple(5, Icons.Default.Person, Res.string.tab_clients),
+                Triple(6, Icons.Default.Settings, Res.string.tab_settings)
             )
-            navItems.forEach { (index, icon, label) ->
+            navItems.forEach { (index, icon, resourceKey) ->
+                val label = stringResource(resourceKey)
                 val isSelected = currentPage == index
                 val contentColor = if (isSelected) BrandOrange else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
 

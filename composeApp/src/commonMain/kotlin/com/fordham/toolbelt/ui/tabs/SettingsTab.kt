@@ -31,6 +31,8 @@ import com.fordham.toolbelt.ui.viewmodel.CloudSyncOperation
 import com.fordham.toolbelt.ui.viewmodel.SyncState
 import com.fordham.toolbelt.util.Permission
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun SettingsTab(
@@ -60,14 +62,16 @@ fun SettingsTab(
     val isDarkMode = MaterialTheme.colorScheme.background == Color(0xFF000000)
     val isSupabaseLive = supabaseConnectionMode is SupabaseConnectionMode.Live
     val isCloudBusy = syncState is SyncState.Syncing
+    val biometricsNotAvailableText = stringResource(Res.string.biometrics_not_available)
+    val settingsSavedText = stringResource(Res.string.settings_saved_toast)
 
     if (showRestoreConfirm) {
         AlertDialog(
             onDismissRequest = { showRestoreConfirm = false },
-            title = { Text("RESTORE FROM SUPABASE?", fontWeight = FontWeight.Black) },
+            title = { Text(stringResource(Res.string.restore_supabase), fontWeight = FontWeight.Black) },
             text = {
                 Text(
-                    "This replaces local clients, invoices, receipts, suppliers, and business settings with your latest Supabase backup. Job photos and payment ledger entries are not restored.",
+                    stringResource(Res.string.confirm_restore_full_desc),
                     style = MaterialTheme.typography.bodySmall
                 )
             },
@@ -77,10 +81,10 @@ fun SettingsTab(
                         showRestoreConfirm = false
                         onRestore()
                     }
-                ) { Text("RESTORE", fontWeight = FontWeight.Black) }
+                ) { Text(stringResource(Res.string.restore), fontWeight = FontWeight.Black) }
             },
             dismissButton = {
-                TextButton(onClick = { showRestoreConfirm = false }) { Text("CANCEL") }
+                TextButton(onClick = { showRestoreConfirm = false }) { Text(stringResource(Res.string.cancel)) }
             }
         )
     }
@@ -92,7 +96,7 @@ fun SettingsTab(
             .verticalScroll(scrollState)
     ) {
         Text(
-            "APPLICATION SETTINGS",
+            stringResource(Res.string.application_settings),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.primary,
@@ -101,7 +105,7 @@ fun SettingsTab(
         
         Spacer(Modifier.height(24.dp))
 
-        SettingsSection(title = "INVOICE REMINDERS") {
+        SettingsSection(title = stringResource(Res.string.invoice_reminders_title)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,13 +113,13 @@ fun SettingsTab(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Unpaid invoice reminders",
+                        stringResource(Res.string.unpaid_reminders_label),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Daily notification with up to three unpaid invoices (not estimates). First reminder ~15 minutes after enabling, then every 24 hours.",
+                        stringResource(Res.string.unpaid_reminders_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -174,7 +178,7 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsSection(title = "BUSINESS BRANDING") {
+        SettingsSection(title = stringResource(Res.string.business_branding_title)) {
             BusinessLogoSection(
                 logoUri = tempSettings.logoUri,
                 onPickLogo = onPickBusinessLogo,
@@ -196,7 +200,7 @@ fun SettingsTab(
         Spacer(Modifier.height(16.dp))
 
         // AI ASSISTANT SECTION
-        SettingsSection(title = "AI ASSISTANT") {
+        SettingsSection(title = stringResource(Res.string.ai_assistant_title)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -204,20 +208,20 @@ fun SettingsTab(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Direct Invoice Saving",
+                        stringResource(Res.string.direct_invoice_saving_label),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "When enabled, voice commands to create an invoice will automatically prompt to approve and save it, skipping the draft staging area.",
+                        stringResource(Res.string.direct_invoice_saving_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Precautions: Ensure your voice commands contain all required details (client, description, pricing) to avoid saving incomplete invoices.",
+                        stringResource(Res.string.direct_invoice_saving_warn),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.error
@@ -245,14 +249,47 @@ fun SettingsTab(
 
         Spacer(Modifier.height(16.dp))
 
-        // APPEARANCE SECTION
-        SettingsSection(title = "APPEARANCE") {
+        // API COST SECTION (Google AI Key Developer Costs)
+        SettingsSection(title = stringResource(Res.string.settings_api_cost_title)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Dark Mode", fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(Res.string.settings_gemini_usage_label),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(Res.string.settings_gemini_usage_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    text = "$${com.fordham.toolbelt.util.DateTimeUtil.formatDecimal(tempSettings.cumulativeLlmCostUsd, 4)}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // APPEARANCE SECTION
+        SettingsSection(title = stringResource(Res.string.appearance_title)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(Res.string.dark_mode), fontWeight = FontWeight.Bold)
                 Switch(
                     checked = tempSettings.isDarkMode,
                     onCheckedChange = { 
@@ -275,16 +312,16 @@ fun SettingsTab(
         Spacer(Modifier.height(16.dp))
 
         // SECURITY SECTION (Biometric Lock Toggle)
-        SettingsSection(title = "SECURITY") {
+        SettingsSection(title = stringResource(Res.string.security_title)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Biometric Lock", fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.biometric_lock), fontWeight = FontWeight.Bold)
                     Text(
-                        "Require fingerprint or passcode to unlock Invoice Hammer on launch. (Screenshots and recordings are never blocked).",
+                        stringResource(Res.string.biometric_lock_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -300,8 +337,8 @@ fun SettingsTab(
                         if (enabled) {
                             if (platformActions.isBiometricAvailable()) {
                                 apply()
-                            } else {
-                                platformActions.showToast("Biometrics not available on this device")
+                             } else {
+                                platformActions.showToast(biometricsNotAvailableText)
                             }
                         } else {
                             apply()
@@ -322,41 +359,41 @@ fun SettingsTab(
         Spacer(Modifier.height(16.dp))
 
         // PRIVACY & PERMISSIONS SECTION (Google Policy Compliance)
-        SettingsSection(title = "PRIVACY & PERMISSIONS") {
+        SettingsSection(title = stringResource(Res.string.privacy_permissions_title)) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Sensitive Permissions Disclosure", 
+                    stringResource(Res.string.sensitive_permissions_disclosure), 
                     style = MaterialTheme.typography.titleSmall, 
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Invoice Hammer requires the following permissions to function. We only access these when you actively use the corresponding features:",
+                    stringResource(Res.string.permissions_disclosure_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 PermissionItem(
                     icon = Icons.Default.Notifications,
-                    title = "Notifications",
-                    description = "Used for daily unpaid invoice reminders. You can turn these off in Invoice Reminders at the top of Settings."
+                    title = stringResource(Res.string.perm_notifications),
+                    description = stringResource(Res.string.perm_notifications_desc)
                 )
-
+ 
                 PermissionItem(
                     icon = Icons.Default.Mic,
-                    title = "Microphone Access",
-                    description = "Used for the AI Command Center to process voice commands. No audio is stored outside of active processing."
+                    title = stringResource(Res.string.perm_microphone),
+                    description = stringResource(Res.string.perm_microphone_desc)
                 )
                 
                 PermissionItem(
                     icon = Icons.Default.CameraAlt,
-                    title = "Camera Access",
-                    description = "Used for scanning receipts and capturing job photos. Images are stored locally in your directory."
+                    title = stringResource(Res.string.perm_camera),
+                    description = stringResource(Res.string.perm_camera_desc)
                 )
                 
                 PermissionItem(
                     icon = Icons.Default.Storage,
-                    title = "File Storage",
-                    description = "Used to save, export, and manage your invoices, estimates, and PDF reports."
+                    title = stringResource(Res.string.perm_storage),
+                    description = stringResource(Res.string.perm_storage_desc)
                 )
             }
         }
@@ -368,9 +405,9 @@ fun SettingsTab(
         TacticalButton(
             onClick = { 
                 onSaveSettings(tempSettings)
-                platformActions.showToast("Settings Saved")
+                platformActions.showToast(settingsSavedText)
             },
-            text = "SAVE ALL CHANGES",
+            text = stringResource(Res.string.save_all_changes),
             modifier = Modifier.fillMaxWidth(),
             containerColor = MaterialTheme.colorScheme.primary
         )

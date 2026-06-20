@@ -11,6 +11,11 @@ import com.fordham.toolbelt.util.IosPlatformActionsServiceProvider
 import com.fordham.toolbelt.util.IosSecurityServiceProvider
 import platform.UIKit.UIViewController
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
 fun MainViewController(): UIViewController = ComposeUIViewController {
     App()
 }
@@ -20,6 +25,17 @@ fun initKoinIos() {
     initKoin(
         additionalModules = listOf(viewModelModule)
     )
+}
+
+fun triggerIosBackgroundSync(completion: (Boolean) -> Unit) {
+    val syncRepository = org.koin.core.context.GlobalContext.get().get<com.fordham.toolbelt.domain.repository.SyncRepository>()
+    val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    scope.launch {
+        when (val outcome = syncRepository.syncInvoices()) {
+            is com.fordham.toolbelt.domain.model.SyncOutcome.Success -> completion(true)
+            is com.fordham.toolbelt.domain.model.SyncOutcome.Failure -> completion(false)
+        }
+    }
 }
 
 private fun checkIosBridgesInitialized() {

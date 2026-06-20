@@ -7,6 +7,7 @@ import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.GetClientFinancialSummaryUseCase
 import com.fordham.toolbelt.domain.usecase.SaveBusinessLogoUseCase
 import com.fordham.toolbelt.domain.usecase.SyncUnpaidInvoiceRemindersUseCase
+import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -106,8 +107,8 @@ class SharedViewModel(
     fun saveBusinessLogo(pickedUri: String?) {
         viewModelScope.launch {
             val message = when (val outcome = saveBusinessLogoUseCase(pickedUri)) {
-                is SaveBusinessLogoOutcome.Saved -> "Business logo saved for all invoices."
-                is SaveBusinessLogoOutcome.Cleared -> "Business logo removed."
+                is SaveBusinessLogoOutcome.Saved -> UiMessageKeys.BUSINESS_LOGO_SAVED
+                is SaveBusinessLogoOutcome.Cleared -> UiMessageKeys.BUSINESS_LOGO_REMOVED
                 is SaveBusinessLogoOutcome.Failure -> outcome.error.value
             }
             _logoMessage.emit(message)

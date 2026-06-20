@@ -178,3 +178,21 @@ Before generating code, ALWAYS output:
 
 3. **Production Code**
    Provide complete code for every file.
+
+---
+
+## 🌐 UI Localization Rule
+All user-facing text in Compose UI must use `stringResource(Res.string.*)`.
+Hardcoded string literals in any `Text()`, `Button()`, placeholder, label, or tooltip are forbidden.
+Any new string key must include matching translations for all supported locales (English and Spanish) in `commonMain` resources.
+
+**Failure condition:** Any `Text(...)`, `Button(...)`, placeholder, label, or tooltip containing a hardcoded string literal is a violation.
+
+---
+
+## 🤖 AI Output Localization Rule
+Any AI/Gemini-generated text that is displayed to the user must be returned in the active UI language.
+The prompt **and**, if necessary, downstream processing must ensure locale alignment using `LocaleUtil.getLanguage()`.
+Raw model output must not be assumed to be correctly localized without this step.
+
+**Failure condition:** Any Gemini response surface that displays user-visible text without a locale hint in the prompt and/or downstream processing is a violation.

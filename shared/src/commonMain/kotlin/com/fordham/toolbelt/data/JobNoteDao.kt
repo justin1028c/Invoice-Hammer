@@ -23,4 +23,7 @@ interface JobNoteDao {
 
     @Delete
     suspend fun deleteNote(note: JobNoteEntity)
+
+    @Query("DELETE FROM job_notes")
+    suspend fun deleteAllNotes()
 }

@@ -9,14 +9,23 @@ data class VoiceTranscriptMeta(
 interface VoiceAssistant {
     fun speak(text: String)
     fun stopSpeaking()
-    fun startListening(onResult: (String) -> Unit, onEnd: () -> Unit)
+    fun startListening(
+        onResult: (String) -> Unit,
+        onEnd: () -> Unit,
+        onPartialResult: (String) -> Unit = {}
+    )
     
     // Metadata-aware listening for advanced cross-turn phonetic resolution
     fun startListeningWithMeta(
         onResult: (VoiceTranscriptMeta) -> Unit,
-        onEnd: () -> Unit
+        onEnd: () -> Unit,
+        onPartialResult: (String) -> Unit = {}
     ) {
-        startListening({ text -> onResult(VoiceTranscriptMeta(text, null)) }, onEnd)
+        startListening(
+            onResult = { text -> onResult(VoiceTranscriptMeta(text, null)) },
+            onEnd = onEnd,
+            onPartialResult = onPartialResult
+        )
     }
 
     fun stopListening(discard: Boolean = false)

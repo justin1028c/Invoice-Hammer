@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.fordham.toolbelt.domain.model.FailureMessage
 import com.fordham.toolbelt.domain.model.subscription.*
 import com.fordham.toolbelt.domain.usecase.subscription.*
+import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -99,7 +100,7 @@ class SubscriptionViewModel(
             _uiState.update { it.copy(isLoading = true, message = null, purchaseSuccess = false) }
             when (val outcome = purchaseSubscriptionTierUseCase(tierId)) {
                 SubscriptionPurchaseOutcome.Cancelled ->
-                    _uiState.update { it.copy(isLoading = false, message = "Purchase cancelled.") }
+                    _uiState.update { it.copy(isLoading = false, message = UiMessageKeys.PURCHASE_CANCELLED) }
                 is SubscriptionPurchaseOutcome.Failure ->
                     _uiState.update { it.copy(isLoading = false, message = outcome.error.value) }
                 is SubscriptionPurchaseOutcome.Success ->
@@ -107,7 +108,7 @@ class SubscriptionViewModel(
                         state.copy(
                             isLoading = false,
                             purchaseSuccess = true,
-                            message = "Pro unlocked via ${outcome.entitlement.source.name}.",
+                            message = UiMessageKeys.proUnlockedVia(outcome.entitlement.source.name),
                             entitlement = outcome.entitlement
                         )
                     }
@@ -120,7 +121,7 @@ class SubscriptionViewModel(
             _uiState.update { it.copy(isLoading = true, message = null, purchaseSuccess = false) }
             when (val outcome = purchaseProductUseCase(product)) {
                 BillingOutcome.Cancelled ->
-                    _uiState.update { it.copy(isLoading = false, message = "Purchase cancelled.") }
+                    _uiState.update { it.copy(isLoading = false, message = UiMessageKeys.PURCHASE_CANCELLED) }
                 is BillingOutcome.Failure ->
                     _uiState.update { it.copy(isLoading = false, message = outcome.error.value) }
                 is BillingOutcome.Success ->
@@ -128,7 +129,7 @@ class SubscriptionViewModel(
                         state.copy(
                             isLoading = false,
                             purchaseSuccess = true,
-                            message = "Purchased ${product.displayName}.",
+                            message = UiMessageKeys.purchased(product.displayName),
                             entitlement = outcome.activeEntitlement
                         )
                     }
@@ -143,7 +144,7 @@ class SubscriptionViewModel(
                     // Token consumed successfully
                 }
                 is TokenConsumptionOutcome.InsufficientTokens -> {
-                    _uiState.update { it.copy(message = "Low Balance! Deducting credits failed. Purchase more scans or Go Pro.") }
+                    _uiState.update { it.copy(message = UiMessageKeys.LOW_BALANCE) }
                 }
                 is TokenConsumptionOutcome.Failure -> {
                     _uiState.update { it.copy(message = outcome.error.value) }
@@ -164,9 +165,9 @@ class SubscriptionViewModel(
                             isLoading = false,
                             purchaseSuccess = outcome.entitlement.isPro,
                             message = if (outcome.entitlement.isPro) {
-                                "Purchases restored."
+                                UiMessageKeys.PURCHASES_RESTORED
                             } else {
-                                "No active subscription found."
+                                UiMessageKeys.NO_ACTIVE_SUBSCRIPTION
                             },
                             entitlement = outcome.entitlement
                         )

@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 import kotlin.math.roundToInt
 
 /**
@@ -48,7 +50,7 @@ fun androidx.compose.foundation.lazy.LazyItemScope.ReorderItem(
         ) {
             Icon(
                 Icons.Default.DragHandle,
-                contentDescription = "Long press and drag to reorder",
+                contentDescription = stringResource(Res.string.drag_to_reorder),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .size(32.dp)
@@ -74,7 +76,7 @@ fun androidx.compose.foundation.lazy.LazyItemScope.ReorderItem(
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(supplier.name.uppercase(), fontWeight = FontWeight.Bold)
-                Text(supplier.category.name, style = MaterialTheme.typography.bodySmall)
+                Text(localizeSupplierCategory(supplier.category), style = MaterialTheme.typography.bodySmall)
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)

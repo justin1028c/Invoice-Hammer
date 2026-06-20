@@ -7,6 +7,11 @@ import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
 
 class GetBusinessStatsUseCase(
     private val invoiceRepository: InvoiceRepository,
@@ -65,13 +70,73 @@ class GetBusinessStatsUseCase(
                 )
             }.sortedByDescending { it.revenue }
 
+            // Year-to-Date Calculations
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val currentYear = today.year
+
+            val ytdPaidInvoices = paidNonEstimateInvoices.filter {
+                val invDate = com.fordham.toolbelt.util.DateTimeUtil.parseDate(it.date)
+                val year = invDate?.year ?: Instant.fromEpochMilliseconds(it.lastUpdated).toLocalDateTime(TimeZone.currentSystemDefault()).year
+                year == currentYear
+            }
+            val ytdRevenue = ytdPaidInvoices.sumOf { it.totalAmount }
+
+            val ytdReceipts = receipts.filter {
+                val year = Instant.fromEpochMilliseconds(it.lastUpdated).toLocalDateTime(TimeZone.currentSystemDefault()).year
+                year == currentYear
+            }
+            val ytdExpenses = ytdReceipts.sumOf { it.totalPrice }
+            val ytdNetProfit = ytdRevenue - ytdExpenses
+
+            // Outstanding Invoices & aging buckets
+            val unpaidNonEstimateInvoices = invoices.filter { !it.isPaid && !it.isEstimate }
+            val totalOutstanding = unpaidNonEstimateInvoices.sumOf { it.totalAmount }
+
+            var outstanding0to30 = 0.0
+            var outstanding31to60 = 0.0
+            var outstanding61Plus = 0.0
+
+            unpaidNonEstimateInvoices.forEach { invoice ->
+                val invDate = com.fordham.toolbelt.util.DateTimeUtil.parseDate(invoice.date)
+                val ageDays = if (invDate != null) {
+                    (today.toEpochDays() - invDate.toEpochDays()).coerceAtLeast(0)
+                } else {
+                    val fallbackDate = Instant.fromEpochMilliseconds(invoice.lastUpdated).toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    (today.toEpochDays() - fallbackDate.toEpochDays()).coerceAtLeast(0)
+                }
+
+                when {
+                    ageDays <= 30 -> outstanding0to30 += invoice.totalAmount
+                    ageDays <= 60 -> outstanding31to60 += invoice.totalAmount
+                    else -> outstanding61Plus += invoice.totalAmount
+                }
+            }
+
+            // Quarterly Estimated Tax
+            val projectedTax = maxOf(0.0, ytdNetProfit * 0.20)
+            val currentQuarter = when (today.monthNumber) {
+                in 1..3 -> 1
+                in 4..6 -> 2
+                in 7..9 -> 3
+                else -> 4
+            }
+
             BusinessStats(
                 netProfit = netProfit,
                 totalExpenses = expenses,
                 totalDurationSeconds = totalDurationSeconds,
                 unbilledExpenses = unbilledExpenses,
                 projectStats = projectStats,
-                profitMargin = profitMargin
+                profitMargin = profitMargin,
+                ytdRevenue = ytdRevenue,
+                ytdExpenses = ytdExpenses,
+                ytdNetProfit = ytdNetProfit,
+                totalOutstanding = totalOutstanding,
+                outstanding0to30 = outstanding0to30,
+                outstanding31to60 = outstanding31to60,
+                outstanding61Plus = outstanding61Plus,
+                projectedTax = projectedTax,
+                currentQuarter = currentQuarter
             )
         }
     }

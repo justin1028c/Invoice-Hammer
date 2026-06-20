@@ -9,6 +9,7 @@ import com.fordham.toolbelt.domain.repository.AuthRepository
 import com.fordham.toolbelt.domain.usecase.stripe.GetStripePaymentModeUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.RefreshStripeConnectStatusUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.StartStripeConnectOnboardingUseCase
+import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,9 +64,9 @@ class SettingsViewModel(
             when (val outcome = startStripeConnectOnboardingUseCase()) {
                 is StripeConnectOnboardingOutcome.Ready -> onOpenUrl(outcome.url.value)
                 StripeConnectOnboardingOutcome.SignInRequired ->
-                    onMessage("Sign in with Google before setting up Stripe payouts.")
+                    onMessage(UiMessageKeys.STRIPE_SIGN_IN_REQUIRED)
                 StripeConnectOnboardingOutcome.BackendNotConfigured ->
-                    onMessage("Add stripe.payment.backend.url in local.properties.")
+                    onMessage(UiMessageKeys.STRIPE_BACKEND_URL_REQUIRED)
                 is StripeConnectOnboardingOutcome.Failure ->
                     onMessage(outcome.error.value)
             }

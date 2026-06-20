@@ -52,6 +52,7 @@ actual fun platformModule(): Module = module {
     // Dispatcher — must be bound so KtorSyncRepository (and any other injected consumer) resolves correctly (ISSUE-06)
     single<CoroutineDispatcher> { Dispatchers.IO }
     single<SecretProvider> { com.fordham.toolbelt.util.IosSecretProvider() }
+    single { com.fordham.toolbelt.util.NetworkObserver() }
     single<DriveAuthTokenProvider> { IosDriveAuthTokenProvider() }
     single<PlatformActions> { IosPlatformActions() }
     single<PlatformGeofenceManager> { IosPlatformGeofenceManager() }
@@ -87,6 +88,12 @@ actual fun platformModule(): Module = module {
     single<StripePaymentSheetGateway> { get<IosStripePaymentSheetGateway>() }
     single<TapToPayGateway> { IosTapToPayGateway(get()) }
     single<BluetoothCardReaderGateway> { IosBluetoothCardReaderGateway() }
+    single<com.fordham.toolbelt.data.local.LocalLlmEngine> {
+        com.fordham.toolbelt.data.local.IosLocalLlmEngine(
+            scope = get(),
+            ioDispatcher = get()
+        )
+    }
 }
 
 actual fun platformHttpClient(): HttpClient {

@@ -30,6 +30,8 @@ import com.fordham.toolbelt.ui.tabs.components.*
 import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
 import com.fordham.toolbelt.util.Permission
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun NewInvoiceTab(
@@ -82,11 +84,11 @@ fun NewInvoiceTab(
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp).verticalScroll(rememberScrollState())) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("INVOICE DETAILS", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
+            Text(stringResource(Res.string.invoice_details), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
             TextButton(onClick = { showBusinessDialog = true }) {
                 Icon(Icons.Default.Business, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("BUSINESS", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(Res.string.business), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
             }
         }
         
@@ -94,12 +96,12 @@ fun NewInvoiceTab(
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("JOB TIMER", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary)
+                        Text(stringResource(Res.string.job_timer), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.secondary)
                         Text(uiState.formattedTime, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                     TacticalButton(
                         onClick = { onTimerToggle() }, 
-                        text = if (!uiState.timerRunning) "START TIMER" else "STOP TIMER", 
+                        text = if (!uiState.timerRunning) stringResource(Res.string.start_timer) else stringResource(Res.string.stop_timer), 
                         icon = { Icon(if (!uiState.timerRunning) Icons.Default.PlayArrow else Icons.Default.Stop, null) },
                         containerColor = if (!uiState.timerRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
@@ -109,13 +111,13 @@ fun NewInvoiceTab(
                         OutlinedTextField(
                             value = uiState.hourlyRate,
                             onValueChange = { onHourlyRateChange(it) },
-                            label = { Text("RATE ($/HR)", fontWeight = FontWeight.Black) },
+                            label = { Text(stringResource(Res.string.rate_hr), fontWeight = FontWeight.Black) },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             shape = RoundedCornerShape(4.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        TacticalButton(onClick = { onBillLabor() }, text = "BILL TIME")
+                        TacticalButton(onClick = { onBillLabor() }, text = stringResource(Res.string.bill_time))
                     }
                 }
             }
@@ -137,7 +139,7 @@ fun NewInvoiceTab(
         )
         if (uiState.businessLogoSaved && uiState.logoUri != null) {
             Text(
-                "Saved for all future invoices",
+                stringResource(Res.string.saved_future),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -150,7 +152,7 @@ fun NewInvoiceTab(
             OutlinedTextField(
                 value = uiState.clientName,
                 onValueChange = { onClientNameChange(it) },
-                label = { Text("CLIENT NAME", fontWeight = FontWeight.Black) },
+                label = { Text(stringResource(Res.string.client_name), fontWeight = FontWeight.Black) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(4.dp),
                 trailingIcon = { IconButton(onClick = { onSetInvoiceClientDropdownVisible(true) }) { Icon(Icons.Default.ArrowDropDown, null) } }
@@ -168,21 +170,21 @@ fun NewInvoiceTab(
                 }
             }
         }
-        OutlinedTextField(value = uiState.clientAddress, onValueChange = { onClientAddressChange(it) }, label = { Text("CLIENT ADDRESS", fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp))
+        OutlinedTextField(value = uiState.clientAddress, onValueChange = { onClientAddressChange(it) }, label = { Text(stringResource(Res.string.client_address), fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = uiState.saveToClientDirectory, onCheckedChange = { onSaveToClientDirectoryChange(it) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
-            Text("SAVE TO CLIENT DIRECTORY", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(Res.string.save_client_dir), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         }
 
         Spacer(Modifier.height(16.dp))
         Text(
-            "JOB PHOTOS",
+            stringResource(Res.string.job_photos),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            "Tap BEFORE when you walk in, then AFTER when work is done.",
+            stringResource(Res.string.tap_before_after),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Bold
@@ -216,13 +218,13 @@ fun NewInvoiceTab(
         )
 
         Spacer(Modifier.height(10.dp))
-        OutlinedTextField(value = uiState.taxText, onValueChange = { onTaxTextChange(it) }, label = { Text("TAX RATE %", fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp))
-        OutlinedTextField(value = uiState.depositCollected, onValueChange = { onDepositCollectedChange(it) }, label = { Text("DEPOSIT COLLECTED ($)", fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(4.dp))
+        OutlinedTextField(value = uiState.taxText, onValueChange = { onTaxTextChange(it) }, label = { Text(stringResource(Res.string.tax_rate), fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(4.dp))
+        OutlinedTextField(value = uiState.depositCollected, onValueChange = { onDepositCollectedChange(it) }, label = { Text(stringResource(Res.string.deposit_collected), fontWeight = FontWeight.Black) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(4.dp))
         
         Spacer(Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TacticalButton(onClick = { onSaveInvoice(true, businessSettings) { onShareFile(it, "Estimate") } }, text = "SAVE ESTIMATE", modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.secondary, enabled = uiState.canSave)
-            TacticalButton(onClick = { onSaveInvoice(false, businessSettings) { onShareFile(it, "Invoice") } }, text = "SAVE INVOICE", modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.primary, enabled = uiState.canSave)
+            TacticalButton(onClick = { onSaveInvoice(true, businessSettings) { onShareFile(it, "Estimate") } }, text = stringResource(Res.string.save_estimate), modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.secondary, enabled = uiState.canSave)
+            TacticalButton(onClick = { onSaveInvoice(false, businessSettings) { onShareFile(it, "Invoice") } }, text = stringResource(Res.string.save_invoice), modifier = Modifier.weight(1f), containerColor = MaterialTheme.colorScheme.primary, enabled = uiState.canSave)
         }
         Spacer(Modifier.height(120.dp))
     }
@@ -234,10 +236,10 @@ fun NewInvoiceTab(
     if (uiState.showReceiptPicker) {
         AlertDialog(
             onDismissRequest = { onSetReceiptPickerVisible(false) },
-            title = { Text("FLOATING EXPENSE POOL", fontWeight = FontWeight.Black) },
+            title = { Text(stringResource(Res.string.floating_expense_pool), fontWeight = FontWeight.Black) },
             text = {
                 if (uiState.availableReceipts.isEmpty()) {
-                    Text("NO UNBILLED RECEIPTS FOUND.")
+                    Text(stringResource(Res.string.no_unbilled_receipts))
                 } else {
                     androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(uiState.availableReceipts.size) { index ->
@@ -256,23 +258,23 @@ fun NewInvoiceTab(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { onSetReceiptPickerVisible(false) }) { Text("CLOSE") } }
+            confirmButton = { TextButton(onClick = { onSetReceiptPickerVisible(false) }) { Text(stringResource(Res.string.close)) } }
         )
     }
 
     if (showMarkupPrompt && selectedReceipt != null) {
         AlertDialog(
             onDismissRequest = { showMarkupPrompt = false },
-            title = { Text("APPLY MARKUP?", fontWeight = FontWeight.Black) },
+            title = { Text(stringResource(Res.string.apply_markup), fontWeight = FontWeight.Black) },
             text = {
                 Column {
-                    Text("LINKING: ${selectedReceipt!!.description}")
-                    Text("RAW COST: ${selectedReceipt!!.formattedPrice}")
+                    Text(stringResource(Res.string.linking, selectedReceipt!!.description))
+                    Text(stringResource(Res.string.raw_cost, selectedReceipt!!.formattedPrice))
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = markupInput,
                         onValueChange = { markupInput = it },
-                        label = { Text("MARKUP PERCENTAGE %", fontWeight = FontWeight.Black) },
+                        label = { Text(stringResource(Res.string.markup_percentage), fontWeight = FontWeight.Black) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -284,13 +286,13 @@ fun NewInvoiceTab(
                         onLinkReceipt(selectedReceipt!!, 0.0)
                         showMarkupPrompt = false
                         selectedReceipt = null
-                    }) { Text("NO (AT COST)") }
+                    }) { Text(stringResource(Res.string.no_at_cost)) }
                     TacticalButton(onClick = {
                         val pct = markupInput.toDoubleOrNull() ?: 0.0
                         onLinkReceipt(selectedReceipt!!, pct)
                         showMarkupPrompt = false
                         selectedReceipt = null
-                    }, text = "APPLY %")
+                    }, text = stringResource(Res.string.apply_pct))
                 }
             }
         )

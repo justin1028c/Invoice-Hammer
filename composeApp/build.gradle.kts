@@ -4,6 +4,7 @@ plugins {
     id("com.android.library")
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -47,6 +48,7 @@ kotlin {
             // Image Loading
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
+            implementation(libs.qrose)
         }
         
         androidMain.dependencies {

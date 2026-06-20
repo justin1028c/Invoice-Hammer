@@ -25,10 +25,13 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlinx.coroutines.launch
 import com.fordham.toolbelt.domain.repository.AuthRepository
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun App(initialTab: AppTab? = null) {
     val platformActions: PlatformActions = koinInject()
+    val syncQueueProcessor: com.fordham.toolbelt.data.implementation.SyncQueueProcessor = koinInject()
     val syncUnpaidInvoiceReminders: SyncUnpaidInvoiceRemindersUseCase = koinInject()
     val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository = koinInject()
     val authRepository: AuthRepository = koinInject()
@@ -37,12 +40,21 @@ fun App(initialTab: AppTab? = null) {
     var isCheckingBiometrics by remember { mutableStateOf(true) }
     var showBiometricChangedDialog by remember { mutableStateOf(false) }
 
+    val vaultLockedTitle = stringResource(Res.string.vault_locked)
+    val vaultLockedSubtitle = stringResource(Res.string.vault_locked_subtitle)
+    val vaultLockedSubtitleShort = stringResource(Res.string.vault_locked_subtitle_short)
+    val unlockVaultText = stringResource(Res.string.unlock_vault)
+    val biometricsChangedTitle = stringResource(Res.string.biometrics_changed_title)
+    val biometricsChangedBody = stringResource(Res.string.biometrics_changed_body)
+    val okText = stringResource(Res.string.ok)
+
     LaunchedEffect(Unit) {
+        syncQueueProcessor.start()
         val settings = settingsRepository.getBusinessSettings()
         if (settings.biometricLockEnabled && platformActions.isBiometricAvailable()) {
             platformActions.authenticateBiometric(
-                title = "Vault Locked",
-                subtitle = "Authenticate to access Invoice Hammer",
+                title = vaultLockedTitle,
+                subtitle = vaultLockedSubtitle,
                 onSuccess = { isAuthenticated = true; isCheckingBiometrics = false },
                 onError = { error ->
                     if (error == "BIOMETRIC_LOCK_INVALIDATED") {
@@ -117,13 +129,13 @@ fun App(initialTab: AppTab? = null) {
                         modifier = Modifier.size(64.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Vault Locked", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(vaultLockedTitle, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = {
                             platformActions.authenticateBiometric(
-                                title = "Vault Locked",
-                                subtitle = "Authenticate to access",
+                                title = vaultLockedTitle,
+                                subtitle = vaultLockedSubtitleShort,
                                 onSuccess = { isAuthenticated = true },
                                 onError = { error ->
                                     if (error == "BIOMETRIC_LOCK_INVALIDATED") {
@@ -135,7 +147,7 @@ fun App(initialTab: AppTab? = null) {
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Unlock Vault")
+                        Text(unlockVaultText)
                     }
                 }
             }
@@ -144,12 +156,10 @@ fun App(initialTab: AppTab? = null) {
         if (showBiometricChangedDialog) {
             AlertDialog(
                 onDismissRequest = {},
-                title = { Text("Biometrics Changed", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = { Text(biometricsChangedTitle, fontWeight = FontWeight.Bold, color = Color.White) },
                 text = {
                     Text(
-                        "Your device's biometric configuration (e.g. fingerprint or face) has changed. " +
-                        "For security reasons, biometric lock has been disabled and your session will be signed out. " +
-                        "Please log in using your account credentials to re-enable.",
+                        biometricsChangedBody,
                         color = Color.LightGray
                     )
                 },
@@ -168,7 +178,7 @@ fun App(initialTab: AppTab? = null) {
                             }
                         }
                     ) {
-                        Text("OK", color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
+                        Text(okText, color = Color(0xFFFFD700), fontWeight = FontWeight.Bold)
                     }
                 }
             )

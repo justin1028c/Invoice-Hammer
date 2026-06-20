@@ -16,6 +16,8 @@ import com.fordham.toolbelt.ui.tabs.receipts.ReceiptsCaptureSection
 import com.fordham.toolbelt.ui.tabs.receipts.ReceiptsSupplyListSection
 import com.fordham.toolbelt.ui.viewmodel.ReceiptsUiState
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun ReceiptsTab(
@@ -37,6 +39,8 @@ fun ReceiptsTab(
     onClearCapturedReceipt: () -> Unit,
     onToggleReceiptBilled: (ReceiptItem) -> Unit,
     onDeleteReceiptItem: (ReceiptItem) -> Unit,
+    onAcceptExpenseMatch: () -> Unit,
+    onDeclineExpenseMatch: () -> Unit,
     platformActions: PlatformActions
 ) {
     LaunchedEffect(selectedClient) {
@@ -46,21 +50,52 @@ fun ReceiptsTab(
     if (uiState.showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { onSetClearConfirmVisible(false) },
-            title = { Text("Clear All Receipts?", fontWeight = FontWeight.Black) },
-            text = { Text("This will permanently delete all logged supplies and receipts. This action cannot be undone.") },
+            title = { Text(stringResource(Res.string.clear_all_receipts), fontWeight = FontWeight.Black) },
+            text = { Text(stringResource(Res.string.clear_all_receipts_desc)) },
             confirmButton = {
                 TacticalButton(
                     onClick = {
                         onClearReceiptItems()
                         onSetClearConfirmVisible(false)
                     },
-                    text = "CLEAR ALL",
+                    text = stringResource(Res.string.purge_all),
                     containerColor = MaterialTheme.colorScheme.error
                 )
             },
             dismissButton = {
                 TextButton(onClick = { onSetClearConfirmVisible(false) }) {
-                    Text("CANCEL")
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (uiState.pendingMatch != null) {
+        val match = uiState.pendingMatch
+        val formatAmount = com.fordham.toolbelt.util.DateTimeUtil.formatMoney(match.totalAmount)
+        AlertDialog(
+            onDismissRequest = onDeclineExpenseMatch,
+            title = { Text(stringResource(Res.string.match_expense_title), fontWeight = FontWeight.Black) },
+            text = {
+                Text(
+                    stringResource(
+                        Res.string.match_expense_desc,
+                        match.clientName,
+                        match.category,
+                        formatAmount
+                    )
+                )
+            },
+            confirmButton = {
+                TacticalButton(
+                    onClick = onAcceptExpenseMatch,
+                    text = stringResource(Res.string.append_to_invoice),
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = onDeclineExpenseMatch) {
+                    Text(stringResource(Res.string.no_thanks))
                 }
             }
         )
@@ -68,14 +103,14 @@ fun ReceiptsTab(
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text(
-            "EXPENSE TRACKER",
+            stringResource(Res.string.expense_tracker),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
         )
         Text(
-            "Stop the leaks. Link receipts to specific jobs.",
+            stringResource(Res.string.expense_tracker_desc),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

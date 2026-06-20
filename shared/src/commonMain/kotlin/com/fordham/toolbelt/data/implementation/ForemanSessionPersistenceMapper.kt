@@ -108,6 +108,10 @@ object ForemanSessionPersistenceMapper {
         ToolName.DeleteInvoiceForApproval -> "DeleteInvoiceForApproval"
         ToolName.OpenLastInvoice -> "OpenLastInvoice"
         ToolName.OpenSupplier -> "OpenSupplier"
+        ToolName.GetProfitGuardianStatus -> "GetProfitGuardianStatus"
+        ToolName.DetectChangeOrders -> "DetectChangeOrders"
+        ToolName.GetDailyBriefing -> "GetDailyBriefing"
+        ToolName.CreateChangeOrder -> "CreateChangeOrder"
     }
 
     private fun toolNameFromWire(raw: String): ToolName? = when (raw) {
@@ -136,6 +140,10 @@ object ForemanSessionPersistenceMapper {
         "DeleteInvoiceForApproval" -> ToolName.DeleteInvoiceForApproval
         "OpenLastInvoice" -> ToolName.OpenLastInvoice
         "OpenSupplier" -> ToolName.OpenSupplier
+        "GetProfitGuardianStatus" -> ToolName.GetProfitGuardianStatus
+        "DetectChangeOrders" -> ToolName.DetectChangeOrders
+        "GetDailyBriefing" -> ToolName.GetDailyBriefing
+        "CreateChangeOrder" -> ToolName.CreateChangeOrder
         else -> null
     }
 

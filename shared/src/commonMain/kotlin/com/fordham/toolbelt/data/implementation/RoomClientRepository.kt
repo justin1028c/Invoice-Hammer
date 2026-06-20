@@ -7,12 +7,18 @@ import com.fordham.toolbelt.domain.model.Client
 import com.fordham.toolbelt.domain.model.ClientOutcome
 import com.fordham.toolbelt.domain.model.ClientListOutcome
 import com.fordham.toolbelt.domain.repository.ClientRepository
+import com.fordham.toolbelt.data.SyncQueueDao
+import com.fordham.toolbelt.data.SyncQueueEntity
+import com.fordham.toolbelt.util.PlatformActions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
+import kotlinx.datetime.Clock
 
 class RoomClientRepository(
-    private val clientDao: ClientDao
+    private val clientDao: ClientDao,
+    private val syncQueueDao: SyncQueueDao,
+    private val platformActions: PlatformActions
 ) : ClientRepository {
     override fun getAllClients(): Flow<ClientListOutcome> =
         clientDao.getAllClients()
@@ -24,6 +30,13 @@ class RoomClientRepository(
 
     override suspend fun insertClient(client: Client): ClientOutcome = try {
         clientDao.insertClient(client.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         ClientOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure("RoomClientRepository", "repository", e)
@@ -43,6 +56,13 @@ class RoomClientRepository(
 
     override suspend fun deleteClient(client: Client): ClientOutcome = try {
         clientDao.deleteClient(client.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         ClientOutcome.Success
     } catch (e: Exception) {
 logRepositoryFailure("RoomClientRepository", "repository", e)

@@ -21,6 +21,8 @@ import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.tabs.clients.*
 import com.fordham.toolbelt.ui.viewmodel.ClientsUiState
 import com.fordham.toolbelt.util.PlatformActions
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 /**
  * Responsibility: Main orchestration for the Client Directory & Profiles.
@@ -58,31 +60,31 @@ fun ClientsTab(
     if (uiState.clientToDelete != null) {
         AlertDialog(
             onDismissRequest = { onSetClientToDelete(null) },
-            title = { Text("Delete Client?", fontWeight = FontWeight.Black) },
-            text = { Text("Are you sure you want to delete ${uiState.clientToDelete!!.name}? This will remove them from your directory, but their invoices and receipts will remain.") },
+            title = { Text(stringResource(Res.string.delete_client), fontWeight = FontWeight.Black) },
+            text = { Text(stringResource(Res.string.delete_client_desc, uiState.clientToDelete!!.name)) },
             confirmButton = { 
                 TacticalButton(
                     onClick = { 
                         onDeleteClient(uiState.clientToDelete!!)
                         onSetClientToDelete(null)
                     }, 
-                    text = "DELETE", 
+                    text = stringResource(Res.string.delete), 
                     containerColor = MaterialTheme.colorScheme.error 
                 ) 
             },
-            dismissButton = { TextButton(onClick = { onSetClientToDelete(null) }) { Text("CANCEL") } }
+            dismissButton = { TextButton(onClick = { onSetClientToDelete(null) }) { Text(stringResource(Res.string.cancel)) } }
         )
     }
 
     if (uiState.showAddNote && selectedClient != null) {
         AlertDialog(
             onDismissRequest = { onSetAddNoteVisible(false) },
-            title = { Text("NEW JOB NOTE", fontWeight = FontWeight.Black) }, 
+            title = { Text(stringResource(Res.string.new_job_note), fontWeight = FontWeight.Black) }, 
             text = { 
                 OutlinedTextField(
                     value = uiState.noteText, 
                     onValueChange = { onSetNoteText(it) }, 
-                    label = { Text("NOTE CONTENT...", fontWeight = FontWeight.Bold) }, 
+                    label = { Text(stringResource(Res.string.note_content), fontWeight = FontWeight.Bold) }, 
                     modifier = Modifier.fillMaxWidth(), 
                     shape = RoundedCornerShape(4.dp)
                 ) 
@@ -90,7 +92,7 @@ fun ClientsTab(
             confirmButton = { 
                 TacticalButton(
                     onClick = { onAddNote(selectedClient.name) },
-                    text = "SAVE NOTE", 
+                    text = stringResource(Res.string.save_note), 
                     enabled = uiState.noteText.isNotBlank()
                 ) 
             }
@@ -100,10 +102,10 @@ fun ClientsTab(
     if (uiState.showReceiptPicker && selectedClient != null) {
         AlertDialog(
             onDismissRequest = { onSetReceiptPickerVisible(false) },
-            title = { Text("FLOATING EXPENSE POOL", fontWeight = FontWeight.Black) },
+            title = { Text(stringResource(Res.string.floating_expense_pool), fontWeight = FontWeight.Black) },
             text = {
                 Column {
-                    Text("SELECT A RECEIPT TO LINK TO ${selectedClient.name.uppercase()}:", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.select_receipt_link, selectedClient.name.uppercase()), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(uiState.availableReceipts) { receipt ->
@@ -116,14 +118,14 @@ fun ClientsTab(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { onSetReceiptPickerVisible(false) }) { Text("CANCEL") } }
+            confirmButton = { TextButton(onClick = { onSetReceiptPickerVisible(false) }) { Text(stringResource(Res.string.cancel)) } }
         )
     }
 
     // --- MAIN CONTENT ---
     if (selectedClient == null) {
         LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            item { Text("CLIENT DIRECTORY", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black) }
+            item { Text(stringResource(Res.string.client_directory), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black) }
             items(clients) { client -> 
                 ClientDirectoryItem(
                     client = client,

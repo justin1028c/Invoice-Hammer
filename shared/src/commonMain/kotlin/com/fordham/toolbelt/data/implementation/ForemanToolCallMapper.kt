@@ -13,11 +13,15 @@ import com.fordham.toolbelt.domain.model.agent.AddJobNoteArgs
 import com.fordham.toolbelt.domain.model.agent.AgentOutcome
 import com.fordham.toolbelt.domain.model.agent.AppendDraftLinesArgs
 import com.fordham.toolbelt.domain.model.agent.AppTab
+import com.fordham.toolbelt.domain.model.agent.CreateChangeOrderArgs
 import com.fordham.toolbelt.domain.model.agent.CreateClientArgs
 import com.fordham.toolbelt.domain.model.agent.CreateDraftInvoiceArgs
 import com.fordham.toolbelt.domain.model.agent.DeleteInvoiceApprovalArgs
+import com.fordham.toolbelt.domain.model.agent.DetectChangeOrdersArgs
 import com.fordham.toolbelt.domain.model.agent.DuplicateAndEditArgs
 import com.fordham.toolbelt.domain.model.agent.DuplicateLastInvoiceArgs
+import com.fordham.toolbelt.domain.model.agent.GetDailyBriefingArgs
+import com.fordham.toolbelt.domain.model.agent.GetProfitGuardianStatusArgs
 import com.fordham.toolbelt.domain.model.agent.QuickClientAndInvoiceArgs
 import com.fordham.toolbelt.domain.model.agent.ForemanRuntimeBinding
 import com.fordham.toolbelt.domain.model.agent.GetClientDetailsArgs
@@ -41,6 +45,7 @@ import com.fordham.toolbelt.domain.model.agent.ToolCallId
 import com.fordham.toolbelt.domain.model.agent.ToolName
 import com.fordham.toolbelt.domain.model.agent.UpdateDraftInvoiceArgs
 import com.fordham.toolbelt.domain.repository.ClientRepository
+import kotlinx.datetime.Clock
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.domain.model.ClientListOutcome
 import com.fordham.toolbelt.util.StringFuzzyMatcher
@@ -262,8 +267,32 @@ class ForemanToolCallMapper(
                     supplierName = params.supplierName?.takeIf { it.isNotBlank() }?.let { NaturalLanguage(it) }
                 )
             )
-            else -> AgentOutcome.TextResponse(
-                NaturalLanguage("I understood ${toolCall.type.name} but that action is not wired yet.")
+            is ToolParameters.GetProfitGuardianStatus -> AgentOutcome.ToolExecutionRequested(
+                id,
+                ToolName.GetProfitGuardianStatus,
+                GetProfitGuardianStatusArgs(InvoiceId(params.invoiceId))
+            )
+            is ToolParameters.DetectChangeOrders -> AgentOutcome.ToolExecutionRequested(
+                id,
+                ToolName.DetectChangeOrders,
+                DetectChangeOrdersArgs(InvoiceId(params.invoiceId))
+            )
+            is ToolParameters.GetDailyBriefing -> AgentOutcome.ToolExecutionRequested(
+                id,
+                ToolName.GetDailyBriefing,
+                GetDailyBriefingArgs(Clock.System.now().toEpochMilliseconds())
+            )
+            is ToolParameters.CreateChangeOrder -> AgentOutcome.ToolExecutionRequested(
+                id,
+                ToolName.CreateChangeOrder,
+                CreateChangeOrderArgs(
+                    invoiceId = InvoiceId(params.invoiceId),
+                    description = NaturalLanguage(params.description),
+                    amount = params.amount
+                )
+            )
+            is ToolParameters.None -> AgentOutcome.TextResponse(
+                NaturalLanguage("No action required.")
             )
         }
     }

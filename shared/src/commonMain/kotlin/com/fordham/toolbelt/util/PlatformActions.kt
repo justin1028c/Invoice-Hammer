@@ -13,6 +13,12 @@ interface PlatformActions {
         subject: String = "",
         body: String = ""
     )
+    fun shareText(
+        text: String,
+        subject: String = "",
+        recipientEmail: String = "",
+        recipientPhone: String = ""
+    )
     fun openPdf(path: String)
     fun callPhone(phoneNumber: String)
     fun sendEmail(email: String)
@@ -28,6 +34,7 @@ interface PlatformActions {
     fun capturePhoto(onResult: (String?) -> Unit)
     fun scheduleNotification(id: String, title: String, body: String, delayMillis: Long)
     fun cancelScheduledNotification(id: String)
+    fun triggerBackgroundSync()
 }
 
 object Permission {

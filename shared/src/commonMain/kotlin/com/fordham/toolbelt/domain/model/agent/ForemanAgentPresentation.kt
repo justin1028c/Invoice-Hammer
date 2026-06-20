@@ -1,22 +1,25 @@
 package com.fordham.toolbelt.domain.model.agent
 
+import com.fordham.toolbelt.util.DateTimeUtil
+import com.fordham.toolbelt.util.UserFacingCopy
+
 object ForemanAgentPresentation {
     fun approvalMessage(pending: AgentOutcome.RequiresApproval): String = when (pending.toolName) {
-        ToolName.SendInvoiceEmail -> "Approve sending this invoice by email?"
-        ToolName.SendInvoiceSms -> "Approve sending this invoice by text message?"
-        ToolName.QuickSendInvoice -> "Approve sending the latest invoice?"
-        ToolName.DeleteInvoiceForApproval -> "Approve deleting this invoice?"
+        ToolName.SendInvoiceEmail -> UserFacingCopy.ForemanApproval.sendEmail()
+        ToolName.SendInvoiceSms -> UserFacingCopy.ForemanApproval.sendSms()
+        ToolName.QuickSendInvoice -> UserFacingCopy.ForemanApproval.quickSend()
+        ToolName.DeleteInvoiceForApproval -> UserFacingCopy.ForemanApproval.deleteInvoice()
         ToolName.QuickInvoice -> {
             val args = pending.arguments as? QuickInvoiceArgs
-            val total = args?.lineItems?.sumOf { it.amount } ?: 0.0
-            "Approve saving $${(total * 100).toInt() / 100.0} invoice for ${args?.clientName?.value}?"
+            val total = DateTimeUtil.formatMoney(args?.lineItems?.sumOf { it.amount } ?: 0.0)
+            UserFacingCopy.ForemanApproval.saveInvoice(total, args?.clientName?.value.orEmpty())
         }
         ToolName.QuickClientAndInvoice -> {
             val args = pending.arguments as? QuickClientAndInvoiceArgs
-            val total = args?.lineItems?.sumOf { it.amount } ?: 0.0
-            "Approve creating client and saving $${(total * 100).toInt() / 100.0} invoice for ${args?.clientName?.value}?"
+            val total = DateTimeUtil.formatMoney(args?.lineItems?.sumOf { it.amount } ?: 0.0)
+            UserFacingCopy.ForemanApproval.createClientAndSave(total, args?.clientName?.value.orEmpty())
         }
-        else -> "This action needs your approval."
+        else -> UserFacingCopy.ForemanApproval.defaultPrompt()
     }
 
     fun stepsFromOutcome(outcome: AgentOutcome): List<ChainedToolStep> = when (outcome) {

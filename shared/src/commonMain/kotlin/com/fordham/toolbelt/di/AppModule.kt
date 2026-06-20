@@ -14,6 +14,7 @@ import com.fordham.toolbelt.domain.repository.SubscriptionRepository
 import com.fordham.toolbelt.util.PlatformTarget
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.*
+import com.fordham.toolbelt.domain.usecase.agent.*
 import com.fordham.toolbelt.domain.model.agent.ForemanSessionStore
 import com.fordham.toolbelt.domain.repository.ForemanSessionPersistencePort
 import kotlinx.coroutines.CoroutineScope
@@ -63,18 +64,20 @@ val dataModule = module {
     single { get<AppDatabase>().jobNoteDao() }
     single { get<AppDatabase>().draftDao() }
     single { get<AppDatabase>().paymentRequestDao() }
+    single { get<AppDatabase>().syncQueueDao() }
 
     // Repositories
-    single<ClientRepository> { RoomClientRepository(get()) }
-    single<InvoiceRepository> { RoomInvoiceRepository(get()) }
-    single<ReceiptRepository> { RoomReceiptRepository(get()) }
+    single<ClientRepository> { RoomClientRepository(get(), get(), get()) }
+    single<InvoiceRepository> { RoomInvoiceRepository(get(), get(), get()) }
+    single<ReceiptRepository> { RoomReceiptRepository(get(), get(), get()) }
     single<JobNoteRepository> { RoomJobNoteRepository(get()) }
-    single<SupplierRepository> { SupplierRepositoryImpl(get(), get()) }
+    single<SupplierRepository> { SupplierRepositoryImpl(get(), get(), get(), get()) }
     single<PhotoRepository> { RoomPhotoRepository(get()) }
     single<DraftRepository> { RoomDraftRepository(get()) }
     single<OcrRepository> { GeminiOcrRepository(get()) }
     single { createDefaultForemanGeminiConfig(get()) }
-    single<GeminiRepository> { KtorGeminiRepository(get(), get(), get(), get()) }
+    single<GeminiRepository> { KtorGeminiRepository(get(), get(), get(), get(), get()) }
+    single { SyncQueueProcessor(get(), get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Main)) }
     single<ForemanJobMemoryPort> { RoomForemanJobMemoryAdapter(get()) }
     single { ForemanToolCallMapper(get(), get()) }
     single<AgentLlmGateway> {
@@ -86,7 +89,7 @@ val dataModule = module {
         )
     }
     single<ToolRegistry> {
-        RepositoryToolRegistry(get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
+        RepositoryToolRegistry(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
     }
     single { createDefaultPowerPayConfig(get()) }
     single { createDefaultSupabaseConfig(get()) }
@@ -181,7 +184,10 @@ val useCaseModule = module {
     factory { SaveBusinessLogoUseCase(get(), get()) }
     factory { ProcessInvoiceAiUseCase(get(), get()) }
     factory { BillLaborUseCase(get()) }
-    factory { GenerateAndSaveInvoiceUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    factory { GenerateAndSaveInvoiceUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { GetProfitGuardianStatusUseCase(get(), get(), get()) }
+    factory { DetectChangeOrdersUseCase(get(), get(), get()) }
+    factory { GetDailyBriefingUseCase(get(), get(), get()) }
     factory { GenerateSummaryUseCase(get(), get()) }
     factory { GenerateTaxReportUseCase(get(), get(), get(), get()) }
     factory { HasSubscriptionFeatureUseCase(get()) }
@@ -233,11 +239,18 @@ val useCaseModule = module {
     factory { ProcessStripePaymentSheetUseCase(get(), get(), get(), get(), get(), get()) }
     factory { ProcessTapToPayUseCase(get(), get(), get(), get(), get(), get()) }
     factory { ProcessBluetoothReaderPaymentUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    factory { VerifyStripeCheckoutSessionUseCase(get()) }
+    factory { ResolveStripeCheckoutLinkUseCase(get(), get()) }
+    factory { PollStripeInvoicePaymentStatusUseCase(get(), get()) }
     factory { RestoreSupplierUseCase(get()) }
     factory { SaveInvoiceUseCase(get()) }
     factory { SeedSuppliersUseCase(get()) }
     factory { ToggleSupplierPinUseCase(get()) }
     factory { UpdateSupplierOrderUseCase(get()) }
-    factory { SyncUnpaidInvoiceRemindersUseCase(get(), get(), get()) }
+    factory { SyncUnpaidInvoiceRemindersUseCase(get(), get(), get(), get(), get()) }
+    factory { ComposeUnpaidInvoiceReminderUseCase() }
+    factory { ComposeAiInvoiceReminderUseCase(get(), get()) }
     factory { RestoreSupabaseBackupUseCase(get()) }
+    factory { GetMatchingDraftsUseCase(get(), get()) }
+    factory { AppendReceiptToDraftUseCase(get(), get(), get()) }
 }

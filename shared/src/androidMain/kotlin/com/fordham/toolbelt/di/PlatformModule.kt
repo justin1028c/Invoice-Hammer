@@ -58,6 +58,7 @@ actual fun platformModule(): Module = module {
     single { PlacesService() }
     single { SecurityManager(get()) }
     single<SecurityGateway> { get<SecurityManager>() }
+    single { NetworkObserver(get()) }
     single { createDataStore { get<Context>().filesDir.resolve(DATASTORE_FILE_NAME).absolutePath } }
     single<SettingsRepository> { DataStoreSettingsRepository(get()) }
     single<com.fordham.toolbelt.domain.repository.StorageRepository> { AndroidStorageRepository(get(), get()) }
@@ -73,6 +74,12 @@ actual fun platformModule(): Module = module {
     single<StripePaymentSheetGateway> { get<AndroidStripePaymentSheetGateway>() }
     single<TapToPayGateway> { AndroidTapToPayGateway(get()) }
     single<BluetoothCardReaderGateway> { AndroidBluetoothCardReaderGateway() }
+    single<com.fordham.toolbelt.data.local.LocalLlmEngine> {
+        com.fordham.toolbelt.data.local.AndroidLocalLlmEngine(
+            scope = get(),
+            ioDispatcher = get()
+        )
+    }
 }
 
 actual fun platformHttpClient(): HttpClient {

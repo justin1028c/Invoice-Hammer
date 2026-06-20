@@ -111,7 +111,7 @@ class ProcessStripePaymentSheetUseCase(
             brand = com.fordham.toolbelt.domain.model.cardterminal.CardBrand.Unknown,
             paidAtMillis = paidAt
         )
-        invoiceRepository.updateInvoice(invoice.copy(isPaid = true))
+        invoiceRepository.updateInvoice(invoice.copy(isPaid = true, isEstimate = false))
     }
 
     private fun resolveAmount(invoice: Invoice, type: PaymentRequestType): Double = when (type) {
@@ -193,7 +193,7 @@ class ProcessTapToPayUseCase(
                     brand = com.fordham.toolbelt.domain.model.cardterminal.CardBrand.Unknown,
                     paidAtMillis = paidAt
                 )
-                invoiceRepository.updateInvoice(invoice.copy(isPaid = true))
+                invoiceRepository.updateInvoice(invoice.copy(isPaid = true, isEstimate = false))
                 outcome
             }
         }
@@ -266,7 +266,7 @@ class ProcessBluetoothReaderPaymentUseCase(
             BluetoothReaderOutcome.ReaderNotAvailable,
             is BluetoothReaderOutcome.Failure -> outcome
             is BluetoothReaderOutcome.Success -> {
-                invoiceRepository.updateInvoice(invoice.copy(isPaid = true))
+                invoiceRepository.updateInvoice(invoice.copy(isPaid = true, isEstimate = false))
                 outcome
             }
         }

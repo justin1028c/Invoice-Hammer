@@ -19,6 +19,10 @@ import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.ui.theme.*
 import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
 import com.fordham.toolbelt.domain.model.Invoice
+import com.fordham.toolbelt.domain.model.InvoicePaymentStatus
+import com.fordham.toolbelt.util.DateTimeUtil
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 
 @Composable
 fun HistoryItemCard(
@@ -30,8 +34,18 @@ fun HistoryItemCard(
     onShare: (Invoice) -> Unit,
     onRequestDeposit: (Invoice) -> Unit,
     onRequestFullPayment: (Invoice) -> Unit,
+    onSendAiReminder: (Invoice) -> Unit,
     onConvert: ((Invoice) -> Unit)? = null
 ) {
+    val requestDepositText = stringResource(Res.string.request_deposit)
+    val payLinkText = stringResource(Res.string.pay_link)
+    val paidText = stringResource(Res.string.paid)
+    val unpaidText = stringResource(Res.string.unpaid)
+    val finalizeInvoiceText = stringResource(Res.string.finalize_invoice)
+    val viewCd = stringResource(Res.string.view)
+    val shareCd = stringResource(Res.string.share)
+    val deleteCd = stringResource(Res.string.delete)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -64,7 +78,7 @@ fun HistoryItemCard(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                         ) {
                             Text(
-                                " ESTIMATE ", 
+                                " ${stringResource(Res.string.estimate).uppercase()} ", 
                                 style = MaterialTheme.typography.labelSmall, 
                                 color = MaterialTheme.colorScheme.primary, 
                                 fontWeight = FontWeight.Black
@@ -79,7 +93,7 @@ fun HistoryItemCard(
                             border = BorderStroke(1.dp, BrandOrange.copy(alpha = 0.4f))
                         ) {
                             Text(
-                                " ${request.statusLabel}: ${request.formattedAmount} ",
+                                " ${request.status.localizedLabel()}: ${request.formattedAmount} ",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = BrandOrange,
                                 fontWeight = FontWeight.Black
@@ -98,7 +112,7 @@ fun HistoryItemCard(
             Spacer(Modifier.height(8.dp))
             
             Text(
-                invoice.date.uppercase(), 
+                DateTimeUtil.formatDateForDisplay(invoice.date).uppercase(), 
                 style = MaterialTheme.typography.labelSmall, 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold
@@ -112,7 +126,7 @@ fun HistoryItemCard(
             
             if (invoice.depositAmount > 0) {
                 Text(
-                    "DEPOSIT: ${invoice.formattedDeposit}", 
+                    stringResource(Res.string.deposit_label, invoice.formattedDeposit),
                     style = MaterialTheme.typography.labelSmall, 
                     color = BrandOrange, 
                     fontWeight = FontWeight.Black,
@@ -125,7 +139,7 @@ fun HistoryItemCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TacticalButton(
                     onClick = { onRequestDeposit(invoice) },
-                    text = "REQUEST DEPOSIT",
+                    text = requestDepositText,
                     modifier = Modifier.heightIn(min = 40.dp).weight(1f),
                     containerColor = MaterialTheme.colorScheme.primary,
                     icon = { Icon(Icons.Default.Link, null) },
@@ -134,7 +148,7 @@ fun HistoryItemCard(
                 )
                 TacticalButton(
                     onClick = { onRequestFullPayment(invoice) },
-                    text = "PAY LINK",
+                    text = payLinkText,
                     modifier = Modifier.heightIn(min = 40.dp).weight(1f),
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
@@ -142,27 +156,41 @@ fun HistoryItemCard(
                 )
             }
 
+            if (!invoice.isEstimate && !invoice.isPaid) {
+                Spacer(Modifier.height(8.dp))
+                TacticalButton(
+                    onClick = { onSendAiReminder(invoice) },
+                    text = stringResource(Res.string.send_ai_reminder).uppercase(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    icon = { Icon(Icons.Default.Share, null) },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = 12.sp
+                )
+            }
+
             Spacer(Modifier.height(8.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (!invoice.isEstimate) {
+                if (!invoice.isEstimate || invoice.isPaid) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Checkbox(
-                            checked = invoice.isPaid, 
-                            onCheckedChange = { onTogglePaid(invoice) }, 
+                            checked = invoice.isPaid,
+                            onCheckedChange = { if (!invoice.isEstimate) onTogglePaid(invoice) },
+                            enabled = !invoice.isEstimate,
                             colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                         )
                         Text(
-                            if (invoice.isPaid) "PAID" else "UNPAID", 
-                            style = MaterialTheme.typography.labelLarge, 
-                            fontWeight = FontWeight.Black, 
+                            if (invoice.isPaid) paidText else unpaidText,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Black,
                             color = if (invoice.isPaid) BrandOrange else MaterialTheme.colorScheme.error
                         )
                     }
                 } else if (onConvert != null) {
                     TacticalButton(
                         onClick = { onConvert(invoice) }, 
-                        text = "FINALIZE INVOICE", 
+                        text = finalizeInvoiceText,
                         modifier = Modifier.heightIn(min = 40.dp).weight(1f),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
@@ -172,13 +200,13 @@ fun HistoryItemCard(
                 
                 Row {
                     IconButton(onClick = { onView(invoice) }) { 
-                        Icon(Icons.Default.Visibility, "View", tint = MaterialTheme.colorScheme.onSurface) 
+                        Icon(Icons.Default.Visibility, viewCd, tint = MaterialTheme.colorScheme.onSurface) 
                     }
                     IconButton(onClick = { onShare(invoice) }) { 
-                        Icon(Icons.Default.Share, "Share", tint = MaterialTheme.colorScheme.primary) 
+                        Icon(Icons.Default.Share, shareCd, tint = MaterialTheme.colorScheme.primary) 
                     }
                     IconButton(onClick = { onDelete(invoice) }) { 
-                        Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error) 
+                        Icon(Icons.Default.Delete, deleteCd, tint = MaterialTheme.colorScheme.error) 
                     }
                 }
             }

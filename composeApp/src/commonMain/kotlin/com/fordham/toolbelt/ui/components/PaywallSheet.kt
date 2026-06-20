@@ -33,12 +33,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 import androidx.compose.foundation.layout.width
 import com.fordham.toolbelt.domain.model.subscription.PurchasableProduct
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionTier
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionTierId
 import com.fordham.toolbelt.ui.theme.BrandOrange
+import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.ui.viewmodel.SubscriptionUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,20 +65,20 @@ fun PaywallSheet(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Default.Star, null, tint = BrandOrange)
                 Column {
-                    Text("INVOICE HAMMER PRO", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                    Text(stringResource(Res.string.invoice_hammer_pro), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     Text(
-                        "Subscriptions via Google Play or App Store. Entitlements sync to Supabase.",
+                        stringResource(Res.string.paywall_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
+ 
             Spacer(Modifier.height(12.dp))
-
-            ProFeatureRow("AI Command Center & Foreman agent", Icons.Default.AutoAwesome)
-            ProFeatureRow("Receipt OCR scanning", Icons.Default.Receipt)
-            ProFeatureRow("Bento reports & tax bundle export", Icons.Default.Lock)
+ 
+            ProFeatureRow(stringResource(Res.string.pro_feat_ai), Icons.Default.AutoAwesome)
+            ProFeatureRow(stringResource(Res.string.pro_feat_ocr), Icons.Default.Receipt)
+            ProFeatureRow(stringResource(Res.string.pro_feat_reports), Icons.Default.Lock)
 
             Spacer(Modifier.height(12.dp))
 
@@ -83,7 +88,7 @@ fun PaywallSheet(
 
             uiState.message?.let { message ->
                 Text(
-                    message,
+                    localizeUiMessage(message),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (uiState.purchaseSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -92,7 +97,7 @@ fun PaywallSheet(
 
             if (uiState.tiers.isEmpty()) {
                 Text(
-                    "Loading plans from Supabase…",
+                    stringResource(Res.string.loading_plans),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -105,43 +110,43 @@ fun PaywallSheet(
                     )
                 }
             }
-
+ 
             Spacer(Modifier.height(16.dp))
-
+ 
             Text(
-                "OR PURCHASE HAMMER CREDIT PACKS",
+                stringResource(Res.string.or_purchase_packs),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
-
+ 
             CreditPackCard(
-                title = "Starter Pack",
-                credits = "50 Credits",
-                price = "$4.99",
-                description = "Perfect for standard contractor invoicing & AI scans.",
+                title = stringResource(Res.string.starter_pack_title),
+                credits = stringResource(Res.string.credits_count_50),
+                price = stringResource(Res.string.price_starter),
+                description = stringResource(Res.string.starter_pack_desc),
                 badgeText = null,
                 enabled = !uiState.isLoading,
                 onClick = { onPurchaseCreditPack(PurchasableProduct.HammerCreditPack50) }
             )
-
+ 
             CreditPackCard(
-                title = "Builder Pack",
-                credits = "150 Credits",
-                price = "$9.99",
-                description = "Most Popular. Designed for growing handyman operations.",
-                badgeText = "Contractor's Choice",
+                title = stringResource(Res.string.builder_pack_title),
+                credits = stringResource(Res.string.credits_count_150),
+                price = stringResource(Res.string.price_builder),
+                description = stringResource(Res.string.builder_pack_desc),
+                badgeText = stringResource(Res.string.contractors_choice),
                 enabled = !uiState.isLoading,
                 onClick = { onPurchaseCreditPack(PurchasableProduct.HammerCreditPack150) }
             )
-
+ 
             CreditPackCard(
-                title = "Contractor Pack",
-                credits = "350 Credits",
-                price = "$19.99",
-                description = "Best Value. Complete enterprise utility access.",
-                badgeText = "Best Value",
+                title = stringResource(Res.string.contractor_pack_title),
+                credits = stringResource(Res.string.credits_count_350),
+                price = stringResource(Res.string.price_contractor),
+                description = stringResource(Res.string.contractor_pack_desc),
+                badgeText = stringResource(Res.string.best_value),
                 enabled = !uiState.isLoading,
                 onClick = { onPurchaseCreditPack(PurchasableProduct.HammerCreditPack400) }
             )
@@ -154,12 +159,12 @@ fun PaywallSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onRestore, enabled = !uiState.isLoading) {
-                    Text("RESTORE PURCHASES", fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.restore_purchases), fontWeight = FontWeight.Bold)
                 }
                 if (uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 } else {
-                    TextButton(onClick = onDismiss) { Text("NOT NOW") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(Res.string.not_now)) }
                 }
             }
 
@@ -215,22 +220,15 @@ private fun PaywallTierCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(tier.displayName.uppercase(), fontWeight = FontWeight.Black, style = MaterialTheme.typography.bodyLarge)
-                    if (isYearly) {
-                        Surface(
-                            color = BrandOrange,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                "BEST VALUE",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
+                Text(
+                    tier.displayName.uppercase(),
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (isYearly) {
+                    Spacer(Modifier.height(4.dp))
+                    PaywallBadgeChip(stringResource(Res.string.best_value))
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -249,20 +247,20 @@ private fun PaywallTierCard(
                 )
                 if (isYearly) {
                     Text(
-                        text = "Pro / year",
+                        text = stringResource(Res.string.pro_year),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "= $13.33 / mo",
+                        text = stringResource(Res.string.pro_yearly_equivalent),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                 } else {
                     Text(
-                        text = "Pro / month",
+                        text = stringResource(Res.string.pro_month),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
@@ -285,14 +283,14 @@ private fun SubscriptionValueComparisonCard() {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "🔨 CONTRACTOR MATH: SUBSCRIPTION VS. CREDIT PACKS",
+                stringResource(Res.string.contractor_math_title),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Active contractors run 500+ actions monthly (scans, invoices, tax bundles, and Foreman AI assistant).",
+                stringResource(Res.string.contractor_math_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -304,25 +302,25 @@ private fun SubscriptionValueComparisonCard() {
             ) {
                 // Credit Pack Cost Column
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("PAY-AS-YOU-GO PACKS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Text("500 actions / mo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(Res.string.pay_as_you_go_packs), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.actions_per_month), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
-                    Text("$59.96 / mo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(Res.string.price_pay_as_you_go), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(2.dp))
-                    Text("Consumes credits for scans, invoices & assistant turns", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                    Text(stringResource(Res.string.consumes_credits_desc), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
-
+ 
                 // Pro Subscription Cost Column
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("PRO SUBSCRIPTION", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Text("UNLIMITED + 500 AI / mo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(Res.string.pro_subscription), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(Res.string.unlimited_ai_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(4.dp))
-                    Text("$19.99 / mo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(Res.string.price_pro_monthly), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(2.dp))
-                    Text("Or Pro Yearly: $13.33 / mo ($159.99 / yr)", style = MaterialTheme.typography.labelSmall, color = BrandOrange, fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.pro_yearly_comparison), style = MaterialTheme.typography.labelSmall, color = BrandOrange, fontWeight = FontWeight.Bold)
                 }
             }
-
+ 
             Spacer(Modifier.height(12.dp))
             Surface(
                 color = MaterialTheme.colorScheme.primary,
@@ -330,7 +328,7 @@ private fun SubscriptionValueComparisonCard() {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "🎉 SAVE UP TO 77% MONTHLY WITH PRO YEARLY",
+                    stringResource(Res.string.save_with_pro_yearly),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onPrimary,
@@ -338,10 +336,10 @@ private fun SubscriptionValueComparisonCard() {
                     textAlign = TextAlign.Center
                 )
             }
-
+ 
             Spacer(Modifier.height(8.dp))
             Text(
-                "💡 Pro Tip: All subscription plans and credit packs are 100% tax-deductible business expenses.",
+                stringResource(Res.string.pro_tip_deductible),
                 style = MaterialTheme.typography.bodySmall,
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                 color = MaterialTheme.colorScheme.primary,
@@ -377,27 +375,22 @@ private fun CreditPackCard(
         else null
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(title.uppercase(), fontWeight = FontWeight.Black, style = MaterialTheme.typography.bodyLarge)
-                    if (badgeText != null) {
-                        Surface(
-                            color = BrandOrange,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                badgeText.uppercase(),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
+                Text(
+                    title.uppercase(),
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (badgeText != null) {
+                    Spacer(Modifier.height(4.dp))
+                    PaywallBadgeChip(badgeText)
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -417,5 +410,25 @@ private fun CreditPackCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PaywallBadgeChip(text: String) {
+    Surface(
+        color = BrandOrange,
+        shape = RoundedCornerShape(4.dp),
+        modifier = Modifier.wrapContentWidth()
+    ) {
+        Text(
+            text = text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = true
+        )
     }
 }

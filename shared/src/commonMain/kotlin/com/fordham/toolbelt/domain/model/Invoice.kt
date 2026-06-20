@@ -19,5 +19,5 @@ data class Invoice(
     val durationSeconds: Long = 0L
 ) {
     val formattedTotal: String get() = DateTimeUtil.formatMoney(totalAmount)
-    val formattedDeposit: String get() = "Deposit Paid: ${DateTimeUtil.formatMoney(depositAmount)}"
+    val formattedDeposit: String get() = DateTimeUtil.formatMoney(depositAmount)
 }

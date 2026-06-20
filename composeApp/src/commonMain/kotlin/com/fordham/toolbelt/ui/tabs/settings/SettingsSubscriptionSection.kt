@@ -12,7 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import invoicehammer.composeapp.generated.resources.*
 import com.fordham.toolbelt.domain.model.BusinessSettings
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.theme.BrandOrange
@@ -26,7 +29,7 @@ fun SettingsSubscriptionSection(
     onSaveSettings: (BusinessSettings) -> Unit,
     onTempSettingsChange: (BusinessSettings) -> Unit
 ) {
-    SettingsSection(title = "PRO SUBSCRIPTION & BETA TEST") {
+    SettingsSection(title = stringResource(Res.string.pro_sub_beta_title)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -35,14 +38,14 @@ fun SettingsSubscriptionSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        if (isPro) "PRO ENTITLEMENTS ACTIVE" else "FREE TIER CONTRACTOR",
+                        if (isPro) stringResource(Res.string.pro_entitlements_active) else stringResource(Res.string.free_tier_contractor),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Black,
                         color = if (isPro) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        if (isPro) "AI Command Center, OCR, Bento reports, and tax exports are unlocked."
-                        else "Upgrade to access intelligent voice parsing, OCR receipt scanning, and professional report bundles.",
+                        if (isPro) stringResource(Res.string.pro_entitlements_active_desc)
+                        else stringResource(Res.string.free_tier_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -50,7 +53,7 @@ fun SettingsSubscriptionSection(
             }
             TacticalButton(
                 onClick = onOpenPaywall,
-                text = if (isPro) "MANAGE PLAN" else "UPGRADE TO PRO",
+                text = if (isPro) stringResource(Res.string.manage_plan) else stringResource(Res.string.upgrade_to_pro),
                 modifier = Modifier.fillMaxWidth()
             )
             HorizontalDivider(
@@ -83,6 +86,9 @@ fun SettingsSubscriptionSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -93,10 +99,13 @@ fun SettingsSubscriptionSection(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                "BETA TRIAL: FREE UNLOCK",
+                                stringResource(Res.string.beta_trial_free_unlock),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Black,
-                                color = if (tempSettings.isPremium) BrandOrange else MaterialTheme.colorScheme.onSurface
+                                color = if (tempSettings.isPremium) BrandOrange else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         Switch(
@@ -117,7 +126,7 @@ fun SettingsSubscriptionSection(
                         )
                     }
                     Text(
-                        "Enable this trial override to instantly unlock all Pro features for free during beta testing. Toggle it off to test the upgrade flow, standard lock screens, and live paywalls as users will see them.",
+                        stringResource(Res.string.beta_trial_free_unlock_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

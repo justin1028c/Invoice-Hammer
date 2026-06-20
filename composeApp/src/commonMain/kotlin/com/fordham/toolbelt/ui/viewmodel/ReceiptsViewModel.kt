@@ -13,8 +13,13 @@ import com.fordham.toolbelt.domain.repository.ReceiptRepository
 import com.fordham.toolbelt.domain.repository.StorageRepository
 import com.fordham.toolbelt.domain.usecase.ProcessReceiptRequest
 import com.fordham.toolbelt.domain.usecase.ProcessReceiptUseCase
+import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+
+import com.fordham.toolbelt.domain.model.ExpenseMatchResult
+import com.fordham.toolbelt.domain.usecase.GetMatchingDraftsUseCase
+import com.fordham.toolbelt.domain.usecase.AppendReceiptToDraftUseCase
 
 data class ReceiptsUiState(
     val capturedImageBytes: ByteArray? = null,
@@ -23,14 +28,18 @@ data class ReceiptsUiState(
     val showClientDropdown: Boolean = false,
     val showMarkupDialog: Boolean = false,
     val markupPercentage: String = "0",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val pendingMatch: ExpenseMatchResult? = null,
+    val processedItems: List<ReceiptItem> = emptyList()
 )
 
 class ReceiptsViewModel(
     private val receiptRepository: ReceiptRepository,
     private val storageRepository: StorageRepository,
     private val processReceiptUseCase: ProcessReceiptUseCase,
-    private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository
+    private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository,
+    private val getMatchingDraftsUseCase: GetMatchingDraftsUseCase,
+    private val appendReceiptToDraftUseCase: AppendReceiptToDraftUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReceiptsUiState())
@@ -97,7 +106,7 @@ class ReceiptsViewModel(
                 is StorageBytesOutcome.Failure -> {
                     _uiState.update {
                         it.copy(
-                            errorMessage = "Could not load photo: ${result.error.value}",
+                            errorMessage = UiMessageKeys.couldNotLoadPhoto(result.error.value),
                             capturedImageBytes = null
                         )
                     }
@@ -143,17 +152,39 @@ class ReceiptsViewModel(
             )
             when (result) {
                 is ProcessReceiptOutcome.Success -> {
-                    _uiState.update { it.copy(capturedImageBytes = null) }
+                    val items = result.items
+                    val match = getMatchingDraftsUseCase(items, selectedClient)
+                    _uiState.update { 
+                        it.copy(
+                            capturedImageBytes = null,
+                            pendingMatch = match,
+                            processedItems = items
+                        ) 
+                    }
                 }
                 is ProcessReceiptOutcome.Failure -> {
-                    _uiState.update { it.copy(errorMessage = "Failed to process receipt: ${result.error.value}") }
+                    _uiState.update { it.copy(errorMessage = UiMessageKeys.failedProcessReceipt(result.error.value)) }
                 }
                 is ProcessReceiptOutcome.PremiumRequired -> {
-                    _uiState.update { it.copy(errorMessage = "Premium subscription required to process receipt") }
+                    _uiState.update { it.copy(errorMessage = UiMessageKeys.PREMIUM_REQUIRED_RECEIPT) }
                 }
             }
             _uiState.update { it.copy(isProcessing = false) }
             onComplete()
         }
+    }
+
+    fun acceptExpenseMatch() {
+        val match = _uiState.value.pendingMatch ?: return
+        val items = _uiState.value.processedItems
+        viewModelScope.launch {
+            val markup = _uiState.value.markupPercentage.toDoubleOrNull() ?: 0.0
+            appendReceiptToDraftUseCase(match, items, markup)
+            _uiState.update { it.copy(pendingMatch = null, processedItems = emptyList()) }
+        }
+    }
+
+    fun declineExpenseMatch() {
+        _uiState.update { it.copy(pendingMatch = null, processedItems = emptyList()) }
     }
 }

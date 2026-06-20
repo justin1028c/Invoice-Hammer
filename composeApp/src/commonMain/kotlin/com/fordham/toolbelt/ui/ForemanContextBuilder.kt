@@ -65,6 +65,11 @@ fun buildForemanSystemPrompt(
         if (pendingReceiptPhoto) {
             append("Receipt photo is available — SCAN_LAST_RECEIPT can OCR it. ")
         }
+        val draftName = snapshot.draft?.clientName
+        if (tabIndex == 0 && !draftName.isNullOrBlank()) {
+            append("The user is actively viewing and editing the draft invoice for client '$draftName'. ")
+            append("For commands like 'add labor', 'attach receipt', or 'send', DO NOT ask for client names, addresses, or other draft fields. Instead, assume the current draft context is active and run APPEND_DRAFT_LINES, SCAN_LAST_RECEIPT, or SAVE_INVOICE_FROM_DRAFT immediately without clarification. ")
+        }
         append("If multiple clients match, the app will ask the user to pick — run SEARCH_CLIENTS first. ")
         append("Delete/Send require explicit user request.")
         

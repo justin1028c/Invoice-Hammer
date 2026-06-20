@@ -7,12 +7,18 @@ import com.fordham.toolbelt.domain.model.ReceiptOutcome
 import com.fordham.toolbelt.domain.model.ReceiptListOutcome
 import com.fordham.toolbelt.domain.model.ReceiptItem
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
+import com.fordham.toolbelt.data.SyncQueueDao
+import com.fordham.toolbelt.data.SyncQueueEntity
+import com.fordham.toolbelt.util.PlatformActions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
+import kotlinx.datetime.Clock
 
 class RoomReceiptRepository(
-    private val receiptDao: ReceiptDao
+    private val receiptDao: ReceiptDao,
+    private val syncQueueDao: SyncQueueDao,
+    private val platformActions: PlatformActions
 ) : ReceiptRepository {
     override val allItems: Flow<ReceiptListOutcome> = 
         receiptDao.getAllItems()
@@ -21,6 +27,13 @@ class RoomReceiptRepository(
 
     override suspend fun insertItem(item: ReceiptItem): ReceiptOutcome = try { 
         receiptDao.insertItems(listOf(item.toEntity()))
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         ReceiptOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure("RoomReceiptRepository", "repository", e)
@@ -29,6 +42,15 @@ class RoomReceiptRepository(
 
     override suspend fun insertItems(items: List<ReceiptItem>): ReceiptOutcome = try {
         receiptDao.insertItems(items.map { it.toEntity() })
+        // Note: insertItems can be called for single entries or restore snapshot,
+        // we enqueue the backup here to make sure any batch manual inserts are saved
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         ReceiptOutcome.Success
     } catch (e: Exception) {
     logRepositoryFailure("RoomReceiptRepository", "repository", e)
@@ -37,6 +59,13 @@ class RoomReceiptRepository(
 
     override suspend fun deleteItem(item: ReceiptItem): ReceiptOutcome = try { 
         receiptDao.deleteItem(item.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         ReceiptOutcome.Success
     } catch (e: Exception) {
 
@@ -64,6 +93,13 @@ logRepositoryFailure("RoomReceiptRepository", "repository", e)
 
     override suspend fun updateItem(item: ReceiptItem): ReceiptOutcome = try {
         receiptDao.updateItem(item.toEntity())
+        syncQueueDao.enqueue(
+            SyncQueueEntity(
+                operationType = "BACKUP",
+                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+            )
+        )
+        platformActions.triggerBackgroundSync()
         ReceiptOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure("RoomReceiptRepository", "repository", e)
