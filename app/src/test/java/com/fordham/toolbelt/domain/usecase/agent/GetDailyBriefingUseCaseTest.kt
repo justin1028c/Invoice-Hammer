@@ -27,22 +27,22 @@ class GetDailyBriefingUseCaseTest {
     fun `compiles briefing with overdue invoices, budget overruns, and change order opportunities`() = runTest {
         val unpaidInvoice = Invoice(
             id = InvoiceId("unpaid-inv"),
-            clientName = "Overdue Client",
-            clientAddress = "",
+            clientName = ClientName("Overdue Client"),
+            clientAddress = ClientAddress(""),
             date = "06/01/2026",
-            totalAmount = 3000.0,
-            itemsSummary = "Drywall",
+            totalAmount = MoneyAmount(3000.0),
+            itemsSummary = ItemsSummary("Drywall"),
             isPaid = false,
             isEstimate = false,
             lastUpdated = System.currentTimeMillis()
         )
         val activeEstimate = Invoice(
             id = InvoiceId("active-est"),
-            clientName = "Active Client",
-            clientAddress = "",
+            clientName = ClientName("Active Client"),
+            clientAddress = ClientAddress(""),
             date = "06/10/2026",
-            totalAmount = 5000.0,
-            itemsSummary = "Roofing",
+            totalAmount = MoneyAmount(5000.0),
+            itemsSummary = ItemsSummary("Roofing"),
             isPaid = false,
             isEstimate = true,
             lastUpdated = System.currentTimeMillis()
@@ -71,7 +71,7 @@ class GetDailyBriefingUseCaseTest {
             invoiceId = activeEstimate.id,
             clientName = ClientName("Active Client"),
             detectedTask = NaturalLanguage("Extra electrical outlet"),
-            recommendedItems = listOf(LineItem("Outlet", 200.0, "Service")),
+            recommendedItems = listOf(LineItem(ItemsSummary("Outlet"), MoneyAmount(200.0), "Service")),
             estimatedValueRange = 200.0..250.0,
             confidence = OpportunityConfidence.VERY_HIGH
         )

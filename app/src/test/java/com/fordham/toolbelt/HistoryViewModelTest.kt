@@ -1,8 +1,7 @@
 package com.fordham.toolbelt
 
 import app.cash.turbine.test
-import com.fordham.toolbelt.domain.model.Invoice
-import com.fordham.toolbelt.domain.model.InvoiceOutcome
+import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.ui.viewmodel.HistoryViewModel
 import io.mockk.coEvery
@@ -28,18 +27,18 @@ class HistoryViewModelTest {
 
     private val testInvoices = listOf(
         Invoice(
-            id = com.fordham.toolbelt.domain.model.InvoiceId("1"), clientName = "John Smith", clientAddress = "123 Main St",
-            date = "Jan 01, 2026", totalAmount = 1500.0, itemsSummary = "Drywall, Painting",
+            id = com.fordham.toolbelt.domain.model.InvoiceId("1"), clientName = ClientName("John Smith"), clientAddress = ClientAddress("123 Main St"),
+            date = "Jan 01, 2026", totalAmount = MoneyAmount(1500.0), itemsSummary = ItemsSummary("Drywall, Painting"),
             isPaid = true, isEstimate = false
         ),
         Invoice(
-            id = com.fordham.toolbelt.domain.model.InvoiceId("2"), clientName = "Jane Doe", clientAddress = "456 Oak Ave",
-            date = "Feb 15, 2026", totalAmount = 2500.0, itemsSummary = "Roofing",
+            id = com.fordham.toolbelt.domain.model.InvoiceId("2"), clientName = ClientName("Jane Doe"), clientAddress = ClientAddress("456 Oak Ave"),
+            date = "Feb 15, 2026", totalAmount = MoneyAmount(2500.0), itemsSummary = ItemsSummary("Roofing"),
             isPaid = false, isEstimate = false
         ),
         Invoice(
-            id = com.fordham.toolbelt.domain.model.InvoiceId("3"), clientName = "Bob Builder", clientAddress = "789 Pine Rd",
-            date = "Mar 01, 2026", totalAmount = 800.0, itemsSummary = "Plumbing",
+            id = com.fordham.toolbelt.domain.model.InvoiceId("3"), clientName = ClientName("Bob Builder"), clientAddress = ClientAddress("789 Pine Rd"),
+            date = "Mar 01, 2026", totalAmount = MoneyAmount(800.0), itemsSummary = ItemsSummary("Plumbing"),
             isPaid = false, isEstimate = true
         )
     )
@@ -81,7 +80,7 @@ class HistoryViewModelTest {
         viewModel.filteredInvoices.test {
             val invoices = awaitItem()
             assertEquals(1, invoices.size)
-            assertEquals("John Smith", invoices[0].clientName)
+            assertEquals("John Smith", invoices[0].clientName.value)
         }
     }
 
@@ -92,7 +91,7 @@ class HistoryViewModelTest {
         viewModel.filteredInvoices.test {
             val invoices = awaitItem()
             assertEquals(1, invoices.size)
-            assertEquals("Jane Doe", invoices[0].clientName)
+            assertEquals("Jane Doe", invoices[0].clientName.value)
         }
     }
 
@@ -104,7 +103,7 @@ class HistoryViewModelTest {
             val invoices = awaitItem()
             assertEquals(1, invoices.size)
             assertTrue(invoices[0].isPaid)
-            assertEquals("John Smith", invoices[0].clientName)
+            assertEquals("John Smith", invoices[0].clientName.value)
         }
     }
 

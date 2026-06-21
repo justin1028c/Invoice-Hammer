@@ -33,25 +33,25 @@ class GetBusinessStatsUseCase(
             val nonEstimateInvoices = invoices.filter { !it.isEstimate }
 
             // Global Calculations
-            val revenue = paidNonEstimateInvoices.sumOf { it.totalAmount }
+            val revenue = paidNonEstimateInvoices.sumOf { it.totalAmount.value }
             val expenses = receipts.sumOf { it.totalPrice }
             val netProfit = revenue - expenses
             val profitMargin = if (revenue > 0.0) ((netProfit / revenue) * 100.0).toInt() else 0
 
-            val totalDurationSeconds = paidNonEstimateInvoices.sumOf { it.durationSeconds }
+            val totalDurationSeconds = paidNonEstimateInvoices.sumOf { it.durationSeconds.value }
             val unbilledExpenses = receipts.filter { !it.isBilled }.sumOf { it.totalPrice }
 
             // Client-Specific Project Stats
-            val allClients = (invoices.map { it.clientName } + receipts.map { it.clientName })
+            val allClients = (invoices.map { it.clientName.value } + receipts.map { it.clientName })
                 .filter { it.isNotBlank() }
                 .distinct()
 
             val projectStats = allClients.map { client ->
-                val clientInvoices = nonEstimateInvoices.filter { it.clientName == client }
+                val clientInvoices = nonEstimateInvoices.filter { it.clientName.value == client }
                 val clientPaidInvoices = clientInvoices.filter { it.isPaid }
                 val clientReceipts = receipts.filter { it.clientName == client }
 
-                val clientRevenue = clientPaidInvoices.sumOf { it.totalAmount }
+                val clientRevenue = clientPaidInvoices.sumOf { it.totalAmount.value }
                 val clientExpenses = clientReceipts.sumOf { it.totalPrice }
                 val clientProfit = clientRevenue - clientExpenses
 
@@ -79,7 +79,7 @@ class GetBusinessStatsUseCase(
                 val year = invDate?.year ?: Instant.fromEpochMilliseconds(it.lastUpdated).toLocalDateTime(TimeZone.currentSystemDefault()).year
                 year == currentYear
             }
-            val ytdRevenue = ytdPaidInvoices.sumOf { it.totalAmount }
+            val ytdRevenue = ytdPaidInvoices.sumOf { it.totalAmount.value }
 
             val ytdReceipts = receipts.filter {
                 val year = Instant.fromEpochMilliseconds(it.lastUpdated).toLocalDateTime(TimeZone.currentSystemDefault()).year
@@ -90,7 +90,7 @@ class GetBusinessStatsUseCase(
 
             // Outstanding Invoices & aging buckets
             val unpaidNonEstimateInvoices = invoices.filter { !it.isPaid && !it.isEstimate }
-            val totalOutstanding = unpaidNonEstimateInvoices.sumOf { it.totalAmount }
+            val totalOutstanding = unpaidNonEstimateInvoices.sumOf { it.totalAmount.value }
 
             var outstanding0to30 = 0.0
             var outstanding31to60 = 0.0
@@ -106,9 +106,9 @@ class GetBusinessStatsUseCase(
                 }
 
                 when {
-                    ageDays <= 30 -> outstanding0to30 += invoice.totalAmount
-                    ageDays <= 60 -> outstanding31to60 += invoice.totalAmount
-                    else -> outstanding61Plus += invoice.totalAmount
+                    ageDays <= 30 -> outstanding0to30 += invoice.totalAmount.value
+                    ageDays <= 60 -> outstanding31to60 += invoice.totalAmount.value
+                    else -> outstanding61Plus += invoice.totalAmount.value
                 }
             }
 

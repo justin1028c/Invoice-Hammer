@@ -34,7 +34,7 @@ class ProcessCardTerminalPaymentUseCase(
             CardTerminalValidationOutcome.Valid -> Unit
         }
 
-        if (invoice.totalAmount <= 0.0) {
+        if (invoice.totalAmount.value <= 0.0) {
             return CardTerminalPaymentOutcome.Failure(
                 FailureMessage("Invoice must have a positive total before charging.")
             )
@@ -46,8 +46,8 @@ class ProcessCardTerminalPaymentUseCase(
 
         val amount = when (type) {
             PaymentRequestType.Deposit ->
-                invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * DEFAULT_DEPOSIT_PERCENT
-            PaymentRequestType.FullBalance -> invoice.totalAmount
+                invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * DEFAULT_DEPOSIT_PERCENT)
+            PaymentRequestType.FullBalance -> invoice.totalAmount.value
         }
 
         when (val gatewayOutcome = cardTerminalGateway.process(lastFour, brand, amount)) {

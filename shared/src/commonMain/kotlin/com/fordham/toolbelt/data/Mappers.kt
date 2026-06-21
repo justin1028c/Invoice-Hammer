@@ -43,58 +43,58 @@ fun DomainSupplier.toEntity(): SupplierEntity = SupplierEntity(
 
 fun ClientEntity.toDomain(): DomainClient = DomainClient(
     id = ClientId(id),
-    name = name,
+    name = ClientName(name),
     email = EmailAddress(email),
     phone = PhoneNumber(phone),
-    address = address,
+    address = ClientAddress(address),
     notes = notes,
-    totalInvoiced = totalInvoiced,
+    totalInvoiced = MoneyAmount(totalInvoiced),
     isFavorite = isFavorite
 )
 
 fun DomainClient.toEntity(): ClientEntity = ClientEntity(
     id = id.value,
-    name = name,
+    name = name.value,
     email = email.value,
     phone = phone.value,
-    address = address,
+    address = address.value,
     notes = notes,
-    totalInvoiced = totalInvoiced,
+    totalInvoiced = totalInvoiced.value,
     isFavorite = isFavorite
 )
 
 fun InvoiceEntity.toDomain(): DomainInvoice = DomainInvoice(
     id = InvoiceId(id),
-    clientName = clientName,
-    clientAddress = clientAddress,
+    clientName = ClientName(clientName),
+    clientAddress = ClientAddress(clientAddress),
     clientPhone = PhoneNumber(clientPhone),
     clientEmail = EmailAddress(clientEmail),
     date = date,
-    totalAmount = totalAmount,
-    depositAmount = depositAmount,
-    itemsSummary = itemsSummary,
-    pdfPath = pdfPath,
+    totalAmount = MoneyAmount(totalAmount),
+    depositAmount = MoneyAmount(depositAmount),
+    itemsSummary = ItemsSummary(itemsSummary),
+    pdfPath = PdfFilePath(pdfPath),
     isPaid = isPaid,
     isEstimate = isEstimate,
     lastUpdated = lastUpdated,
-    durationSeconds = durationSeconds
+    durationSeconds = DurationSeconds(durationSeconds)
 )
 
 fun DomainInvoice.toEntity(): InvoiceEntity = InvoiceEntity(
     id = id.value,
-    clientName = clientName,
-    clientAddress = clientAddress,
+    clientName = clientName.value,
+    clientAddress = clientAddress.value,
     clientPhone = clientPhone.value,
     clientEmail = clientEmail.value,
     date = date,
-    totalAmount = totalAmount,
-    depositAmount = depositAmount,
-    itemsSummary = itemsSummary,
-    pdfPath = pdfPath,
+    totalAmount = totalAmount.value,
+    depositAmount = depositAmount.value,
+    itemsSummary = itemsSummary.value,
+    pdfPath = pdfPath.value,
     isPaid = isPaid,
     isEstimate = isEstimate,
     lastUpdated = lastUpdated,
-    durationSeconds = durationSeconds
+    durationSeconds = durationSeconds.value
 )
 
 fun ReceiptEntity.toDomain(): DomainReceiptItem = DomainReceiptItem(

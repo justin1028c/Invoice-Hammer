@@ -93,7 +93,7 @@ fun ReceiptsCaptureSection(
             colors = ButtonDefaults.outlinedButtonColors(containerColor = ComposeColor.Transparent)
         ) {
             Text(
-                (selectedClient?.name ?: stringResource(Res.string.select_project_client)).uppercase(),
+                (selectedClient?.name?.value ?: stringResource(Res.string.select_project_client)).uppercase(),
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.secondary,
                 letterSpacing = 1.sp
@@ -110,7 +110,7 @@ fun ReceiptsCaptureSection(
             )
             allClients.forEach { client ->
                 DropdownMenuItem(
-                    text = { Text(client.name.uppercase(), fontWeight = FontWeight.Bold) },
+                    text = { Text(client.name.value.uppercase(), fontWeight = FontWeight.Bold) },
                     onClick = { onSelectClient(client); onSetClientDropdownVisible(false) }
                 )
             }

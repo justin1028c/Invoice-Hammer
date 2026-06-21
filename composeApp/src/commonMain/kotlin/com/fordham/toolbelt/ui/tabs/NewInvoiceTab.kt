@@ -160,10 +160,10 @@ fun NewInvoiceTab(
             DropdownMenu(expanded = uiState.showClientDropdown, onDismissRequest = { onSetInvoiceClientDropdownVisible(false) }) {
                 allClients.forEach { c ->
                     DropdownMenuItem(
-                        text = { Text(c.name.uppercase(), fontWeight = FontWeight.Bold) },
+                        text = { Text(c.name.value.uppercase(), fontWeight = FontWeight.Bold) },
                         onClick = { 
-                            onClientNameChange(c.name)
-                            onClientAddressChange(c.address)
+                            onClientNameChange(c.name.value)
+                            onClientAddressChange(c.address.value)
                             onSetInvoiceClientDropdownVisible(false)
                         }
                     )

@@ -332,7 +332,7 @@ class ForemanToolCallMapper(
             var bestMatch: com.fordham.toolbelt.domain.model.Client? = null
             var bestScore = 0.0
             for (client in allClientsOutcome.clients) {
-                val score = StringFuzzyMatcher.similarity(name, client.name)
+                val score = StringFuzzyMatcher.similarity(name, client.name.value)
                 if (score > bestScore) {
                     bestScore = score
                     bestMatch = client

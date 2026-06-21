@@ -147,7 +147,7 @@ class ReceiptsViewModel(
             val result = processReceiptUseCase(
                 ProcessReceiptRequest(
                     imageBytes = ReceiptImagePayload(imageBytes),
-                    clientName = selectedClient?.name?.let { ClientName(it) }
+                    clientName = selectedClient?.name
                 )
             )
             when (result) {

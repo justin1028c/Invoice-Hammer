@@ -1,8 +1,6 @@
 package com.fordham.toolbelt.ui.viewmodel
 
-import com.fordham.toolbelt.domain.model.DraftInvoice
-import com.fordham.toolbelt.domain.model.LineItem
-import com.fordham.toolbelt.domain.model.ReceiptItem
+import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -63,7 +61,7 @@ internal class NewInvoiceDraftEditor(
         val amount = draft.itemAmt.toDoubleOrNull() ?: 0.0
         if (amount <= 0.0 || draft.itemDesc.isBlank()) return false
 
-        val lineItems = draft.lineItems + LineItem(draft.itemDesc, amount, draft.selectedCategory)
+        val lineItems = draft.lineItems + LineItem(ItemsSummary(draft.itemDesc), MoneyAmount(amount), draft.selectedCategory)
         draftRepository.saveDraft(draft.copy(lineItems = lineItems, itemDesc = "", itemAmt = ""))
         return true
     }
@@ -84,7 +82,7 @@ internal class NewInvoiceDraftEditor(
 
         draftRepository.saveDraft(
             draft.copy(
-                lineItems = draft.lineItems + LineItem(description, amount, "Parts"),
+                lineItems = draft.lineItems + LineItem(ItemsSummary(description), MoneyAmount(amount), "Parts"),
                 linkedReceiptIds = draft.linkedReceiptIds + receipt.id.value
             )
         )

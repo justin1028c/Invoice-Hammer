@@ -2,20 +2,7 @@ package com.fordham.toolbelt.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fordham.toolbelt.domain.model.BusinessSettings
-import com.fordham.toolbelt.domain.model.BusinessStats
-import com.fordham.toolbelt.domain.model.TaxExportOutcome
-import com.fordham.toolbelt.domain.model.Invoice
-import com.fordham.toolbelt.domain.model.InvoiceId
-import com.fordham.toolbelt.domain.model.PhoneNumber
-import com.fordham.toolbelt.domain.model.EmailAddress
-import com.fordham.toolbelt.domain.model.JobNote
-import com.fordham.toolbelt.domain.model.NoteId
-import com.fordham.toolbelt.domain.model.ReceiptItem
-import com.fordham.toolbelt.domain.model.ReceiptId
-import com.fordham.toolbelt.domain.model.LineItem
-import com.fordham.toolbelt.domain.model.Client
-import com.fordham.toolbelt.domain.model.ClientId
+import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
@@ -111,10 +98,10 @@ class StatsViewModel(
                 clientRepository.insertClient(
                     Client(
                         id = ClientId(randomUUID()),
-                        name = name,
+                        name = ClientName(name),
                         email = EmailAddress("contact@${name.lowercase().replace(" ", "")}.com"),
                         phone = PhoneNumber("555-0100"),
-                        address = "Industrial Park Rd"
+                        address = ClientAddress("Industrial Park Rd")
                     )
                 )
             }
@@ -132,36 +119,36 @@ class StatsViewModel(
                     clientRepository.insertClient(
                         Client(
                             id = ClientId(randomUUID()),
-                            name = clientName,
+                            name = ClientName(clientName),
                             email = EmailAddress("stress@test.com"),
                             phone = PhoneNumber("555-0199"),
-                            address = "123 Construction Rd"
+                            address = ClientAddress("123 Construction Rd")
                         )
                     )
                     
                     list.add(
                         Invoice(
                             id = estimateId,
-                            clientName = clientName,
-                            clientAddress = "123 Construction Rd",
+                            clientName = ClientName(clientName),
+                            clientAddress = ClientAddress("123 Construction Rd"),
                             clientPhone = PhoneNumber("555-0199"),
                             clientEmail = EmailAddress("stress@test.com"),
                             date = dateStr,
-                            totalAmount = amt,
-                            depositAmount = 0.0,
-                            itemsSummary = desc,
-                            pdfPath = "",
+                            totalAmount = MoneyAmount(amt),
+                            depositAmount = MoneyAmount(0.0),
+                            itemsSummary = ItemsSummary(desc),
+                            pdfPath = PdfFilePath(""),
                             isPaid = false,
                             isEstimate = true,
                             lastUpdated = now - (i * 10000),
-                            durationSeconds = (1800..28800).random().toLong()
+                            durationSeconds = DurationSeconds((1800..28800).random().toLong())
                         )
                     )
                     
                     // Create [SYSTEM_BUDGET] note (30% of total invoice amount allocated as materials)
                     val budgetedMaterials = amt * 0.3
                     val lineItems = listOf(
-                        LineItem("Materials Package", budgetedMaterials, "Materials")
+                        LineItem(ItemsSummary("Materials Package"), MoneyAmount(budgetedMaterials), "Materials")
                     )
                     val budgetNoteText = SystemBudgetSerializer.serialize(amt, budgetedMaterials, lineItems)
                     jobNoteRepository.insertNote(
@@ -261,19 +248,19 @@ class StatsViewModel(
                     list.add(
                         Invoice(
                             id = InvoiceId(randomUUID()),
-                            clientName = client,
-                            clientAddress = "123 Construction Rd",
+                            clientName = ClientName(client),
+                            clientAddress = ClientAddress("123 Construction Rd"),
                             clientPhone = PhoneNumber("555-0199"),
                             clientEmail = EmailAddress("stress@test.com"),
                             date = dateStr,
-                            totalAmount = amt,
-                            depositAmount = if (isPaid) amt * 0.1 else 0.0,
-                            itemsSummary = desc,
-                            pdfPath = "",
+                            totalAmount = MoneyAmount(amt),
+                            depositAmount = MoneyAmount(if (isPaid) amt * 0.1 else 0.0),
+                            itemsSummary = ItemsSummary(desc),
+                            pdfPath = PdfFilePath(""),
                             isPaid = isPaid,
                             isEstimate = isEstimate,
                             lastUpdated = now - (i * 10000),
-                            durationSeconds = (1800..28800).random().toLong()
+                            durationSeconds = DurationSeconds((1800..28800).random().toLong())
                         )
                     )
                 }

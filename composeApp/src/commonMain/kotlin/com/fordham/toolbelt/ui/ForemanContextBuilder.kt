@@ -32,10 +32,10 @@ fun buildForemanSystemPrompt(
         selectedClient = selectedClient?.let {
             ForemanClientSnapshot(
                 id = it.id.value,
-                name = it.name,
+                name = it.name.value,
                 email = it.email.value,
                 phone = it.phone.value,
-                address = it.address
+                address = it.address.value
             )
         },
         draft = ForemanDraftSnapshot(
@@ -44,14 +44,14 @@ fun buildForemanSystemPrompt(
             taxPercent = draft.taxText,
             deposit = draft.depositCollected.toDoubleOrNull() ?: 0.0,
             lineItems = draft.lineItems.take(12).map {
-                ForemanDraftLineSnapshot(it.description, it.amount, it.category)
+                ForemanDraftLineSnapshot(it.description.value, it.amount.value, it.category)
             }
         ),
         lastSavedInvoiceId = lastSavedInvoiceId,
         lastSavedInvoiceClient = lastSavedInvoiceClient,
         pendingReceiptPhoto = pendingReceiptPhoto,
         clientCatalog = catalogClients.take(20).map {
-            ForemanCatalogEntry(it.id.value, it.name)
+            ForemanCatalogEntry(it.id.value, it.name.value)
         }
     )
     return buildString {

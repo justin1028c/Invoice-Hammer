@@ -67,9 +67,9 @@ object SystemBudgetSerializer {
 
     fun serialize(revenue: Double, materials: Double, lineItems: List<LineItem>): String {
         val itemsStr = lineItems.joinToString("|") { item ->
-            val desc = item.description.replace(":", "\\:").replace("|", "\\|")
+            val desc = item.description.value.replace(":", "\\:").replace("|", "\\|")
             val category = item.category.replace(":", "\\:").replace("|", "\\|")
-            "$desc:$category:${item.amount}:${item.quantity ?: ""}:${item.unitPrice ?: ""}"
+            "$desc:$category:${item.amount.value}:${item.quantity ?: ""}:${item.unitPrice?.value ?: ""}"
         }
         return "$PREFIX revenue=$revenue; materials=$materials; items=$itemsStr"
     }
@@ -101,11 +101,11 @@ object SystemBudgetSerializer {
                             val qty = fields.getOrNull(3)?.toDoubleOrNull()
                             val unitPrice = fields.getOrNull(4)?.toDoubleOrNull()
                             LineItem(
-                                description = desc,
-                                amount = amount,
+                                description = com.fordham.toolbelt.domain.model.ItemsSummary(desc),
+                                amount = com.fordham.toolbelt.domain.model.MoneyAmount(amount),
                                 category = category,
                                 quantity = qty,
-                                unitPrice = unitPrice
+                                unitPrice = unitPrice?.let { com.fordham.toolbelt.domain.model.MoneyAmount(it) }
                             )
                         }
                     }

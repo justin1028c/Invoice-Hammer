@@ -72,12 +72,12 @@ class SaveInvoiceUseCaseTest {
 
             val invoice = result.unwrap()
 
-            assertEquals(870.0, invoice.totalAmount, 0.01)
-            assertEquals("John Smith", invoice.clientName)
-            assertEquals("123 Main St", invoice.clientAddress)
-            assertEquals(200.0, invoice.depositAmount, 0.01)
-            assertEquals("Drywall, Painting", invoice.itemsSummary)
-            assertEquals("/path/to/pdf.pdf", invoice.pdfPath)
+            assertEquals(870.0, invoice.totalAmount.value, 0.01)
+            assertEquals("John Smith", invoice.clientName.value)
+            assertEquals("123 Main St", invoice.clientAddress.value)
+            assertEquals(200.0, invoice.depositAmount.value, 0.01)
+            assertEquals("Drywall, Painting", invoice.itemsSummary.value)
+            assertEquals("/path/to/pdf.pdf", invoice.pdfPath.value)
             assertFalse(invoice.isEstimate)
             assertFalse(invoice.isPaid)
 
@@ -105,7 +105,7 @@ class SaveInvoiceUseCaseTest {
         )).unwrap()
 
         assertTrue(invoice.isEstimate)
-        assertEquals(500.0, invoice.totalAmount, 0.01)
+        assertEquals(500.0, invoice.totalAmount.value, 0.01)
     }
 
     @Test
@@ -123,15 +123,15 @@ class SaveInvoiceUseCaseTest {
             isEstimate = false
         )).unwrap()
 
-        assertEquals(1000.0, invoice.totalAmount, 0.01)
+        assertEquals(1000.0, invoice.totalAmount.value, 0.01)
     }
 
     @Test
     fun `invoke generates unique id`() = runTest {
         coEvery { invoiceRepository.insertInvoice(any()) } returns InvoiceOutcome.Success
 
-        val invoice1 = useCase(request("A", "", 100.0, 0.0, 0.0, "", "", false)).unwrap()
-        val invoice2 = useCase(request("B", "", 200.0, 0.0, 0.0, "", "", false)).unwrap()
+        val invoice1 = useCase(request("A", "", 100.0, 0.0, 0.0, "Labor", "", false)).unwrap()
+        val invoice2 = useCase(request("B", "", 200.0, 0.0, 0.0, "Labor", "", false)).unwrap()
 
         assertNotEquals(invoice1.id, invoice2.id)
     }
@@ -180,6 +180,6 @@ class SaveInvoiceUseCaseTest {
             durationSeconds = 3600L
         )).unwrap()
 
-        assertEquals(3600L, invoice.durationSeconds)
+        assertEquals(3600L, invoice.durationSeconds.value)
     }
 }

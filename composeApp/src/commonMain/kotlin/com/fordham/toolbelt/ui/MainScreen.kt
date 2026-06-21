@@ -260,7 +260,7 @@ fun MainScreen(
                 )
             },
             selectedClientId = client?.id,
-            selectedClientName = client?.name,
+            selectedClientName = client?.name?.value,
             knownClientsCatalog = knownClientsCatalog,
             knownSuppliersCatalog = knownSuppliersCatalog,
             pendingReceiptImageBytes = pendingReceiptBytes,

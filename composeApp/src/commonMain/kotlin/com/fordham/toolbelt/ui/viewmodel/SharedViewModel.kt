@@ -39,14 +39,14 @@ class SharedViewModel(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val selectedClientSummary: StateFlow<com.fordham.toolbelt.domain.usecase.FinancialSummary?> = _selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(null)
-        else getClientFinancialSummaryUseCase(client.name)
+        else getClientFinancialSummaryUseCase(client.name.value)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val selectedClientInvoices: StateFlow<List<Invoice>> = _selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList<Invoice>())
         else invoiceRepository.allInvoices.map { list -> 
-            list.filter { it.clientName.trim().equals(client.name.trim(), ignoreCase = true) } 
+            list.filter { it.clientName.value.trim().equals(client.name.value.trim(), ignoreCase = true) } 
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -54,7 +54,7 @@ class SharedViewModel(
     val selectedClientPhotos: StateFlow<List<JobPhoto>> = _selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList())
         else invoiceRepository.allInvoices.flatMapLatest { invoices ->
-            val clientInvoiceIds = invoices.filter { it.clientName.trim().equals(client.name.trim(), ignoreCase = true) }.map { it.id }
+            val clientInvoiceIds = invoices.filter { it.clientName.value.trim().equals(client.name.value.trim(), ignoreCase = true) }.map { it.id }
             if (clientInvoiceIds.isEmpty()) flowOf(emptyList())
             else {
                 val flows = clientInvoiceIds.map { photoRepository.observePhotosForInvoice(it) }
@@ -71,7 +71,7 @@ class SharedViewModel(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val selectedClientNotes: StateFlow<List<JobNote>> = _selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList<JobNote>())
-        else jobNoteRepository.getNotesByClient(client.name)
+        else jobNoteRepository.getNotesByClient(client.name.value)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun selectClient(client: Client?) {
@@ -81,7 +81,7 @@ class SharedViewModel(
     fun selectClientByName(name: String) {
         viewModelScope.launch {
             val clients = allClients.first()
-            val match = clients.find { it.name.equals(name, ignoreCase = true) }
+            val match = clients.find { it.name.value.equals(name, ignoreCase = true) }
             if (match != null) {
                 _selectedClient.value = match
             }

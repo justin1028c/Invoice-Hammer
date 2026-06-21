@@ -36,7 +36,7 @@ class SupplierRepositoryImpl(
                 }
                 
                 val analytics = SupplierAnalytics(
-                    totalSpendYtd = supplierReceipts.sumOf { it.totalPrice },
+                    totalSpendYtd = supplierReceipts.map { it.totalPrice }.sum(),
                     jobsLinked = supplierReceipts.map { it.clientName }.distinct().size,
                     avgMarkup = 0.0
                 )

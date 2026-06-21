@@ -156,7 +156,7 @@ class StatsViewModelTest {
         profileBReceipts.forEach { receipt ->
             val correspondingInvoice = capturedInvoices.find { it.id == receipt.linkedInvoiceId }
             assertNotNull(correspondingInvoice)
-            val expectedBudget = correspondingInvoice!!.totalAmount * 0.3
+            val expectedBudget = correspondingInvoice!!.totalAmount.value * 0.3
             val expectedOverrun = expectedBudget * 1.25
             assertEquals(expectedOverrun, receipt.totalPrice, 0.001)
         }

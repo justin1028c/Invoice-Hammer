@@ -20,7 +20,7 @@ class ComposeUnpaidInvoiceReminderUseCase {
 
         val primary = unpaid.maxByOrNull { it.lastUpdated } ?: return null
         val title = if (unpaid.size == 1) {
-            UserFacingCopy.Notifications.paymentReminderTitle(primary.clientName)
+            UserFacingCopy.Notifications.paymentReminderTitle(primary.clientName.value)
         } else {
             UnpaidInvoiceReminders.title()
         }

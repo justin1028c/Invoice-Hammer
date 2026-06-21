@@ -10,10 +10,10 @@ data class DraftLineItemInput(
     val unitPrice: Double? = null
 ) {
     fun toLineItem(): LineItem = LineItem(
-        description = description.value,
-        amount = amount,
+        description = com.fordham.toolbelt.domain.model.ItemsSummary(description.value),
+        amount = com.fordham.toolbelt.domain.model.MoneyAmount(amount),
         category = category.value.ifBlank { "Service" },
         quantity = quantity,
-        unitPrice = unitPrice
+        unitPrice = unitPrice?.let { com.fordham.toolbelt.domain.model.MoneyAmount(it) }
     )
 }

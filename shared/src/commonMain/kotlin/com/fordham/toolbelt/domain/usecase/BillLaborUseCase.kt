@@ -20,8 +20,8 @@ class BillLaborUseCase(
         val hours = draft.elapsedSeconds / 3600.0
         val rate = draft.hourlyRate
         val item = LineItem(
-            description = "Labor: ${formatTwoDecimals(hours)} hours",
-            amount = hours * rate,
+            description = com.fordham.toolbelt.domain.model.ItemsSummary("Labor: ${formatTwoDecimals(hours)} hours"),
+            amount = com.fordham.toolbelt.domain.model.MoneyAmount(hours * rate),
             category = "Labor"
         )
         

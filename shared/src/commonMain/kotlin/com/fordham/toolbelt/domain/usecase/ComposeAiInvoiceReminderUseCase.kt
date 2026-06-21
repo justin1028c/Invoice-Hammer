@@ -46,14 +46,14 @@ class ComposeAiInvoiceReminderUseCase(
 
         val promptText = buildString {
             append("Compose a payment reminder message for the following invoice:\n")
-            append("Client Name: ${invoice.clientName}\n")
+            append("Client Name: ${invoice.clientName.value}\n")
             append("Invoice ID: ${invoice.id.value}\n")
             append("Invoice Date: ${invoice.date}\n")
-            append("Total Amount: \$${invoice.totalAmount}\n")
-            if (invoice.depositAmount > 0.0) {
-                append("Deposit Paid: \$${invoice.depositAmount}\n")
+            append("Total Amount: \$${invoice.totalAmount.value}\n")
+            if (invoice.depositAmount.value > 0.0) {
+                append("Deposit Paid: \$${invoice.depositAmount.value}\n")
             }
-            append("Items: ${invoice.itemsSummary}\n")
+            append("Items: ${invoice.itemsSummary.value}\n")
             if (!contractorName.isNullOrBlank()) {
                 append("Contractor/Sender Name: $contractorName\n")
             }

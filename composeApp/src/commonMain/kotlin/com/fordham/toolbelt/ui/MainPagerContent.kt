@@ -221,7 +221,7 @@ fun MainPagerContent(
                     onAddNote = { clientsViewModel.onIntent(ClientsIntent.AddNote(it)) },
                     onDeleteNote = { clientsViewModel.onIntent(ClientsIntent.DeleteNote(it)) },
                     onSummarizeNotes = { clientsViewModel.onIntent(ClientsIntent.SummarizeNotes(notes)) },
-                    onLinkReceipt = { r -> sharedViewModel.selectedClient.value?.let { clientsViewModel.onIntent(ClientsIntent.LinkReceipt(r, it.name)) } },
+                    onLinkReceipt = { r -> sharedViewModel.selectedClient.value?.let { clientsViewModel.onIntent(ClientsIntent.LinkReceipt(r, it.name.value)) } },
                     onViewPdf = { platformActions.openPdf(it) },
                     onSetNoteText = { clientsViewModel.onIntent(ClientsIntent.OnNoteTextChange(it)) },
                     onSetAddNoteVisible = { clientsViewModel.onIntent(ClientsIntent.SetAddNoteVisible(it)) },

@@ -47,13 +47,13 @@ class PowerPayPaymentRepository(
         type: PaymentRequestType,
         provider: PaymentProviderType
     ): PaymentRequestOutcome {
-        if (invoice.totalAmount <= 0.0) {
+        if (invoice.totalAmount.value <= 0.0) {
             return PaymentRequestOutcome.Failure(FailureMessage("Invoice must have a positive total before requesting payment."))
         }
 
         val amount = when (type) {
-            PaymentRequestType.Deposit -> invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * DEFAULT_DEPOSIT_PERCENT
-            PaymentRequestType.FullBalance -> invoice.totalAmount
+            PaymentRequestType.Deposit -> invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * DEFAULT_DEPOSIT_PERCENT)
+            PaymentRequestType.FullBalance -> invoice.totalAmount.value
         }
 
         val contractorUserId = authRepository.currentUser.firstOrNull()?.id?.value ?: "anonymous"
@@ -63,11 +63,11 @@ class PowerPayPaymentRepository(
                 appId = config.appId,
                 contractorUserId = contractorUserId,
                 invoiceId = invoice.id.value,
-                clientName = invoice.clientName,
+                clientName = invoice.clientName.value,
                 amountUsd = amount,
                 requestType = type.wireName,
                 provider = provider.wireName,
-                description = "${type.descriptionLabel} for ${invoice.clientName}",
+                description = "${type.descriptionLabel} for ${invoice.clientName.value}",
                 preset = config.preset,
                 environment = config.environment.wireName
             )
@@ -122,7 +122,7 @@ class PowerPayPaymentRepository(
         val request = InvoicePaymentRequest(
             id = PaymentRequestId(randomUUID()),
             invoiceId = invoice.id,
-            invoiceClientName = invoice.clientName,
+            invoiceClientName = invoice.clientName.value,
             type = type,
             provider = PaymentProviderType.CardTerminal,
             requestedAmount = MoneyAmount(amount),

@@ -147,13 +147,13 @@ class BentoReportEngine(
             paint.color = Color.parseColor("#334155")
             canvas.drawText(invoice.date.take(10), 55f, y, paint)
             
-            val clientDisplay = if (invoice.clientName.length > 18) invoice.clientName.take(16) + ".." else invoice.clientName
+            val clientDisplay = if (invoice.clientName.value.length > 18) invoice.clientName.value.take(16) + ".." else invoice.clientName.value
             canvas.drawText(clientDisplay, 140f, y, paint)
             
-            val summaryDisplay = if (invoice.itemsSummary.length > 40) invoice.itemsSummary.take(37) + "..." else invoice.itemsSummary
+            val summaryDisplay = if (invoice.itemsSummary.value.length > 40) invoice.itemsSummary.value.take(37) + "..." else invoice.itemsSummary.value
             canvas.drawText(summaryDisplay, 260f, y, paint)
             
-            canvas.drawText(formatCurrency(invoice.totalAmount), 480f, y, paint)
+            canvas.drawText(formatCurrency(invoice.totalAmount.value), 480f, y, paint)
 
             // Draw line separator
             paint.color = Color.parseColor("#F1F5F9")

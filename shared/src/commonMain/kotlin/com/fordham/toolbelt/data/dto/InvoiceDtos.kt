@@ -13,20 +13,20 @@ data class LineItemDto(
     val unitPrice: Double? = null
 ) {
     fun toDomain() = LineItem(
-        description = description,
-        amount = amount,
+        description = com.fordham.toolbelt.domain.model.ItemsSummary(description),
+        amount = com.fordham.toolbelt.domain.model.MoneyAmount(amount),
         category = category,
         quantity = quantity,
-        unitPrice = unitPrice
+        unitPrice = unitPrice?.let { com.fordham.toolbelt.domain.model.MoneyAmount(it) }
     )
 
     companion object {
         fun fromDomain(domain: LineItem) = LineItemDto(
-            description = domain.description,
-            amount = domain.amount,
+            description = domain.description.value,
+            amount = domain.amount.value,
             category = domain.category,
             quantity = domain.quantity,
-            unitPrice = domain.unitPrice
+            unitPrice = domain.unitPrice?.value
         )
     }
 }
@@ -35,11 +35,29 @@ data class LineItemDto(
 data class AiInvoiceResultDto(
     val clientName: String = "",
     val clientAddress: String = "",
-    val items: List<LineItemDto> = emptyList()
+    val items: List<LineItemDto> = emptyList(),
+    val laborHours: Double? = null,
+    val laborRate: Double? = null,
+    val depositAmount: Double = 0.0,
+    val taxRatePercent: Double = 7.0,
+    val discountPercent: Double = 0.0,
+    val notes: String = "",
+    val confidenceScore: Double = 1.0,
+    val userSummary: String = "",
+    val validationIssues: List<String> = emptyList()
 ) {
     fun toDomain() = AiInvoiceResult(
         clientName = clientName,
         clientAddress = clientAddress,
-        items = items.map { it.toDomain() }
+        items = items.map { it.toDomain() },
+        laborHours = laborHours,
+        laborRate = laborRate,
+        depositAmount = depositAmount,
+        taxRatePercent = taxRatePercent,
+        discountPercent = discountPercent,
+        notes = notes,
+        confidenceScore = confidenceScore,
+        userSummary = userSummary,
+        validationIssues = validationIssues
     )
 }

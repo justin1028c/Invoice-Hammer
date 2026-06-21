@@ -71,14 +71,14 @@ class AndroidStripePaymentSheetGateway : StripePaymentSheetGateway {
         PaymentSheetResult.Completed -> {
             val amount = when (type) {
                 PaymentRequestType.Deposit ->
-                    invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * 0.30
-                PaymentRequestType.FullBalance -> invoice.totalAmount
+                    invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * 0.30)
+                PaymentRequestType.FullBalance -> invoice.totalAmount.value
             }
             StripeCardCollectOutcome.Success(
                 request = InvoicePaymentRequest(
                     id = PaymentRequestId(randomUUID()),
                     invoiceId = invoice.id,
-                    invoiceClientName = invoice.clientName,
+                    invoiceClientName = invoice.clientName.value,
                     type = type,
                     provider = PaymentProviderType.CardTerminal,
                     requestedAmount = MoneyAmount(amount),

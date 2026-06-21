@@ -28,8 +28,8 @@ class GetClientFinancialSummaryUseCase(
             receiptRepository.allItems
         ) { invoices, receiptsResult ->
             val revenue = invoices
-                .filter { it.clientName == clientName && it.isPaid && !it.isEstimate }
-                .sumOf { it.totalAmount }
+                .filter { it.clientName.value == clientName && it.isPaid && !it.isEstimate }
+                .sumOf { it.totalAmount.value }
 
             val expenses = if (receiptsResult is ReceiptListOutcome.Success) {
                 receiptsResult.receipts

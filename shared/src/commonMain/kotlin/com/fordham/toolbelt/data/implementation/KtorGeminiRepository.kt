@@ -91,7 +91,20 @@ class KtorGeminiRepository(
         properties = mapOf(
             "clientName" to GeminiSchema(type = "STRING", description = "the name of the client/customer"),
             "clientAddress" to GeminiSchema(type = "STRING", description = "the billing address of the client"),
-            "items" to GeminiSchema(type = "ARRAY", items = lineItemSchema, description = "list of line items or charges")
+            "items" to GeminiSchema(type = "ARRAY", items = lineItemSchema, description = "list of line items or charges"),
+            "laborHours" to GeminiSchema(type = "NUMBER", description = "hourly labor hours"),
+            "laborRate" to GeminiSchema(type = "NUMBER", description = "hourly labor rate in dollars"),
+            "depositAmount" to GeminiSchema(type = "NUMBER", description = "deposit amount in dollars"),
+            "taxRatePercent" to GeminiSchema(type = "NUMBER", description = "tax rate percentage"),
+            "discountPercent" to GeminiSchema(type = "NUMBER", description = "discount percentage"),
+            "notes" to GeminiSchema(type = "STRING", description = "additional terms/notes"),
+            "confidenceScore" to GeminiSchema(type = "NUMBER", description = "overall parsing confidence score 0.0-1.0"),
+            "userSummary" to GeminiSchema(type = "STRING", description = "verbal confirmation summary"),
+            "validationIssues" to GeminiSchema(
+                type = "ARRAY",
+                items = GeminiSchema(type = "STRING"),
+                description = "validation warnings"
+            )
         ),
         required = listOf("clientName", "clientAddress", "items")
     )
@@ -300,21 +313,66 @@ class KtorGeminiRepository(
     }
 
     override suspend fun processInvoiceText(text: String, categories: List<String>): InvoiceTextOutcome = try {
+        val currentDate = DateTimeUtil.getNowFormatted()
         val prompt = LlmLocalePolicy.wrapPrompt(
             """
-            You are an expert invoice parsing assistant. Your task is to extract invoice details from the text below.
-            You must return a JSON object with the following exact keys:
-            - "clientName": string, the name of the client/customer (e.g. John Doe, Smith Enterprises). If not found, return empty string.
-            - "clientAddress": string, the billing address of the client. If not found, return empty string.
-            - "items": array of objects, representing line items or charges. Each object MUST contain:
-                * "description": string, the service or product description (e.g. "Labor", "Plumbing repair", "Materials")
-                * "amount": double, the cost/amount of this line item
-                * "category": string, either "Labor", "Materials", or "Service" (default to "Service")
+            You are Foreman, the voice-first AI assistant inside Invoice Hammer for handymen and contractors (Bilingual English + Spanish).
 
-            [INVOICE TEXT]
+            Goal: Turn spoken commands or noisy transcriptions into accurate, structured invoice drafts. Always prioritize user control and data integrity.
+
+            ### 📅 Current Context (Use for Relative Dates)
+            - Current Date Reference: $currentDate (Use this to resolve phrases like "yesterday," "last week," or "due in 15 days").
+
+            ### 🛡️ Domain Constraints (Never Violate)
+            - Monetary amounts must be non-negative (>= 0.0)
+            - Client name cannot be blank
+            - Tax rate: 0.0–100.0 (default 7.0 if unspecified)
+            - Math Verification: For every item, "amount" MUST exactly equal "quantity * unitPrice". Double-check your math.
+
+            ### 📤 Required Output Schema Description
+            Extract and return the details from the text below as a single flat JSON object with the following schema:
+            - clientName: string, name of the client. Cannot be blank.
+            - clientAddress: string, client billing address.
+            - items: array of objects representing line items. Each object MUST contain:
+                * description: string, the service or product summary.
+                * quantity: number, quantity of units (default 1.0 if not specified).
+                * unitPrice: number, cost per unit (default to amount if quantity is 1.0).
+                * amount: number, total item cost (MUST equal quantity * unitPrice).
+                * category: string, select from 'Labor', 'Materials', or 'Service'.
+            - laborHours: number, hourly labor hours if stated.
+            - laborRate: number, hourly labor rate in dollars if stated.
+            - depositAmount: number, deposit amount in dollars (default 0.0).
+            - taxRatePercent: number, tax percentage rate (0.0 to 100.0, default 7.0).
+            - discountPercent: number, discount percentage (default 0.0).
+            - notes: string, any additional terms or notes.
+            - confidenceScore: number, overall parsing confidence score (0.0 to 1.0).
+            - userSummary: string, friendly verbal summary of parsed items and totals.
+            - validationIssues: array of strings. Fill with these codes if applicable: "MISSING_CLIENT_NAME", "MISSING_CLIENT_ADDRESS", "ZERO_AMOUNT", "LOW_AUDIO_CONFIDENCE", "MATH_MISMATCH".
+
+            ### 🔨 Contractor Domain Knowledge & Lingo
+            * Drywall: "15 ft of drywall mudded taped and skimmed at $500" -> Qty: 15, Price: 500, Category: "Materials"
+            * Plumbing: "Replaced toilet at $200" -> Qty: 1, Price: 200, Category: "Service"
+            * Labor: "Add 10 hours at $50/hour" -> Qty: 10, Price: 50, Category: "Labor"
+            * Bilingual matching: Map Spanish terms to standardized descriptions (e.g., "tablaroca" to "Sheetrock/Drywall", "masilla" to "Drywall Mud", "inodoro" to "Toilet replacement").
+
+            #### 🌐 Few-Shot Bilingual / Spanglish Examples:
+            * Input: "Cobra 5 horas de labor a $45 y ponle $150 de la masilla y la tablaroca a Justin"
+                - clientName: "Justin"
+                - laborHours: 5.0, laborRate: 45.0
+                - items: [{"description": "Drywall mud and sheetrock (Masilla y tablaroca)", "quantity": 1.0, "unitPrice": 150.0, "amount": 150.0, "category": "Materials"}]
+            * Input: "Factura a John Doe $200 por reparar el inodoro y ponle tax de siete por ciento"
+                - clientName: "John Doe"
+                - items: [{"description": "Toilet repair (Reparación de inodoro)", "quantity": 1.0, "unitPrice": 200.0, "amount": 200.0, "category": "Service"}]
+                - taxRatePercent: 7.0
+
+            ### 🎤 Handling Noisy Job-Site Inputs
+            * Noisy Audio/Uncertainty: If input is noisy or unclear, drop confidenceScore < 0.6, output empty fields, append "LOW_AUDIO_CONFIDENCE" to validationIssues, and ask for clarification in userSummary.
+            * Incremental Additions: If user says "Add 2 hours to that", append it as a new line item.
+
+            [INVOICE TEXT OR TRANSCRIPT]
             $text
 
-            CRITICAL: Return ONLY raw JSON matching this schema. No explanation or code fences.
+            CRITICAL: Return ONLY raw JSON matching this schema. No explanation or markdown code fences.
             """.trimIndent(),
             LlmLocalePolicy.OutputMode.StructuredJson
         )

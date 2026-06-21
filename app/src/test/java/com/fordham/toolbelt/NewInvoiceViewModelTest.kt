@@ -96,8 +96,8 @@ class NewInvoiceViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             assertEquals(1, state.lineItems.size)
-            assertEquals("Drywall patch", state.lineItems[0].description)
-            assertEquals(75.50, state.lineItems[0].amount, 0.01)
+            assertEquals("Drywall patch", state.lineItems[0].description.value)
+            assertEquals(75.50, state.lineItems[0].amount.value, 0.01)
             assertEquals("", state.itemDesc)
             assertEquals("", state.itemAmt)
         }
@@ -105,8 +105,8 @@ class NewInvoiceViewModelTest {
 
     @Test
     fun `removeLineItem removes from list`() = runTest {
-        val item1 = LineItem("Item 1", 100.0, "Drywall")
-        val item2 = LineItem("Item 2", 200.0, "Drywall")
+        val item1 = LineItem(ItemsSummary("Item 1"), MoneyAmount(100.0), "Drywall")
+        val item2 = LineItem(ItemsSummary("Item 2"), MoneyAmount(200.0), "Drywall")
         
         // Add them first
         viewModel.onIntent(NewInvoiceIntent.OnItemDescChange("Item 1"))
@@ -122,7 +122,7 @@ class NewInvoiceViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             assertEquals(1, state.lineItems.size)
-            assertEquals("Item 2", state.lineItems[0].description)
+            assertEquals("Item 2", state.lineItems[0].description.value)
         }
     }
 
@@ -169,7 +169,7 @@ class NewInvoiceViewModelTest {
         val aiResult = AiInvoiceResult(
             clientName = "AI Client",
             clientAddress = "AI Address",
-            items = listOf(LineItem("AI Item", 300.0, "Drywall"))
+            items = listOf(LineItem(ItemsSummary("AI Item"), MoneyAmount(300.0), "Drywall"))
         )
         coEvery { processInvoiceAiUseCase(any(), any()) } returns InvoiceTextOutcome.Success(aiResult)
 
@@ -206,7 +206,7 @@ class NewInvoiceViewModelTest {
     fun `acceptAiItems moves pending to line items`() = runTest {
         val aiResult = AiInvoiceResult(
             clientName = "", clientAddress = "",
-            items = listOf(LineItem("AI Item", 100.0))
+            items = listOf(LineItem(ItemsSummary("AI Item"), MoneyAmount(100.0)))
         )
         coEvery { processInvoiceAiUseCase(any(), any()) } returns InvoiceTextOutcome.Success(aiResult)
 
@@ -216,7 +216,7 @@ class NewInvoiceViewModelTest {
         viewModel.uiState.test {
             val state = awaitItem()
             assertEquals(1, state.lineItems.size)
-            assertEquals("AI Item", state.lineItems[0].description)
+            assertEquals("AI Item", state.lineItems[0].description.value)
             assertTrue(state.pendingAi.isEmpty())
             assertFalse(state.showAiConf)
         }

@@ -64,7 +64,7 @@ fun HistoryItemCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        invoice.clientName.uppercase(), 
+                        invoice.clientName.value.uppercase(), 
                         style = MaterialTheme.typography.titleMedium, 
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -118,13 +118,13 @@ fun HistoryItemCard(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                invoice.itemsSummary, 
+                invoice.itemsSummary.value, 
                 style = MaterialTheme.typography.bodyMedium, 
                 maxLines = 2,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
             )
             
-            if (invoice.depositAmount > 0) {
+            if (invoice.depositAmount.value > 0) {
                 Text(
                     stringResource(Res.string.deposit_label, invoice.formattedDeposit),
                     style = MaterialTheme.typography.labelSmall, 

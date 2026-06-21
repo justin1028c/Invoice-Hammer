@@ -605,8 +605,8 @@ class PaymentViewModel(
             updateTransient(isGeneratingCheckoutSession = true, errorMessage = null, paymentSuccessMessage = null)
             val amount = when (type) {
                 PaymentRequestType.Deposit ->
-                    invoice.depositAmount.takeIf { it > 0.0 } ?: (invoice.totalAmount * 0.30)
-                PaymentRequestType.FullBalance -> invoice.totalAmount
+                    invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * 0.30)
+                PaymentRequestType.FullBalance -> invoice.totalAmount.value
             }
             val amountInCents = (amount * 100).toLong()
             val contractorId = authRepository.currentUser.first()?.id?.value ?: "anonymous"

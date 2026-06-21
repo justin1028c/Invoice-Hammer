@@ -26,28 +26,28 @@ class AppendReceiptToDraftUseCase(
                 item.description
             }
             LineItem(
-                description = description,
-                amount = priceWithMarkup,
+                description = ItemsSummary(description),
+                amount = MoneyAmount(priceWithMarkup),
                 category = "Materials",
                 quantity = item.quantity,
-                unitPrice = item.unitPrice
+                unitPrice = item.unitPrice?.let { MoneyAmount(it) }
             )
         }
 
         if (match.isEstimate) {
             val estimateId = InvoiceId(match.targetId)
             val invoice = invoiceRepository.getInvoiceById(estimateId) ?: return false
-            val newTotal = invoice.totalAmount + newLines.sumOf { it.amount }
-            val newSummary = if (invoice.itemsSummary.isBlank()) {
+            val newTotal = invoice.totalAmount + MoneyAmount(newLines.map { it.amount.value }.sum())
+            val newSummary = if (invoice.itemsSummary.value.isBlank()) {
                 receiptItems.joinToString(", ") { it.description }
             } else {
-                "${invoice.itemsSummary}, " + receiptItems.joinToString(", ") { it.description }
+                "${invoice.itemsSummary.value}, " + receiptItems.joinToString(", ") { it.description }
             }
 
             invoiceRepository.insertInvoice(
                 invoice.copy(
                     totalAmount = newTotal,
-                    itemsSummary = newSummary,
+                    itemsSummary = ItemsSummary(newSummary),
                     lastUpdated = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
                 )
             )

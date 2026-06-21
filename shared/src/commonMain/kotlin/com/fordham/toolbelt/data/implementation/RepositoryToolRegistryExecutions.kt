@@ -1,27 +1,7 @@
 package com.fordham.toolbelt.data.implementation
 
-import com.fordham.toolbelt.domain.model.Client
-import com.fordham.toolbelt.domain.model.ClientAddress
-import com.fordham.toolbelt.domain.model.ClientId
-import com.fordham.toolbelt.domain.model.ClientListOutcome
+import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.model.EmailAddress
-import com.fordham.toolbelt.domain.model.PhoneNumber
-import com.fordham.toolbelt.domain.model.ProcessReceiptOutcome
-import com.fordham.toolbelt.domain.model.ClientName
-import com.fordham.toolbelt.domain.model.DraftInvoice
-import com.fordham.toolbelt.domain.model.DurationSeconds
-import com.fordham.toolbelt.domain.model.FailureMessage
-import com.fordham.toolbelt.domain.model.GenerateInvoiceOutcome
-import com.fordham.toolbelt.domain.model.MediaUri
-import com.fordham.toolbelt.domain.model.MoneyAmount
-import com.fordham.toolbelt.domain.model.ReceiptId
-import com.fordham.toolbelt.domain.model.TaxRatePercent
-import com.fordham.toolbelt.domain.model.InvoiceOutcome
-import com.fordham.toolbelt.domain.model.JobNoteOutcome
-import com.fordham.toolbelt.domain.model.ReceiptListOutcome
-import com.fordham.toolbelt.domain.model.ReceiptImagePayload
-import com.fordham.toolbelt.domain.model.Supplier
-import com.fordham.toolbelt.domain.model.SupplierListOutcome
 import com.fordham.toolbelt.domain.model.agent.*
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
@@ -56,7 +36,7 @@ internal class RepositoryToolRegistryExecutions(
         loadClients().firstOrNull { it.id == clientId }
 
     private suspend fun resolveClientByName(name: String) =
-        loadClients().firstOrNull { it.name.equals(name, ignoreCase = true) }
+        loadClients().firstOrNull { it.name.value.equals(name, ignoreCase = true) }
 
     private suspend fun resolveClientOrSelected(
         clientId: ClientId?,
@@ -73,7 +53,7 @@ internal class RepositoryToolRegistryExecutions(
             var bestMatch: com.fordham.toolbelt.domain.model.Client? = null
             var bestScore = 0.0
             for (client in allClients) {
-                val score = com.fordham.toolbelt.util.StringFuzzyMatcher.similarity(clientName, client.name)
+                val score = com.fordham.toolbelt.util.StringFuzzyMatcher.similarity(clientName, client.name.value)
                 if (score > bestScore) {
                     bestScore = score
                     bestMatch = client
@@ -113,7 +93,7 @@ internal class RepositoryToolRegistryExecutions(
             val normalizedQuery = query.lowercase().replace("\\s".toRegex(), "")
             val allDbClients = loadClients()
             clients = allDbClients.filter { client ->
-                val normalizedName = client.name.lowercase().replace("\\s".toRegex(), "")
+                val normalizedName = client.name.value.lowercase().replace("\\s".toRegex(), "")
                 normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName)
             }
         }
@@ -123,7 +103,7 @@ internal class RepositoryToolRegistryExecutions(
             val matchedNames = allInvoices.map { it.clientName }
                 .distinct()
                 .filter { name ->
-                    val normalizedName = name.lowercase().replace("\\s".toRegex(), "")
+                    val normalizedName = name.value.lowercase().replace("\\s".toRegex(), "")
                     normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName)
                 }
             if (matchedNames.isNotEmpty()) {
@@ -134,7 +114,7 @@ internal class RepositoryToolRegistryExecutions(
                         name = name,
                         email = matchingInv?.clientEmail ?: EmailAddress(""),
                         phone = matchingInv?.clientPhone ?: PhoneNumber(""),
-                        address = matchingInv?.clientAddress ?: ""
+                        address = matchingInv?.clientAddress ?: ClientAddress("")
                     )
                     // Auto-persist synthesized client so subsequent lookups by ID will succeed
                     clientRepository.insertClient(newClient)
@@ -143,16 +123,16 @@ internal class RepositoryToolRegistryExecutions(
             }
         }
         val hits = clients.map { client ->
-            val invoices = invoiceRepository.getInvoicesByClient(client.name).first()
-            val totalInvoiced = invoices.filterNot { it.isEstimate }.sumOf { it.totalAmount }
-            val totalOwed = invoices.filterNot { it.isEstimate || it.isPaid }.sumOf { it.totalAmount }
+            val invoices = invoiceRepository.getInvoicesByClient(client.name.value).first()
+            val totalInvoiced = invoices.filterNot { it.isEstimate }.map { it.totalAmount.value }.sum()
+            val totalOwed = invoices.filterNot { it.isEstimate || it.isPaid }.map { it.totalAmount.value }.sum()
             ClientSearchHit(
                 clientId = client.id,
-                displayName = NaturalLanguage(client.name),
+                displayName = NaturalLanguage(client.name.value),
                 totalInvoiced = totalInvoiced,
                 totalOwed = totalOwed,
                 invoiceCount = invoices.size,
-                address = client.address
+                address = client.address.value
             )
         }
         val effects = buildList {
@@ -175,7 +155,7 @@ internal class RepositoryToolRegistryExecutions(
         )
         return ToolExecutionResult.ClientSelected(
             clientId = client.id,
-            displayName = NaturalLanguage(client.name),
+            displayName = NaturalLanguage(client.name.value),
             uiEffects = listOf(
                 AgentUiEffect.NavigateToTab(AppTab.Clients),
                 AgentUiEffect.SelectClient(client.id)
@@ -186,16 +166,16 @@ internal class RepositoryToolRegistryExecutions(
     suspend fun executeGetClientDetails(arguments: GetClientDetailsArgs): ToolExecutionResult {
         val client = resolveClient(arguments.clientId)
             ?: return ToolExecutionResult.Failure(ToolName.GetClientDetails, FailureMessage("Client not found."))
-        val invoices = invoiceRepository.getInvoicesByClient(client.name).first()
+        val invoices = invoiceRepository.getInvoicesByClient(client.name.value).first()
         val summary = NaturalLanguage(
             buildString {
-                append(client.name)
+                append(client.name.value)
                 append(" — ")
-                append(client.address.ifBlank { "No address" })
+                append(client.address.value.ifBlank { "No address" })
                 append(". Email: ${client.email.value.ifBlank { "n/a" }}")
                 append(". Phone: ${client.phone.value.ifBlank { "n/a" }}")
                 append(". Invoices on file: ${invoices.size}")
-                val invoiced = (client.totalInvoiced * 100).roundToLong() / 100.0
+                val invoiced = (client.totalInvoiced.value * 100).roundToLong() / 100.0
                 append(". Total invoiced: $$invoiced")
             }
         )
@@ -205,7 +185,7 @@ internal class RepositoryToolRegistryExecutions(
     suspend fun executeGetUnbilledReceipts(arguments: GetUnbilledReceiptsArgs): ToolExecutionResult {
         val client = resolveClient(arguments.clientId)
             ?: return ToolExecutionResult.Failure(ToolName.GetUnbilledReceipts, FailureMessage("Client not found."))
-        return when (val receipts = receiptRepository.getItemsByClient(client.name).first()) {
+        return when (val receipts = receiptRepository.getItemsByClient(client.name.value).first()) {
             is ReceiptListOutcome.Failure -> ToolExecutionResult.Failure(
                 ToolName.GetUnbilledReceipts,
                 receipts.error
@@ -239,8 +219,8 @@ internal class RepositoryToolRegistryExecutions(
             ?: return ToolExecutionResult.Failure(ToolName.CreateDraftInvoice, FailureMessage("Client not found."))
         draftRepository.saveDraft(
             DraftInvoice(
-                clientName = client.name,
-                clientAddress = client.address,
+                clientName = client.name.value,
+                clientAddress = client.address.value,
                 taxRate = settingsRepository.getBusinessSettings().taxRate.takeIf { it > 0.0 } ?: 7.0,
                 saveToClientDirectory = false
             )
@@ -326,7 +306,7 @@ internal class RepositoryToolRegistryExecutions(
         )
         return when (outcome) {
             is GenerateInvoiceOutcome.Success -> {
-                val subtotal = draft.lineItems.sumOf { it.amount }
+                val subtotal = draft.lineItems.map { it.amount.value }.sum()
                 val tax = subtotal * (draft.taxRate / 100.0)
                 val savedInvoice = invoiceRepository.getInvoicesByClient(draft.clientName).first()
                     .maxByOrNull { it.lastUpdated }
@@ -334,7 +314,7 @@ internal class RepositoryToolRegistryExecutions(
                 val clientRecord = resolveClientByName(draft.clientName)
                 val emailStr = clientRecord?.email?.value.orEmpty()
                 val phoneStr = clientRecord?.phone?.value.orEmpty()
-                val pdf = savedPath.ifBlank { savedInvoice?.pdfPath.orEmpty() }
+                val pdf = savedPath.ifBlank { savedInvoice?.pdfPath?.value.orEmpty() }
 
                 val effects = mutableListOf<AgentUiEffect>(
                     AgentUiEffect.NavigateToTab(AppTab.History)
@@ -379,7 +359,7 @@ internal class RepositoryToolRegistryExecutions(
             "No invoices found matching '$query'."
         } else {
             matches.take(5).joinToString("; ") { inv ->
-                "id=${inv.id.value}, client=${inv.clientName}, total=${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(inv.totalAmount)}, date=${inv.date}, paid=${inv.isPaid}"
+                "id=${inv.id.value}, client=${inv.clientName.value}, total=${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(inv.totalAmount.value)}, date=${inv.date}, paid=${inv.isPaid}"
             }
         }
         return ToolExecutionResult.InvoiceHistorySearched(
@@ -400,7 +380,7 @@ internal class RepositoryToolRegistryExecutions(
         resolveClientByName(name)?.let { existing ->
             return ToolExecutionResult.ClientCreated(
                 clientId = existing.id,
-                displayName = NaturalLanguage(existing.name),
+                displayName = NaturalLanguage(existing.name.value),
                 uiEffects = listOf(
                     AgentUiEffect.NavigateToTab(AppTab.Clients),
                     AgentUiEffect.SelectClient(existing.id)
@@ -408,15 +388,15 @@ internal class RepositoryToolRegistryExecutions(
             )
         }
         val client = com.fordham.toolbelt.domain.model.Client(
-            name = name,
+            name = ClientName(name),
             email = arguments.email,
             phone = arguments.phone,
-            address = arguments.address.value
+            address = ClientAddress(arguments.address.value)
         )
         return when (clientRepository.insertClient(client)) {
             is com.fordham.toolbelt.domain.model.ClientOutcome.Success -> ToolExecutionResult.ClientCreated(
                 clientId = client.id,
-                displayName = NaturalLanguage(client.name),
+                displayName = NaturalLanguage(client.name.value),
                 uiEffects = listOf(
                     AgentUiEffect.NavigateToTab(AppTab.Clients),
                     AgentUiEffect.SelectClient(client.id)
@@ -451,11 +431,11 @@ internal class RepositoryToolRegistryExecutions(
                 if (draft.clientName.isNotBlank()) {
                     val lineItems = result.items.map { item ->
                         com.fordham.toolbelt.domain.model.LineItem(
-                            description = if (item.supplierName.isNotBlank()) "${item.description} (${item.supplierName})" else item.description,
-                            amount = item.totalPrice,
+                            description = ItemsSummary(if (item.supplierName.isNotBlank()) "${item.description} (${item.supplierName})" else item.description),
+                            amount = MoneyAmount(item.totalPrice),
                             category = "Materials",
                             quantity = item.quantity,
-                            unitPrice = item.unitPrice
+                            unitPrice = item.unitPrice?.let { MoneyAmount(it) }
                         )
                     }
                     draftRepository.saveDraft(
@@ -538,7 +518,7 @@ internal class RepositoryToolRegistryExecutions(
         if (arguments.lineItems.isNotEmpty() || arguments.clientAddress.value.isNotBlank()) {
             val update = executeUpdateDraftInvoice(
                 UpdateDraftInvoiceArgs(
-                    clientName = NaturalLanguage(client.name),
+                    clientName = NaturalLanguage(client.name.value),
                     clientAddress = arguments.clientAddress.takeIf { it.value.isNotBlank() },
                     lineItems = arguments.lineItems,
                     replaceLineItems = true
@@ -549,7 +529,7 @@ internal class RepositoryToolRegistryExecutions(
         val currentDraft = draftRepository.getDraft().first()
         return ToolExecutionResult.DraftInvoiceUpdated(
             lineItemCount = currentDraft.lineItems.size,
-            clientName = NaturalLanguage(client.name),
+            clientName = NaturalLanguage(client.name.value),
             uiEffects = listOf(
                 AgentUiEffect.NavigateToTab(AppTab.NewInvoice),
                 AgentUiEffect.SelectClient(client.id)
@@ -576,7 +556,7 @@ internal class RepositoryToolRegistryExecutions(
             if (existing != null) {
                 val mergedPhone = if (arguments.clientPhone.value.isNotBlank()) arguments.clientPhone else existing.phone
                 val mergedEmail = if (arguments.clientEmail.value.isNotBlank()) arguments.clientEmail else existing.email
-                val mergedAddress = if (arguments.clientAddress.value.isNotBlank()) arguments.clientAddress.value else existing.address
+                val mergedAddress = if (arguments.clientAddress.value.isNotBlank()) ClientAddress(arguments.clientAddress.value) else existing.address
                 clientRepository.insertClient(
                     existing.copy(
                         address = mergedAddress,
@@ -652,23 +632,23 @@ internal class RepositoryToolRegistryExecutions(
                 ToolName.DuplicateLastInvoice,
                 FailureMessage("Client not found: ${arguments.clientName.value}")
             )
-        val last = invoiceRepository.getInvoicesByClient(client.name).first()
+        val last = invoiceRepository.getInvoicesByClient(client.name.value).first()
             .maxByOrNull { it.lastUpdated }
             ?: return ToolExecutionResult.Failure(
                 ToolName.DuplicateLastInvoice,
-                FailureMessage("No prior invoice for ${client.name}.")
+                FailureMessage("No prior invoice for ${client.name.value}.")
             )
         executeCreateDraftInvoice(CreateDraftInvoiceArgs(client.id))
-        val description = last.itemsSummary.takeIf { it.isNotBlank() }
+        val description = last.itemsSummary.value.takeIf { it.isNotBlank() }
             ?: "Repeat of invoice ${last.date}"
         return executeUpdateDraftInvoice(
             UpdateDraftInvoiceArgs(
-                clientName = NaturalLanguage(client.name),
-                clientAddress = NaturalLanguage(client.address),
+                clientName = NaturalLanguage(client.name.value),
+                clientAddress = NaturalLanguage(client.address.value),
                 lineItems = listOf(
                     DraftLineItemInput(
                         description = NaturalLanguage(description),
-                        amount = last.totalAmount,
+                        amount = last.totalAmount.value,
                         category = NaturalLanguage("Service")
                     )
                 ),
@@ -694,7 +674,7 @@ internal class RepositoryToolRegistryExecutions(
             ToolName.QuickInvoiceFromUnbilledReceipts,
             FailureMessage("Client not found: ${arguments.clientName.value}")
         )
-        val unbilled = when (val outcome = receiptRepository.getItemsByClient(client.name).first()) {
+        val unbilled = when (val outcome = receiptRepository.getItemsByClient(client.name.value).first()) {
             is ReceiptListOutcome.Success -> outcome.receipts.filterNot { it.isBilled }
             is ReceiptListOutcome.Failure -> return ToolExecutionResult.Failure(
                 ToolName.QuickInvoiceFromUnbilledReceipts,
@@ -722,8 +702,8 @@ internal class RepositoryToolRegistryExecutions(
         }
         val update = executeUpdateDraftInvoice(
             UpdateDraftInvoiceArgs(
-                clientName = NaturalLanguage(client.name),
-                clientAddress = NaturalLanguage(client.address),
+                clientName = NaturalLanguage(client.name.value),
+                clientAddress = NaturalLanguage(client.address.value),
                 lineItems = lineItems,
                 replaceLineItems = true
             )
@@ -739,7 +719,7 @@ internal class RepositoryToolRegistryExecutions(
 
         return ToolExecutionResult.DraftInvoiceUpdated(
             lineItemCount = unbilled.size,
-            clientName = NaturalLanguage(client.name),
+            clientName = NaturalLanguage(client.name.value),
             uiEffects = listOf(
                 AgentUiEffect.NavigateToTab(AppTab.NewInvoice),
                 AgentUiEffect.SelectClient(client.id)
@@ -776,7 +756,7 @@ internal class RepositoryToolRegistryExecutions(
     suspend fun executeSendInvoiceEmail(arguments: SendInvoiceEmailArgs): ToolExecutionResult {
         val invoice = invoiceRepository.getInvoiceById(arguments.invoiceId)
             ?: return ToolExecutionResult.Failure(ToolName.SendInvoiceEmail, FailureMessage("Invoice not found."))
-        if (invoice.pdfPath.isBlank()) {
+        if (invoice.pdfPath.value.isBlank()) {
             return ToolExecutionResult.Failure(ToolName.SendInvoiceEmail, FailureMessage("Invoice has no PDF yet."))
         }
         return ToolExecutionResult.InvoiceSendQueued(
@@ -785,7 +765,7 @@ internal class RepositoryToolRegistryExecutions(
             toolName = ToolName.SendInvoiceEmail,
             uiEffects = listOf(
                 AgentUiEffect.ShareInvoiceDocument(
-                    pdfPath = invoice.pdfPath,
+                    pdfPath = invoice.pdfPath.value,
                     title = "Invoice",
                     recipientEmail = arguments.recipientEmail.value,
                     subject = arguments.subject.value,
@@ -798,7 +778,7 @@ internal class RepositoryToolRegistryExecutions(
     suspend fun executeSendInvoiceSms(arguments: SendInvoiceSmsArgs): ToolExecutionResult {
         val invoice = invoiceRepository.getInvoiceById(arguments.invoiceId)
             ?: return ToolExecutionResult.Failure(ToolName.SendInvoiceSms, FailureMessage("Invoice not found."))
-        if (invoice.pdfPath.isBlank()) {
+        if (invoice.pdfPath.value.isBlank()) {
             return ToolExecutionResult.Failure(ToolName.SendInvoiceSms, FailureMessage("Invoice has no PDF yet."))
         }
         return ToolExecutionResult.InvoiceSendQueued(
@@ -807,7 +787,7 @@ internal class RepositoryToolRegistryExecutions(
             toolName = ToolName.SendInvoiceSms,
             uiEffects = listOf(
                 AgentUiEffect.ShareInvoiceDocument(
-                    pdfPath = invoice.pdfPath,
+                    pdfPath = invoice.pdfPath.value,
                     title = "Invoice",
                     recipientPhone = arguments.recipientPhone.value,
                     body = arguments.message.value
@@ -839,7 +819,7 @@ internal class RepositoryToolRegistryExecutions(
                 ?: invoiceRepository.allInvoices.first().maxByOrNull { it.lastUpdated }
         }
 
-        if (actualInvoice == null || actualInvoice.pdfPath.isBlank()) {
+        if (actualInvoice == null || actualInvoice.pdfPath.value.isBlank()) {
             return ToolExecutionResult.Failure(
                 ToolName.OpenLastInvoice,
                 FailureMessage("No saved invoices found to open.")
@@ -847,9 +827,9 @@ internal class RepositoryToolRegistryExecutions(
         }
 
         return ToolExecutionResult.OpenLastInvoiceCompleted(
-            pdfPath = actualInvoice.pdfPath,
+            pdfPath = actualInvoice.pdfPath.value,
             uiEffects = listOf(
-                AgentUiEffect.ViewPdf(actualInvoice.pdfPath)
+                AgentUiEffect.ViewPdf(actualInvoice.pdfPath.value)
             )
         )
     }
@@ -936,12 +916,12 @@ internal class RepositoryToolRegistryExecutions(
     suspend fun executeCreateChangeOrder(arguments: CreateChangeOrderArgs): ToolExecutionResult {
         val current = draftRepository.getDraft().first()
         val invoice = invoiceRepository.getInvoiceById(arguments.invoiceId)
-        val clientName = invoice?.clientName ?: current.clientName
-        val clientAddress = invoice?.clientAddress ?: current.clientAddress
+        val clientName = invoice?.clientName?.value ?: current.clientName
+        val clientAddress = invoice?.clientAddress?.value ?: current.clientAddress
 
         val newItem = com.fordham.toolbelt.domain.model.LineItem(
-            description = "[Change Order] ${arguments.description.value}",
-            amount = arguments.amount,
+            description = ItemsSummary("[Change Order] ${arguments.description.value}"),
+            amount = MoneyAmount(arguments.amount),
             category = "Service"
         )
         val updated = current.copy(

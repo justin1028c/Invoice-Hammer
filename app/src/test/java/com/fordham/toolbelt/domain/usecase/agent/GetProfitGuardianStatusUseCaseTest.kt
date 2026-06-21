@@ -28,11 +28,11 @@ class GetProfitGuardianStatusUseCaseTest {
     private val invoiceId = InvoiceId("test-invoice-id")
     private val mockInvoice = Invoice(
         id = invoiceId,
-        clientName = "John Doe",
-        clientAddress = "123 Main St",
+        clientName = ClientName("John Doe"),
+        clientAddress = ClientAddress("123 Main St"),
         date = "01/01/2026",
-        totalAmount = 5000.0,
-        itemsSummary = "Materials: 1000.0, Service: 4000.0",
+        totalAmount = MoneyAmount(5000.0),
+        itemsSummary = ItemsSummary("Materials: 1000.0, Service: 4000.0"),
         isPaid = false,
         isEstimate = true
     )
@@ -43,7 +43,7 @@ class GetProfitGuardianStatusUseCaseTest {
 
         // Serialize a budget note where materials budget is 1000
         val lineItems = listOf(
-            LineItem("Copper Pipe", 1000.0, "Materials")
+            LineItem(ItemsSummary("Copper Pipe"), MoneyAmount(1000.0), "Materials")
         )
         val budgetNoteText = SystemBudgetSerializer.serialize(5000.0, 1000.0, lineItems)
         val mockJobNotes = listOf(
@@ -87,7 +87,7 @@ class GetProfitGuardianStatusUseCaseTest {
         coEvery { invoiceRepository.getInvoiceById(invoiceId) } returns mockInvoice
 
         val lineItems = listOf(
-            LineItem("Copper Pipe", 1000.0, "Materials")
+            LineItem(ItemsSummary("Copper Pipe"), MoneyAmount(1000.0), "Materials")
         )
         val budgetNoteText = SystemBudgetSerializer.serialize(5000.0, 1000.0, lineItems)
         val mockJobNotes = listOf(

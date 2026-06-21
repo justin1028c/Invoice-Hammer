@@ -1,36 +1,48 @@
 package com.fordham.toolbelt.ui.tabs.stats
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.domain.model.BusinessStats
-import org.jetbrains.compose.resources.stringResource
-import invoicehammer.composeapp.generated.resources.*
 import com.fordham.toolbelt.ui.theme.StatsGreen
 import com.fordham.toolbelt.util.DateTimeUtil
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.ui.graphics.Color
-
+import invoicehammer.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Responsibility: Layout orchestrator for the Bento-style statistics grid.
  */
 @Composable
 fun BentoGrid(stats: BusinessStats) {
+    val animatedMargin = remember { Animatable(0f) }
+    LaunchedEffect(stats.profitMargin) {
+        animatedMargin.animateTo(
+            targetValue = stats.profitMargin.toFloat(),
+            animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing)
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Main Row: Health & Margin
         Row(modifier = Modifier.fillMaxWidth().height(180.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -51,8 +63,8 @@ fun BentoGrid(stats: BusinessStats) {
                 icon = Icons.Default.PieChart,
                 content = {
                     Box(modifier = Modifier.size(70.dp).padding(top = 4.dp), contentAlignment = Alignment.Center) {
-                        DonutChartSmall(stats.netProfit, stats.profitMargin)
-                        Text("${stats.profitMargin}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                        DonutChartSmall(stats.netProfit, animatedMargin.value.toInt())
+                        Text("${animatedMargin.value.toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             )
@@ -168,6 +180,11 @@ fun SegmentedProgressBar(
     modifier: Modifier = Modifier
 ) {
     val total = outstanding0to30 + outstanding31to60 + outstanding61Plus
+    val animProgress = remember { Animatable(0f) }
+    LaunchedEffect(outstanding0to30, outstanding31to60, outstanding61Plus) {
+        animProgress.animateTo(1f, tween(1200, easing = FastOutSlowInEasing))
+    }
+
     if (total <= 0.0) {
         Box(
             modifier = modifier
@@ -176,9 +193,9 @@ fun SegmentedProgressBar(
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(5.dp))
         )
     } else {
-        val w0to30 = (outstanding0to30 / total).toFloat()
-        val w31to60 = (outstanding31to60 / total).toFloat()
-        val w61Plus = (outstanding61Plus / total).toFloat()
+        val w0to30 = ((outstanding0to30 / total) * animProgress.value).toFloat()
+        val w31to60 = ((outstanding31to60 / total) * animProgress.value).toFloat()
+        val w61Plus = ((outstanding61Plus / total) * animProgress.value).toFloat()
 
         Row(
             modifier = modifier

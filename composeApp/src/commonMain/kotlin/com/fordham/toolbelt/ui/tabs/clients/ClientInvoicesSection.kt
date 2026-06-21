@@ -53,7 +53,7 @@ fun ClientInvoicesSection(
                 ) { 
                     Column(modifier = Modifier.weight(1f)) { 
                         Text(DateTimeUtil.formatDateForDisplay(inv.date).uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        Text(inv.itemsSummary.uppercase(), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black)
+                        Text(inv.itemsSummary.value.uppercase(), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Black)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         var showPhotoMenu by remember(inv.id) { mutableStateOf(false) }

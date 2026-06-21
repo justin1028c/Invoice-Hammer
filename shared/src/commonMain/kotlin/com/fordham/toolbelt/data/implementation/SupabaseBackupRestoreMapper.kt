@@ -1,17 +1,6 @@
 package com.fordham.toolbelt.data.implementation
 
-import com.fordham.toolbelt.domain.model.BusinessSettings
-import com.fordham.toolbelt.domain.model.Client
-import com.fordham.toolbelt.domain.model.ClientId
-import com.fordham.toolbelt.domain.model.EmailAddress
-import com.fordham.toolbelt.domain.model.Invoice
-import com.fordham.toolbelt.domain.model.InvoiceId
-import com.fordham.toolbelt.domain.model.PhoneNumber
-import com.fordham.toolbelt.domain.model.ReceiptId
-import com.fordham.toolbelt.domain.model.ReceiptItem
-import com.fordham.toolbelt.domain.model.Supplier
-import com.fordham.toolbelt.domain.model.SupplierCategory
-import com.fordham.toolbelt.domain.model.SupplierId
+import com.fordham.toolbelt.domain.model.*
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
@@ -68,12 +57,12 @@ internal object SupabaseBackupRestoreMapper {
         val name = obj.stringValue("name").takeIf { it.isNotBlank() } ?: return null
         return Client(
             id = ClientId(id),
-            name = name,
+            name = ClientName(name),
             email = EmailAddress(obj.stringValue("email")),
             phone = PhoneNumber(obj.stringValue("phone")),
-            address = obj.stringValue("address"),
+            address = ClientAddress(obj.stringValue("address")),
             notes = obj.stringValue("notes"),
-            totalInvoiced = obj.doubleValue("totalInvoiced"),
+            totalInvoiced = MoneyAmount(obj.doubleValue("totalInvoiced")),
             isFavorite = obj.booleanValue("isFavorite"),
             lastUpdated = obj.longValue("lastUpdated")
         )
@@ -83,19 +72,19 @@ internal object SupabaseBackupRestoreMapper {
         val id = obj.stringValue("id").takeIf { it.isNotBlank() } ?: return null
         return Invoice(
             id = InvoiceId(id),
-            clientName = obj.stringValue("clientName"),
-            clientAddress = obj.stringValue("clientAddress"),
+            clientName = ClientName(obj.stringValue("clientName")),
+            clientAddress = ClientAddress(obj.stringValue("clientAddress")),
             clientPhone = PhoneNumber(obj.stringValue("clientPhone")),
             clientEmail = EmailAddress(obj.stringValue("clientEmail")),
             date = obj.stringValue("date"),
-            totalAmount = obj.doubleValue("totalAmount"),
-            depositAmount = obj.doubleValue("depositAmount"),
-            itemsSummary = obj.stringValue("itemsSummary"),
-            pdfPath = obj.stringValue("pdfPath"),
+            totalAmount = MoneyAmount(obj.doubleValue("totalAmount")),
+            depositAmount = MoneyAmount(obj.doubleValue("depositAmount")),
+            itemsSummary = ItemsSummary(obj.stringValue("itemsSummary")),
+            pdfPath = PdfFilePath(obj.stringValue("pdfPath")),
             isPaid = obj.booleanValue("isPaid"),
             isEstimate = obj.booleanValue("isEstimate"),
             lastUpdated = obj.longValue("lastUpdated"),
-            durationSeconds = obj.longValue("durationSeconds")
+            durationSeconds = DurationSeconds(obj.longValue("durationSeconds"))
         )
     }
 

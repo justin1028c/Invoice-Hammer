@@ -28,14 +28,14 @@ class GetProfitGuardianStatusUseCase(
         
         val parsedBudget = budgetNote?.let { SystemBudgetSerializer.deserialize(it.text) }
 
-        val budgetedRevenue = parsedBudget?.revenue ?: invoice.totalAmount
+        val budgetedRevenue = parsedBudget?.revenue ?: invoice.totalAmount.value
         val budgetedMaterials = parsedBudget?.materials ?: 0.0
 
         // 2. Fetch actually linked receipt expenses
         val receiptsOutcome = receiptRepository.allItems.first()
         val allReceipts = (receiptsOutcome as? ReceiptListOutcome.Success)?.receipts ?: emptyList()
         val linkedReceipts = allReceipts.filter { it.linkedInvoiceId == invoiceId }
-        val actualMaterials = linkedReceipts.sumOf { it.totalPrice }
+        val actualMaterials = linkedReceipts.map { it.totalPrice }.sum()
 
         val materialVariance = actualMaterials - budgetedMaterials
 
@@ -62,9 +62,9 @@ class GetProfitGuardianStatusUseCase(
         ProfitGuardianOutcome.Success(
             ProfitGuardianStatus(
                 invoiceId = invoiceId,
-                clientName = ClientName(invoice.clientName),
+                clientName = invoice.clientName,
                 budgetedRevenue = MoneyAmount(budgetedRevenue),
-                projectedRevenue = MoneyAmount(invoice.totalAmount),
+                projectedRevenue = invoice.totalAmount,
                 budgetedMaterials = MoneyAmount(budgetedMaterials),
                 actualMaterials = MoneyAmount(actualMaterials),
                 materialVariance = MoneyVariance(materialVariance),

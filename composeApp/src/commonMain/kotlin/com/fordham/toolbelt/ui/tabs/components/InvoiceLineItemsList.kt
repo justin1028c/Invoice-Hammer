@@ -127,8 +127,8 @@ fun InvoiceLineItemsList(
         }
         uiState.lineItems.forEach { item ->
             ListItem(
-                headlineContent = { Text(item.category + ": $" + DateTimeUtil.formatDecimal(item.amount, 2), fontWeight = FontWeight.Bold) },
-                supportingContent = { Text(item.description) },
+                headlineContent = { Text(item.category + ": $" + DateTimeUtil.formatDecimal(item.amount.value, 2), fontWeight = FontWeight.Bold) },
+                supportingContent = { Text(item.description.value) },
                 trailingContent = { IconButton(onClick = { onRemoveLineItem(item) }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)) } },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent)
             )

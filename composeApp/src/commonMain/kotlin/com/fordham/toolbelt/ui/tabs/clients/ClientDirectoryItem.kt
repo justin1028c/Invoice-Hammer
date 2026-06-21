@@ -39,8 +39,8 @@ fun ClientDirectoryItem(
             verticalAlignment = Alignment.CenterVertically
         ) { 
             Column(modifier = Modifier.weight(1f)) { 
-                Text(client.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                Text(client.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) 
+                Text(client.name.value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(client.address.value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) 
             }
             Row {
                 IconButton(onClick = onDeleteClick) { 

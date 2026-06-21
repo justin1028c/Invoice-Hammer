@@ -65,12 +65,12 @@ internal object KtorSyncBackupJsonBuilder {
                 clients.forEach { client ->
                     addJsonObject {
                         put("id", client.id.value)
-                        put("name", client.name)
+                        put("name", client.name.value)
                         put("email", client.email.value)
                         put("phone", client.phone.value)
-                        put("address", client.address)
+                        put("address", client.address.value)
                         put("notes", client.notes)
-                        put("totalInvoiced", client.totalInvoiced)
+                        put("totalInvoiced", client.totalInvoiced.value)
                         put("isFavorite", client.isFavorite)
                         put("lastUpdated", client.lastUpdated)
                     }
@@ -80,19 +80,19 @@ internal object KtorSyncBackupJsonBuilder {
                 invoices.forEach { invoice ->
                     addJsonObject {
                         put("id", invoice.id.value)
-                        put("clientName", invoice.clientName)
-                        put("clientAddress", invoice.clientAddress)
+                        put("clientName", invoice.clientName.value)
+                        put("clientAddress", invoice.clientAddress.value)
                         put("clientPhone", invoice.clientPhone.value)
                         put("clientEmail", invoice.clientEmail.value)
                         put("date", invoice.date)
-                        put("totalAmount", invoice.totalAmount)
-                        put("depositAmount", invoice.depositAmount)
-                        put("itemsSummary", invoice.itemsSummary)
-                        put("pdfPath", invoice.pdfPath)
+                        put("totalAmount", invoice.totalAmount.value)
+                        put("depositAmount", invoice.depositAmount.value)
+                        put("itemsSummary", invoice.itemsSummary.value)
+                        put("pdfPath", invoice.pdfPath.value)
                         put("isPaid", invoice.isPaid)
                         put("isEstimate", invoice.isEstimate)
                         put("lastUpdated", invoice.lastUpdated)
-                        put("durationSeconds", invoice.durationSeconds)
+                        put("durationSeconds", invoice.durationSeconds.value)
                     }
                 }
             }

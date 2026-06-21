@@ -57,7 +57,7 @@ class ProcessStripePaymentSheetUseCase(
                 amountCents = (amount * 100).toLong(),
                 invoiceId = invoice.id,
                 contractorUserId = contractorId,
-                clientName = invoice.clientName,
+                clientName = invoice.clientName.value,
                 requestType = type,
                 channel = StripePaymentChannel.CardTerminal
             )
@@ -116,8 +116,8 @@ class ProcessStripePaymentSheetUseCase(
 
     private fun resolveAmount(invoice: Invoice, type: PaymentRequestType): Double = when (type) {
         PaymentRequestType.Deposit ->
-            invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * DEFAULT_DEPOSIT_PERCENT
-        PaymentRequestType.FullBalance -> invoice.totalAmount
+            invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * DEFAULT_DEPOSIT_PERCENT)
+        PaymentRequestType.FullBalance -> invoice.totalAmount.value
     }
 
     private companion object {
@@ -142,8 +142,8 @@ class ProcessTapToPayUseCase(
 
         val amount = when (type) {
             PaymentRequestType.Deposit ->
-                invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * 0.30
-            PaymentRequestType.FullBalance -> invoice.totalAmount
+                invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * 0.30)
+            PaymentRequestType.FullBalance -> invoice.totalAmount.value
         }
         val contractorId = authRepository.currentUser.first()?.id?.value ?: "anonymous"
 
@@ -152,7 +152,7 @@ class ProcessTapToPayUseCase(
                 amountCents = (amount * 100).toLong(),
                 invoiceId = invoice.id,
                 contractorUserId = contractorId,
-                clientName = invoice.clientName,
+                clientName = invoice.clientName.value,
                 requestType = type,
                 channel = StripePaymentChannel.TapToPay
             )
@@ -222,8 +222,8 @@ class ProcessBluetoothReaderPaymentUseCase(
 
         val amount = when (type) {
             PaymentRequestType.Deposit ->
-                invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * 0.30
-            PaymentRequestType.FullBalance -> invoice.totalAmount
+                invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * 0.30)
+            PaymentRequestType.FullBalance -> invoice.totalAmount.value
         }
         val contractorId = authRepository.currentUser.first()?.id?.value ?: "anonymous"
         val intentOutcome = paymentIntentRepository.createPaymentIntent(
@@ -231,7 +231,7 @@ class ProcessBluetoothReaderPaymentUseCase(
                 amountCents = (amount * 100).toLong(),
                 invoiceId = invoice.id,
                 contractorUserId = contractorId,
-                clientName = invoice.clientName,
+                clientName = invoice.clientName.value,
                 requestType = type,
                 channel = StripePaymentChannel.BluetoothReader
             )

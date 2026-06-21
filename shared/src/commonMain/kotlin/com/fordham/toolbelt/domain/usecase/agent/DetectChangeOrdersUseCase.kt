@@ -70,14 +70,14 @@ class DetectChangeOrdersUseCase(
                         }
                         val recommended = dto.recommendedItems.map { itemDto ->
                             LineItem(
-                                description = itemDto.description,
-                                amount = itemDto.amount,
+                                description = ItemsSummary(itemDto.description),
+                                amount = MoneyAmount(itemDto.amount),
                                 category = itemDto.category
                             )
                         }
                         ChangeOrderOpportunity(
                             invoiceId = invoiceId,
-                            clientName = ClientName(invoice.clientName),
+                            clientName = invoice.clientName,
                             detectedTask = NaturalLanguage(dto.detectedTask),
                             recommendedItems = recommended,
                             estimatedValueRange = dto.minPrice..dto.maxPrice,

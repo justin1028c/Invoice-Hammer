@@ -28,19 +28,19 @@ class MockPaymentRepository : PaymentRepository {
     override val ledger: Flow<PaymentLedgerOutcome> = requests.asStateFlow()
 
     override suspend fun createPaymentRequest(invoice: Invoice, type: PaymentRequestType, provider: PaymentProviderType): PaymentRequestOutcome {
-        if (invoice.totalAmount <= 0.0) {
+        if (invoice.totalAmount.value <= 0.0) {
             return PaymentRequestOutcome.Failure(FailureMessage("Invoice must have a positive total before requesting payment."))
         }
 
         val amount = when (type) {
-            PaymentRequestType.Deposit -> invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * DEFAULT_DEPOSIT_PERCENT
-            PaymentRequestType.FullBalance -> invoice.totalAmount
+            PaymentRequestType.Deposit -> invoice.depositAmount.value.takeIf { it > 0.0 } ?: (invoice.totalAmount.value * DEFAULT_DEPOSIT_PERCENT)
+            PaymentRequestType.FullBalance -> invoice.totalAmount.value
         }
 
         val request = InvoicePaymentRequest(
             id = PaymentRequestId(randomUUID()),
             invoiceId = invoice.id,
-            invoiceClientName = invoice.clientName,
+            invoiceClientName = invoice.clientName.value,
             type = type,
             provider = provider,
             requestedAmount = MoneyAmount(amount),
@@ -94,7 +94,7 @@ class MockPaymentRepository : PaymentRepository {
         val request = InvoicePaymentRequest(
             id = PaymentRequestId(randomUUID()),
             invoiceId = invoice.id,
-            invoiceClientName = invoice.clientName,
+            invoiceClientName = invoice.clientName.value,
             type = type,
             provider = PaymentProviderType.CardTerminal,
             requestedAmount = MoneyAmount(amount),

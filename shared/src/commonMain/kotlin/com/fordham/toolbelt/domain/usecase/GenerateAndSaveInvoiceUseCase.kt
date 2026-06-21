@@ -44,8 +44,8 @@ class GenerateAndSaveInvoiceUseCase(
                 clientRepository.insertClient(
                     Client(
                         id = ClientId(randomUUID()),
-                        name = request.clientName.value,
-                        address = request.clientAddress.value
+                        name = request.clientName,
+                        address = request.clientAddress
                     )
                 )
             }
@@ -63,7 +63,7 @@ class GenerateAndSaveInvoiceUseCase(
 
             AppLogger.d(LOG_TAG, " Step 2b - Preparing data...")
             val date = DateTimeUtil.getNowFormatted()
-            val subtotal = request.lineItems.sumOf { it.amount }
+            val subtotal = request.lineItems.map { it.amount.value }.sum()
             val invoiceId = randomUUID()
 
             val data = InvoiceData(
@@ -117,7 +117,7 @@ class GenerateAndSaveInvoiceUseCase(
                     subtotal = MoneyAmount(subtotal),
                     taxRate = request.taxRate,
                     depositAmount = request.deposit,
-                    itemsSummary = ItemsSummary(request.lineItems.joinToString { it.description }),
+                    itemsSummary = ItemsSummary(request.lineItems.joinToString { it.description.value }),
                     pdfPath = PdfFilePath(path),
                     isEstimate = request.isEstimate,
                     durationSeconds = request.elapsedSeconds
@@ -129,9 +129,9 @@ class GenerateAndSaveInvoiceUseCase(
                 AppLogger.d(LOG_TAG, " Invoice saved to DB successfully with ID: ${savedInvoice.id}")
 
                 // Save system budget note for Profit Guardian variance tracking
-                val materialBudget = request.lineItems.filter { it.category.equals("Materials", ignoreCase = true) }.sumOf { it.amount }
+                val materialBudget = request.lineItems.filter { it.category.equals("Materials", ignoreCase = true) }.map { it.amount.value }.sum()
                 val systemNoteText = SystemBudgetSerializer.serialize(
-                    revenue = savedInvoice.totalAmount,
+                    revenue = savedInvoice.totalAmount.value,
                     materials = materialBudget,
                     lineItems = request.lineItems
                 )
@@ -139,7 +139,7 @@ class GenerateAndSaveInvoiceUseCase(
                     jobNoteRepository.insertNote(
                         JobNote(
                             id = NoteId(randomUUID()),
-                            clientName = savedInvoice.clientName,
+                            clientName = savedInvoice.clientName.value,
                             invoiceId = savedInvoice.id,
                             text = systemNoteText,
                             timestamp = Clock.System.now().toEpochMilliseconds()
@@ -158,7 +158,7 @@ class GenerateAndSaveInvoiceUseCase(
                         receiptRepository.updateItem(receipt.copy(
                             linkedInvoiceId = savedInvoice.id,
                             isBilled = true,
-                            clientName = savedInvoice.clientName
+                            clientName = savedInvoice.clientName.value
                         ))
                     }
                 }

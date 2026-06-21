@@ -48,7 +48,7 @@ class HistoryViewModel(
 
     val filteredInvoices = combine(allInvoices, _uiState) { invoices, state ->
         invoices.filter { 
-            (it.clientName.contains(state.searchQuery, ignoreCase = true) || it.itemsSummary.contains(state.searchQuery, ignoreCase = true)) &&
+            (it.clientName.value.contains(state.searchQuery, ignoreCase = true) || it.itemsSummary.value.contains(state.searchQuery, ignoreCase = true)) &&
             (!state.showPaidOnly || it.isPaid)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

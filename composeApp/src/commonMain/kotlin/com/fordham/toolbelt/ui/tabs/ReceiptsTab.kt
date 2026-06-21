@@ -44,7 +44,7 @@ fun ReceiptsTab(
     platformActions: PlatformActions
 ) {
     LaunchedEffect(selectedClient) {
-        onSetFilterClient(selectedClient?.name)
+        onSetFilterClient(selectedClient?.name?.value)
     }
 
     if (uiState.showClearConfirmDialog) {

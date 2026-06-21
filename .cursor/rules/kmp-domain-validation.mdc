@@ -1,0 +1,69 @@
+---
+description: Unified domain validation and constructor invariants via companion factories for shared Kotlin Multiplatform value classes
+globs: shared/src/commonMain/kotlin/**/domain/**/*.kt
+alwaysApply: true
+---
+
+# Invoice Hammer — Unified Domain Hardening & Validation Rules
+
+## Goal
+Make invalid states unrepresentable. Enforce strict domain integrity using private-constructor value classes with dual validation factory methods.
+
+---
+
+## 🛡️ 1. Domain Value Objects (Invariants + Validation)
+Bare primitives for core domain concepts are **forbidden** at public boundaries.
+
+**Mandatory Pattern**:
+```kotlin
+@JvmInline
+value class ClientName private constructor(val value: String) {
+    companion object {
+        /**
+         * Validates input. Use for user input, API requests, UI flows.
+         */
+        fun create(raw: String): Result<ClientName> {
+            val trimmed = raw.trim()
+            return when {
+                trimmed.isBlank() -> Result.failure(InvalidClientName("Client name cannot be blank."))
+                trimmed.length > 150 -> Result.failure(InvalidClientName("Client name cannot exceed 150 characters."))
+                else -> Result.success(ClientName(trimmed))
+            }
+        }
+
+        /**
+         * Trusted source only (DB mappers, network deserialization, legacy sync, tests).
+         * Do NOT use for user input.
+         */
+        fun fromUnsafe(raw: String): ClientName = ClientName(raw.trim())
+    }
+}
+```
+
+---
+
+## 🗄️ 2. Boundary Mapping Enforcement
+
+### From Data Layer (DB / Network) to Domain
+Never leak primitives, DTOs, or database entities beyond the repository implementation.
+* Use `fromUnsafe()` inside mappers (e.g., `Mappers.kt`, `SupabaseBackupRestoreMapper.kt`) to bypass overhead when mapping trusted persistence/transport models to domain models.
+
+```kotlin
+// Example inside Mappers.kt
+fun ClientEntity.toDomain(): Client = Client(
+    id = ClientId.fromUnsafe(this.id),
+    name = ClientName.fromUnsafe(this.name),
+    address = ClientAddress.fromUnsafe(this.address)
+)
+```
+
+### From Presentation (UI / ViewModels) to Domain
+* Use `create()` in ViewModels and Use Cases when accepting user inputs to catch validation failures before processing.
+* Catch domain validation errors gracefully and convert them to user-facing error states.
+
+---
+
+## 🍏 3. Swift Interoperability Guidelines
+Since `kotlin.Result` does not bridge ergonomically to Swift:
+* If a domain validation method is exposed directly to iOS/Swift layers, map the `Result<T>` output to a custom sealed outcome interface (e.g., `SaveInvoiceOutcome` or a generic `ValidationOutcome<T>`) before crossing the KMP barrier.
+* Avoid exposing `Result` directly to UIKit/Swift controllers.

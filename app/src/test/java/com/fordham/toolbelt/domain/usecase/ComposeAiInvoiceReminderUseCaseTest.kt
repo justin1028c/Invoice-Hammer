@@ -22,14 +22,14 @@ class ComposeAiInvoiceReminderUseCaseTest {
 
     private val testInvoice = Invoice(
         id = InvoiceId("INV-123"),
-        clientName = "Alice Smith",
-        clientAddress = "123 Maple St",
+        clientName = ClientName("Alice Smith"),
+        clientAddress = ClientAddress("123 Maple St"),
         clientPhone = PhoneNumber("555-0199"),
         clientEmail = EmailAddress("alice@example.com"),
         date = "2026-06-17",
-        totalAmount = 1500.0,
-        depositAmount = 500.0,
-        itemsSummary = "Kitchen Tile Installation",
+        totalAmount = MoneyAmount(1500.0),
+        depositAmount = MoneyAmount(500.0),
+        itemsSummary = ItemsSummary("Kitchen Tile Installation"),
         isPaid = false,
         isEstimate = false
     )

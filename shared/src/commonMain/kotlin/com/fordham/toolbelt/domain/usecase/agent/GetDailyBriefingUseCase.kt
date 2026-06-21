@@ -21,7 +21,7 @@ class GetDailyBriefingUseCase(
         val unpaidInvoices = allInvoices.filter { !it.isEstimate && !it.isPaid }
 
         val overdueCount = unpaidInvoices.size
-        val totalOverdue = unpaidInvoices.sumOf { it.totalAmount }
+        val totalOverdue = unpaidInvoices.map { it.totalAmount.value }.sum()
 
         // Find active estimates (last 60 days) to run profit analysis on
         val now = Clock.System.now().toEpochMilliseconds()
@@ -52,20 +52,20 @@ class GetDailyBriefingUseCase(
         }
 
         // Determine potential profit recovery amount
-        val potentialOpportunityRecovery = unbilledOpportunities.sumOf { it.estimatedValueRange.start }
-        val potentialOverrunsRecovery = budgetOverruns.sumOf { it.materialVariance.value.coerceAtLeast(0.0) }
+        val potentialOpportunityRecovery = unbilledOpportunities.map { it.estimatedValueRange.start }.sum()
+        val potentialOverrunsRecovery = budgetOverruns.map { it.materialVariance.value.coerceAtLeast(0.0) }.sum()
         val totalRecovery = potentialOpportunityRecovery + potentialOverrunsRecovery
 
         // Rank actions to pick the single highest impact RecommendedAction
         val candidateActions = mutableListOf<RecommendedAction>()
 
         // 1. Unpaid invoice reminders (highest impact is maximum single overdue balance)
-        unpaidInvoices.maxByOrNull { it.totalAmount }?.let { overdueInvoice ->
+        unpaidInvoices.maxByOrNull { it.totalAmount.value }?.let { overdueInvoice ->
             candidateActions.add(
                 RecommendedAction(
-                    title = NaturalLanguage("Send invoice reminder to ${overdueInvoice.clientName}"),
-                    reason = NaturalLanguage("Invoice has been unpaid with a balance of $${formatMoney(overdueInvoice.totalAmount)}."),
-                    estimatedImpact = MoneyAmount(overdueInvoice.totalAmount)
+                    title = NaturalLanguage("Send invoice reminder to ${overdueInvoice.clientName.value}"),
+                    reason = NaturalLanguage("Invoice has been unpaid with a balance of $${formatMoney(overdueInvoice.totalAmount.value)}."),
+                    estimatedImpact = overdueInvoice.totalAmount
                 )
             )
         }

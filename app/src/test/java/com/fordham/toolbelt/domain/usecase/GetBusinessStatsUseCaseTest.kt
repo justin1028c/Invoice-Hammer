@@ -1,9 +1,7 @@
 package com.fordham.toolbelt.domain.usecase
 
 import app.cash.turbine.test
-import com.fordham.toolbelt.domain.model.Invoice
-import com.fordham.toolbelt.domain.model.ReceiptItem
-import com.fordham.toolbelt.domain.model.ReceiptListOutcome
+import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
 import io.mockk.every
@@ -26,22 +24,22 @@ class GetBusinessStatsUseCaseTest {
     private lateinit var useCase: GetBusinessStatsUseCase
 
     private val paidInvoices = listOf(
-        Invoice(id = com.fordham.toolbelt.domain.model.InvoiceId("1"), clientName = "Client A", clientAddress = "", date = "Jan 01, 2026",
-            totalAmount = 3000.0, itemsSummary = "Drywall", isPaid = true, isEstimate = false),
-        Invoice(id = com.fordham.toolbelt.domain.model.InvoiceId("2"), clientName = "Client A", clientAddress = "", date = "Feb 01, 2026",
-            totalAmount = 2000.0, itemsSummary = "Painting", isPaid = true, isEstimate = false),
-        Invoice(id = com.fordham.toolbelt.domain.model.InvoiceId("3"), clientName = "Client B", clientAddress = "", date = "Mar 01, 2026",
-            totalAmount = 1500.0, itemsSummary = "Plumbing", isPaid = true, isEstimate = false)
+        Invoice(id = com.fordham.toolbelt.domain.model.InvoiceId("1"), clientName = ClientName("Client A"), clientAddress = ClientAddress(""), date = "Jan 01, 2026",
+            totalAmount = MoneyAmount(3000.0), itemsSummary = ItemsSummary("Drywall"), isPaid = true, isEstimate = false),
+        Invoice(id = com.fordham.toolbelt.domain.model.InvoiceId("2"), clientName = ClientName("Client A"), clientAddress = ClientAddress(""), date = "Feb 01, 2026",
+            totalAmount = MoneyAmount(2000.0), itemsSummary = ItemsSummary("Painting"), isPaid = true, isEstimate = false),
+        Invoice(id = com.fordham.toolbelt.domain.model.InvoiceId("3"), clientName = ClientName("Client B"), clientAddress = ClientAddress(""), date = "Mar 01, 2026",
+            totalAmount = MoneyAmount(1500.0), itemsSummary = ItemsSummary("Plumbing"), isPaid = true, isEstimate = false)
     )
 
     private val unpaidInvoice = Invoice(
-        id = com.fordham.toolbelt.domain.model.InvoiceId("4"), clientName = "Client C", clientAddress = "", date = "Apr 01, 2026",
-        totalAmount = 1000.0, itemsSummary = "Electrical", isPaid = false, isEstimate = false
+        id = com.fordham.toolbelt.domain.model.InvoiceId("4"), clientName = ClientName("Client C"), clientAddress = ClientAddress(""), date = "Apr 01, 2026",
+        totalAmount = MoneyAmount(1000.0), itemsSummary = ItemsSummary("Electrical"), isPaid = false, isEstimate = false
     )
 
     private val estimate = Invoice(
-        id = com.fordham.toolbelt.domain.model.InvoiceId("5"), clientName = "Client D", clientAddress = "", date = "Apr 15, 2026",
-        totalAmount = 5000.0, itemsSummary = "Roofing", isPaid = true, isEstimate = true
+        id = com.fordham.toolbelt.domain.model.InvoiceId("5"), clientName = ClientName("Client D"), clientAddress = ClientAddress(""), date = "Apr 15, 2026",
+        totalAmount = MoneyAmount(5000.0), itemsSummary = ItemsSummary("Roofing"), isPaid = true, isEstimate = true
     )
 
     private val receipts = listOf(
@@ -165,11 +163,11 @@ class GetBusinessStatsUseCaseTest {
         // Create invoices dynamically in the current year
         val invoicePaidThisYear = Invoice(
             id = com.fordham.toolbelt.domain.model.InvoiceId("ytd-1"),
-            clientName = "Client YTD",
-            clientAddress = "",
+            clientName = ClientName("Client YTD"),
+            clientAddress = ClientAddress(""),
             date = "01/01/$currentYear",
-            totalAmount = 4000.0,
-            itemsSummary = "Drywall YTD",
+            totalAmount = MoneyAmount(4000.0),
+            itemsSummary = ItemsSummary("Drywall YTD"),
             isPaid = true,
             isEstimate = false
         )
@@ -186,11 +184,11 @@ class GetBusinessStatsUseCaseTest {
 
         val unpaidInvoice0to30 = Invoice(
             id = com.fordham.toolbelt.domain.model.InvoiceId("unpaid-0-30"),
-            clientName = "Client Unpaid 1",
-            clientAddress = "",
+            clientName = ClientName("Client Unpaid 1"),
+            clientAddress = ClientAddress(""),
             date = dateStr10DaysAgo,
-            totalAmount = 1500.0,
-            itemsSummary = "Labor",
+            totalAmount = MoneyAmount(1500.0),
+            itemsSummary = ItemsSummary("Labor"),
             isPaid = false,
             isEstimate = false
         )
@@ -205,11 +203,11 @@ class GetBusinessStatsUseCaseTest {
 
         val unpaidInvoice31to60 = Invoice(
             id = com.fordham.toolbelt.domain.model.InvoiceId("unpaid-31-60"),
-            clientName = "Client Unpaid 2",
-            clientAddress = "",
+            clientName = ClientName("Client Unpaid 2"),
+            clientAddress = ClientAddress(""),
             date = dateStr40DaysAgo,
-            totalAmount = 2500.0,
-            itemsSummary = "Materials",
+            totalAmount = MoneyAmount(2500.0),
+            itemsSummary = ItemsSummary("Materials"),
             isPaid = false,
             isEstimate = false
         )
@@ -224,11 +222,11 @@ class GetBusinessStatsUseCaseTest {
 
         val unpaidInvoice61Plus = Invoice(
             id = com.fordham.toolbelt.domain.model.InvoiceId("unpaid-61-plus"),
-            clientName = "Client Unpaid 3",
-            clientAddress = "",
+            clientName = ClientName("Client Unpaid 3"),
+            clientAddress = ClientAddress(""),
             date = dateStr70DaysAgo,
-            totalAmount = 3500.0,
-            itemsSummary = "Inspection",
+            totalAmount = MoneyAmount(3500.0),
+            itemsSummary = ItemsSummary("Inspection"),
             isPaid = false,
             isEstimate = false
         )

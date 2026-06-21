@@ -28,11 +28,11 @@ class DetectChangeOrdersUseCaseTest {
     private val invoiceId = InvoiceId("test-invoice-id")
     private val mockInvoice = Invoice(
         id = invoiceId,
-        clientName = "John Doe",
-        clientAddress = "123 Main St",
+        clientName = ClientName("John Doe"),
+        clientAddress = ClientAddress("123 Main St"),
         date = "01/01/2026",
-        totalAmount = 5000.0,
-        itemsSummary = "Materials: 1000.0, Service: 4000.0",
+        totalAmount = MoneyAmount(5000.0),
+        itemsSummary = ItemsSummary("Materials: 1000.0, Service: 4000.0"),
         isPaid = false,
         isEstimate = true
     )
@@ -43,7 +43,7 @@ class DetectChangeOrdersUseCaseTest {
 
         // Serialize a budget note where materials budget is 1000
         val lineItems = listOf(
-            LineItem("Copper Pipe", 1000.0, "Materials")
+            LineItem(ItemsSummary("Copper Pipe"), MoneyAmount(1000.0), "Materials")
         )
         val budgetNoteText = SystemBudgetSerializer.serialize(5000.0, 1000.0, lineItems)
         val mockJobNotes = listOf(
@@ -99,8 +99,8 @@ class DetectChangeOrdersUseCaseTest {
         assertEquals(500.0, opportunity.estimatedValueRange.start, 0.01)
         assertEquals(750.0, opportunity.estimatedValueRange.endInclusive, 0.01)
         assertEquals(1, opportunity.recommendedItems.size)
-        assertEquals("Install recessed lights", opportunity.recommendedItems.first().description)
-        assertEquals(600.0, opportunity.recommendedItems.first().amount, 0.01)
+        assertEquals("Install recessed lights", opportunity.recommendedItems.first().description.value)
+        assertEquals(600.0, opportunity.recommendedItems.first().amount.value, 0.01)
     }
 
     @Test
@@ -109,7 +109,7 @@ class DetectChangeOrdersUseCaseTest {
 
         // Only system budget note, no user notes
         val lineItems = listOf(
-            LineItem("Copper Pipe", 1000.0, "Materials")
+            LineItem(ItemsSummary("Copper Pipe"), MoneyAmount(1000.0), "Materials")
         )
         val budgetNoteText = SystemBudgetSerializer.serialize(5000.0, 1000.0, lineItems)
         val mockJobNotes = listOf(

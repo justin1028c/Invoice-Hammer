@@ -615,7 +615,7 @@ class RunForemanAgentUseCase(
     private suspend fun buildSavePreview(args: SaveInvoiceFromDraftArgs): InvoiceSavePreview? {
         val draft = draftRepository.getDraft().first()
         if (draft.clientName.isBlank() || draft.lineItems.isEmpty()) return null
-        val subtotal = draft.lineItems.sumOf { it.amount }
+        val subtotal = draft.lineItems.map { it.amount.value }.sum()
         val tax = subtotal * (draft.taxRate / 100.0)
         val total = subtotal + tax - draft.deposit
         return InvoiceSavePreview(

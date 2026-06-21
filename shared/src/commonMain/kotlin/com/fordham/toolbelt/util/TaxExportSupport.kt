@@ -15,7 +15,7 @@ internal object TaxExportSupport {
         receipts: List<ReceiptItem>
     ): BentoReportData {
         val paidInvoices = invoices.filter { it.isPaid && !it.isEstimate }
-        val totalIncome = paidInvoices.sumOf { it.totalAmount }
+        val totalIncome = paidInvoices.sumOf { it.totalAmount.value }
         val totalExpenses = receipts.sumOf { it.totalPrice }
         return BentoReportData(
             netProfit = totalIncome - totalExpenses,
@@ -50,7 +50,7 @@ internal object TaxExportSupport {
 
     fun invoicePdfPaths(invoices: List<Invoice>): List<String> =
         invoices
-            .filter { it.pdfPath.isNotBlank() }
-            .distinctBy { it.pdfPath }
-            .map { it.pdfPath }
+            .filter { it.pdfPath.value.isNotBlank() }
+            .distinctBy { it.pdfPath.value }
+            .map { it.pdfPath.value }
 }

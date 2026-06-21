@@ -83,7 +83,7 @@ fun AiReminderSheet(
                 }
 
                 Text(
-                    text = "${invoice.clientName.uppercase()} · ${invoice.formattedTotal}",
+                    text = "${invoice.clientName.value.uppercase()} · ${invoice.formattedTotal}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = BrandOrange

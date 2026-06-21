@@ -19,7 +19,7 @@ class GetMatchingDraftsUseCase(
 
         val draft = draftRepository.getDraft().first()
         val draftClientName = draft.clientName.trim()
-        val targetClient = selectedClient?.name ?: receiptItems.firstOrNull { it.clientName.isNotBlank() }?.clientName
+        val targetClient = selectedClient?.name?.value ?: receiptItems.firstOrNull { it.clientName.isNotBlank() }?.clientName
 
         // 1. Check current composing draft
         if (draftClientName.isNotBlank()) {
@@ -33,7 +33,7 @@ class GetMatchingDraftsUseCase(
                     clientName = draftClientName,
                     category = draft.selectedCategory,
                     isEstimate = false,
-                    totalAmount = receiptItems.sumOf { it.totalPrice }
+                    totalAmount = receiptItems.map { it.totalPrice }.sum()
                 )
             }
         }
@@ -46,18 +46,18 @@ class GetMatchingDraftsUseCase(
         }
 
         for (estimate in unpaidEstimates) {
-            val isClientMatch = targetClient != null && estimate.clientName.equals(targetClient, ignoreCase = true)
+            val isClientMatch = targetClient != null && estimate.clientName.value.equals(targetClient, ignoreCase = true)
             val isCategoryMatch = receiptItems.any { item ->
-                estimate.itemsSummary.contains(item.category, ignoreCase = true) ||
-                estimate.itemsSummary.contains(item.description, ignoreCase = true)
+                estimate.itemsSummary.value.contains(item.category, ignoreCase = true) ||
+                estimate.itemsSummary.value.contains(item.description, ignoreCase = true)
             }
             if (isClientMatch || isCategoryMatch) {
                 return ExpenseMatchResult(
                     targetId = estimate.id.value,
-                    clientName = estimate.clientName,
+                    clientName = estimate.clientName.value,
                     category = "Estimate",
                     isEstimate = true,
-                    totalAmount = receiptItems.sumOf { it.totalPrice }
+                    totalAmount = receiptItems.map { it.totalPrice }.sum()
                 )
             }
         }

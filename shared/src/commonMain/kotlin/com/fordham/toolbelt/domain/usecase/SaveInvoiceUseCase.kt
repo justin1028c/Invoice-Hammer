@@ -25,19 +25,19 @@ class SaveInvoiceUseCase(
         val total = (request.subtotal.value * (1 + request.taxRate.value / 100)) - request.depositAmount.value
         val invoice = Invoice(
             id = InvoiceId(randomUUID()),
-            clientName = request.clientName.value,
-            clientAddress = request.clientAddress.value,
+            clientName = request.clientName,
+            clientAddress = request.clientAddress,
             clientPhone = PhoneNumber(""),
             clientEmail = EmailAddress(""),
             date = com.fordham.toolbelt.util.DateTimeUtil.getNowFormatted(),
-            totalAmount = total,
-            depositAmount = request.depositAmount.value,
-            itemsSummary = request.itemsSummary.value,
-            pdfPath = request.pdfPath.value,
+            totalAmount = MoneyAmount(total),
+            depositAmount = request.depositAmount,
+            itemsSummary = request.itemsSummary,
+            pdfPath = request.pdfPath,
             isPaid = false,
             isEstimate = request.isEstimate,
             lastUpdated = Clock.System.now().toEpochMilliseconds(),
-            durationSeconds = request.durationSeconds.value
+            durationSeconds = request.durationSeconds
         )
         return try {
             val result = repository.insertInvoice(invoice)

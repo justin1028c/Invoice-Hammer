@@ -67,8 +67,8 @@ fun CardTerminalSheet(
     val amount = remember(invoice, requestType) {
         when (requestType) {
             PaymentRequestType.Deposit ->
-                invoice.depositAmount.takeIf { it > 0.0 } ?: invoice.totalAmount * 0.30
-            PaymentRequestType.FullBalance -> invoice.totalAmount
+                if (invoice.depositAmount.value > 0.0) invoice.depositAmount.value else invoice.totalAmount.value * 0.30
+            PaymentRequestType.FullBalance -> invoice.totalAmount.value
         }
     }
 
@@ -93,7 +93,7 @@ fun CardTerminalSheet(
                 Column {
                     Text(stringResource(Res.string.card_terminal_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
                     Text(
-                        stringResource(Res.string.on_site_entry_desc, invoice.clientName.uppercase(), DateTimeUtil.formatMoney(amount)),
+                        stringResource(Res.string.on_site_entry_desc, invoice.clientName.value.uppercase(), DateTimeUtil.formatMoney(amount)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

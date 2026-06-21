@@ -61,7 +61,7 @@ fun ClientsTab(
         AlertDialog(
             onDismissRequest = { onSetClientToDelete(null) },
             title = { Text(stringResource(Res.string.delete_client), fontWeight = FontWeight.Black) },
-            text = { Text(stringResource(Res.string.delete_client_desc, uiState.clientToDelete!!.name)) },
+            text = { Text(stringResource(Res.string.delete_client_desc, uiState.clientToDelete!!.name.value)) },
             confirmButton = { 
                 TacticalButton(
                     onClick = { 
@@ -91,7 +91,7 @@ fun ClientsTab(
             },
             confirmButton = { 
                 TacticalButton(
-                    onClick = { onAddNote(selectedClient.name) },
+                    onClick = { onAddNote(selectedClient.name.value) },
                     text = stringResource(Res.string.save_note), 
                     enabled = uiState.noteText.isNotBlank()
                 ) 
@@ -105,7 +105,7 @@ fun ClientsTab(
             title = { Text(stringResource(Res.string.floating_expense_pool), fontWeight = FontWeight.Black) },
             text = {
                 Column {
-                    Text(stringResource(Res.string.select_receipt_link, selectedClient.name.uppercase()), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.select_receipt_link, selectedClient.name.value.uppercase()), style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(uiState.availableReceipts) { receipt ->
@@ -150,7 +150,7 @@ fun ClientsTab(
                 onEmailClick = onEmailClient
             )
             
-            Text(selectedClient.name, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, modifier = Modifier.padding(vertical = 8.dp))
+            Text(selectedClient.name.value, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, modifier = Modifier.padding(vertical = 8.dp))
             
             summary?.let {
                 ClientFinancialSummaryCard(
@@ -189,7 +189,7 @@ fun ClientsTab(
             Spacer(Modifier.height(24.dp))
             ClientInvoicesSection(
                 invoices = clientInvoices,
-                onInvoiceClick = { if (it.pdfPath.isNotEmpty()) onViewPdf(it.pdfPath) },
+                onInvoiceClick = { if (it.pdfPath.value.isNotEmpty()) onViewPdf(it.pdfPath.value) },
                 onAddPhotoClick = { inv, phase ->
                     platformActions.capturePhoto { uri ->
                         uri?.let { onPhotoCaptured(it, inv.id.value, phase) }

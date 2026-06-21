@@ -181,7 +181,7 @@ class AndroidPdfInvoiceEngine(
             badgeBgColor = Color.rgb(232, 240, 254) // Soft blue
             badgeTextColor = Color.rgb(26, 115, 232) // Rich blue
         } else {
-            val subtotal = data.items.sumOf { it.amount }
+            val subtotal = data.items.sumOf { it.amount.value }
             val taxAmount = subtotal * (data.taxRate / 100.0)
             val totalAmount = subtotal + taxAmount - data.deposit
             if (data.deposit >= (subtotal + taxAmount)) {
@@ -246,7 +246,7 @@ class AndroidPdfInvoiceEngine(
             paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
             
             // Truncate description if too long to avoid layout breaking
-            val descText = if (item.description.length > 48) item.description.take(45) + "..." else item.description
+            val descText = if (item.description.value.length > 48) item.description.value.take(45) + "..." else item.description.value
             canvas1.drawText(descText, 60f, currentY + 15f, paint)
             
             // Draw Qty
@@ -256,14 +256,14 @@ class AndroidPdfInvoiceEngine(
             AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, qtyText, 360f, currentY + 15f, paint)
             
             // Draw Unit Price
-            val unitPriceVal = item.unitPrice ?: item.amount
+            val unitPriceVal = (item.unitPrice ?: item.amount).value
             val unitPriceText = "$${String.format("%.2f", unitPriceVal)}"
             AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, unitPriceText, 450f, currentY + 15f, paint)
             
             // Draw Line Total
             paint.color = charcoalColor
             paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            val amtText = "$${String.format("%.2f", item.amount)}"
+            val amtText = "$${String.format("%.2f", item.amount.value)}"
             AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, amtText, 535f, currentY + 15f, paint)
             
             currentY += 24f
@@ -272,7 +272,7 @@ class AndroidPdfInvoiceEngine(
         // Calculations Block (Y starts after items list)
         currentY += 15f
         
-        val subtotal = data.items.sumOf { it.amount }
+        val subtotal = data.items.sumOf { it.amount.value }
         val taxAmount = subtotal * (data.taxRate / 100.0)
         val totalAmount = subtotal + taxAmount - data.deposit
         
