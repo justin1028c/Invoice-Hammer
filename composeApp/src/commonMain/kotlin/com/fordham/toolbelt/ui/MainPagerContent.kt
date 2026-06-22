@@ -244,9 +244,17 @@ fun MainPagerContent(
                 }
                 val stripeConnectState by settingsViewModel.connectState.collectAsStateWithLifecycle()
                 val stripeConnectBusy by settingsViewModel.connectBusy.collectAsStateWithLifecycle()
+                val isLlamaDownloaded by settingsViewModel.isLlamaDownloaded.collectAsStateWithLifecycle()
+                val isLlamaDownloading by settingsViewModel.isLlamaDownloading.collectAsStateWithLifecycle()
+                val llamaDownloadProgress by settingsViewModel.llamaDownloadProgress.collectAsStateWithLifecycle()
                 SettingsTab(
                 settings = businessSettings,
                 currentUser = currentUser,
+                isLlamaDownloaded = isLlamaDownloaded,
+                isLlamaDownloading = isLlamaDownloading,
+                llamaDownloadProgress = llamaDownloadProgress,
+                onDownloadLlama = { settingsViewModel.downloadLlama() },
+                onDeleteLlama = { settingsViewModel.deleteLlama() },
                 stripePaymentMode = settingsViewModel.stripePaymentMode,
                 stripeConnectState = stripeConnectState,
                 stripeConnectBusy = stripeConnectBusy,

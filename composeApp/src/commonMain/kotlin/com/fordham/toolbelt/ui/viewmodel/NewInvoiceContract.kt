@@ -29,7 +29,16 @@ data class NewInvoiceUiState(
     val capturedPhotos: List<CapturedJobPhoto> = emptyList(),
     val businessLogoSaved: Boolean = false,
     val availableReceipts: List<ReceiptItem> = emptyList(),
-    val showReceiptPicker: Boolean = false
+    val showReceiptPicker: Boolean = false,
+    val laborHours: Double? = null,
+    val laborRate: Double? = null,
+    val depositAmount: Double = 0.0,
+    val taxRatePercent: Double = 7.0,
+    val discountPercent: Double = 0.0,
+    val notes: String = "",
+    val confidenceScore: Double = 1.0,
+    val userSummary: String = "",
+    val validationIssues: List<String> = emptyList()
 ) {
     val formattedTime: String
         get() {
@@ -89,5 +98,14 @@ internal data class NewInvoiceTransientState(
     val depositCollected: String? = null,
     val hourlyRate: String? = null,
     val itemDesc: String? = null,
-    val itemAmt: String? = null
+    val itemAmt: String? = null,
+    val laborHours: Double? = null,
+    val laborRate: Double? = null,
+    val depositAmount: Double? = null,
+    val taxRatePercent: Double? = null,
+    val discountPercent: Double? = null,
+    val notes: String? = null,
+    val confidenceScore: Double? = null,
+    val userSummary: String? = null,
+    val validationIssues: List<String>? = null
 )

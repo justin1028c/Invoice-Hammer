@@ -16,6 +16,6 @@ val viewModelModule = module {
     viewModel { NewInvoiceViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { AuthViewModel(get(), get(), get(), get(), get()) }
     viewModel { SubscriptionViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     viewModel { JobsiteIntelligenceViewModel(get()) }
 }

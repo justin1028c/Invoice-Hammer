@@ -91,6 +91,117 @@ fun NewInvoiceTab(
                 Text(stringResource(Res.string.business), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
             }
         }
+
+        if (uiState.userSummary.isNotBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "AI Assistant Summary",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        // Confidence badge
+                        val scorePct = (uiState.confidenceScore * 100).toInt()
+                        val badgeColor = when {
+                            uiState.confidenceScore >= 0.85 -> Color(0xFF2E7D32) // Green
+                            uiState.confidenceScore >= 0.70 -> Color(0xFFEF6C00) // Amber
+                            else -> Color(0xFFC62828) // Red
+                        }
+                        
+                        Surface(
+                            color = badgeColor.copy(alpha = 0.15f),
+                            contentColor = badgeColor,
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, badgeColor),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Text(
+                                text = "Confidence: $scorePct%",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Text(
+                        text = uiState.userSummary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    if (uiState.laborHours != null || uiState.laborRate != null || uiState.discountPercent > 0.0 || uiState.notes.isNotBlank()) {
+                        Spacer(Modifier.height(10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(Modifier.height(10.dp))
+                        
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            uiState.laborHours?.let {
+                                Text("• Extracted Labor: $it hours", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            }
+                            uiState.laborRate?.let {
+                                Text("• Extracted Rate: $$it/hr", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            }
+                            if (uiState.discountPercent > 0.0) {
+                                Text("• Extracted Discount: ${uiState.discountPercent}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            }
+                            if (uiState.notes.isNotBlank()) {
+                                Text("• Extracted Notes: ${uiState.notes}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (uiState.validationIssues.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "AI Parse Warnings",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        uiState.validationIssues.forEach { issue ->
+                            Text(
+                                text = "• ${issue.replace("_", " ")}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
         
         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), border = BorderStroke(2.dp, if (uiState.timerRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline), shape = RoundedCornerShape(18.dp)) {
             Column(modifier = Modifier.padding(12.dp)) {

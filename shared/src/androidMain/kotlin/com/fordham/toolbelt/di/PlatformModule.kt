@@ -76,6 +76,7 @@ actual fun platformModule(): Module = module {
     single<BluetoothCardReaderGateway> { AndroidBluetoothCardReaderGateway() }
     single<com.fordham.toolbelt.data.local.LocalLlmEngine> {
         com.fordham.toolbelt.data.local.AndroidLocalLlmEngine(
+            context = get(),
             scope = get(),
             ioDispatcher = get()
         )

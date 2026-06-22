@@ -60,7 +60,16 @@ class NewInvoiceViewModel(
             canSave = (transient.clientName ?: draft.clientName).isNotBlank() && 
                       (transient.clientAddress ?: draft.clientAddress).isNotBlank() && 
                       draft.lineItems.isNotEmpty(),
-            errorMessage = transient.errorMessage
+            errorMessage = transient.errorMessage,
+            laborHours = transient.laborHours,
+            laborRate = transient.laborRate,
+            depositAmount = transient.depositAmount ?: 0.0,
+            taxRatePercent = transient.taxRatePercent ?: 7.0,
+            discountPercent = transient.discountPercent ?: 0.0,
+            notes = transient.notes.orEmpty(),
+            confidenceScore = transient.confidenceScore ?: 1.0,
+            userSummary = transient.userSummary.orEmpty(),
+            validationIssues = transient.validationIssues ?: emptyList()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NewInvoiceUiState())
 
@@ -239,14 +248,29 @@ class NewInvoiceViewModel(
                 val ai = result.result
                 draftEditor.updateDraft { current -> current.copy(
                     clientName = if (ai.clientName.isNotBlank()) ai.clientName else draft.clientName,
-                    clientAddress = if (ai.clientAddress.isNotBlank()) ai.clientAddress else draft.clientAddress
+                    clientAddress = if (ai.clientAddress.isNotBlank()) ai.clientAddress else draft.clientAddress,
+                    taxRate = if (ai.taxRatePercent > 0.0) ai.taxRatePercent else current.taxRate,
+                    deposit = if (ai.depositAmount > 0.0) ai.depositAmount else current.deposit,
+                    hourlyRate = ai.laborRate ?: current.hourlyRate
                 ) }
                 _transientState.update { state ->
                     state.copy(
                         pendingAi = ai.items,
                         showAiConf = ai.items.isNotEmpty(),
                         clientName = if (ai.clientName.isNotBlank()) ai.clientName else state.clientName,
-                        clientAddress = if (ai.clientAddress.isNotBlank()) ai.clientAddress else state.clientAddress
+                        clientAddress = if (ai.clientAddress.isNotBlank()) ai.clientAddress else state.clientAddress,
+                        taxText = if (ai.taxRatePercent > 0.0) ai.taxRatePercent.toString() else state.taxText,
+                        depositCollected = if (ai.depositAmount > 0.0) ai.depositAmount.toString() else state.depositCollected,
+                        hourlyRate = (ai.laborRate ?: state.hourlyRate?.toDoubleOrNull())?.toString() ?: state.hourlyRate,
+                        laborHours = ai.laborHours,
+                        laborRate = ai.laborRate,
+                        depositAmount = ai.depositAmount,
+                        taxRatePercent = ai.taxRatePercent,
+                        discountPercent = ai.discountPercent,
+                        notes = ai.notes,
+                        confidenceScore = ai.confidenceScore,
+                        userSummary = ai.userSummary,
+                        validationIssues = ai.validationIssues
                     )
                 }
             } else if (result is InvoiceTextOutcome.Failure) {
@@ -317,7 +341,16 @@ class NewInvoiceViewModel(
                             depositCollected = "",
                             hourlyRate = "50.0",
                             itemDesc = "",
-                            itemAmt = ""
+                            itemAmt = "",
+                            laborHours = null,
+                            laborRate = null,
+                            depositAmount = 0.0,
+                            taxRatePercent = 7.0,
+                            discountPercent = 0.0,
+                            notes = "",
+                            confidenceScore = 1.0,
+                            userSummary = "",
+                            validationIssues = emptyList()
                         )
                     }
                 }

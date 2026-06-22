@@ -130,4 +130,12 @@ class FakeLocalLlmEngine : LocalLlmEngine {
     override suspend fun generateText(prompt: LlmPrompt): GeminiOutcome {
         return generateTextResult
     }
+
+    override fun isModelDownloaded(): Boolean = isSupportedResult
+    override fun getDownloadProgress(): Float = if (isSupportedResult) 1.0f else 0.0f
+    override fun isDownloading(): Boolean = false
+    override fun startDownload(onProgress: (Float) -> Unit, onComplete: (Boolean) -> Unit) {
+        onComplete(true)
+    }
+    override fun deleteModel(): Boolean = true
 }

@@ -67,6 +67,13 @@ fun MainScreen(
         spokenAgentResponse?.let { voiceAssistant.speak(it) }
     }
 
+    LaunchedEffect(newInvoiceUiState.userSummary) {
+        val summary = newInvoiceUiState.userSummary
+        if (summary.isNotBlank()) {
+            voiceAssistant.speak(summary)
+        }
+    }
+
     LaunchedEffect(Unit) {
         sharedViewModel.logoMessage.collect { pendingLogoToast = it }
     }

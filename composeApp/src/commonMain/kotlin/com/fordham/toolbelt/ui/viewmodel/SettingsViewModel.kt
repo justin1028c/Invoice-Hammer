@@ -14,12 +14,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.fordham.toolbelt.data.local.LocalLlmEngine
 
 class SettingsViewModel(
     getStripePaymentModeUseCase: GetStripePaymentModeUseCase,
     private val refreshStripeConnectStatusUseCase: RefreshStripeConnectStatusUseCase,
     private val startStripeConnectOnboardingUseCase: StartStripeConnectOnboardingUseCase,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val localLlmEngine: LocalLlmEngine
 ) : ViewModel() {
     val stripePaymentMode: StripePaymentMode = getStripePaymentModeUseCase()
 
@@ -35,10 +37,41 @@ class SettingsViewModel(
     private val _connectBusy = MutableStateFlow(false)
     val connectBusy: StateFlow<Boolean> = _connectBusy.asStateFlow()
 
+    private val _isLlamaDownloaded = MutableStateFlow(localLlmEngine.isModelDownloaded())
+    val isLlamaDownloaded: StateFlow<Boolean> = _isLlamaDownloaded.asStateFlow()
+
+    private val _llamaDownloadProgress = MutableStateFlow(localLlmEngine.getDownloadProgress())
+    val llamaDownloadProgress: StateFlow<Float> = _llamaDownloadProgress.asStateFlow()
+
+    private val _isLlamaDownloading = MutableStateFlow(localLlmEngine.isDownloading())
+    val isLlamaDownloading: StateFlow<Boolean> = _isLlamaDownloading.asStateFlow()
+
     init {
         if (stripePaymentMode == StripePaymentMode.PaymentSheet) {
             refreshConnectStatus()
         }
+    }
+
+    fun downloadLlama() {
+        if (localLlmEngine.isDownloading()) return
+        _isLlamaDownloading.value = true
+        _llamaDownloadProgress.value = 0.0f
+        localLlmEngine.startDownload(
+            onProgress = { progress ->
+                _llamaDownloadProgress.value = progress
+            },
+            onComplete = { success ->
+                _isLlamaDownloading.value = false
+                _isLlamaDownloaded.value = localLlmEngine.isModelDownloaded()
+                _llamaDownloadProgress.value = if (success) 1.0f else 0.0f
+            }
+        )
+    }
+
+    fun deleteLlama() {
+        localLlmEngine.deleteModel()
+        _isLlamaDownloaded.value = false
+        _llamaDownloadProgress.value = 0.0f
     }
 
     fun onSettingsTabVisible() {
