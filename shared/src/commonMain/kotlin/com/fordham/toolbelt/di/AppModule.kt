@@ -55,23 +55,14 @@ val dataModule = module {
     single { platformHttpClient() }
 
     // Database & DAOs
-    single { getRoomDatabase(get()) }
-    single { get<AppDatabase>().clientDao() }
-    single { get<AppDatabase>().invoiceDao() }
-    single { get<AppDatabase>().receiptDao() }
-    single { get<AppDatabase>().supplierDao() }
-    single { get<AppDatabase>().photoDao() }
-    single { get<AppDatabase>().jobNoteDao() }
-    single { get<AppDatabase>().draftDao() }
-    single { get<AppDatabase>().paymentRequestDao() }
-    single { get<AppDatabase>().syncQueueDao() }
+    single { DatabaseProvider(get(), get(), get()) }
 
     // Repositories
-    single<ClientRepository> { RoomClientRepository(get(), get(), get()) }
-    single<InvoiceRepository> { RoomInvoiceRepository(get(), get(), get()) }
-    single<ReceiptRepository> { RoomReceiptRepository(get(), get(), get()) }
+    single<ClientRepository> { RoomClientRepository(get(), get()) }
+    single<InvoiceRepository> { RoomInvoiceRepository(get(), get()) }
+    single<ReceiptRepository> { RoomReceiptRepository(get(), get()) }
     single<JobNoteRepository> { RoomJobNoteRepository(get()) }
-    single<SupplierRepository> { SupplierRepositoryImpl(get(), get(), get(), get()) }
+    single<SupplierRepository> { SupplierRepositoryImpl(get(), get()) }
     single<PhotoRepository> { RoomPhotoRepository(get()) }
     single<DraftRepository> { RoomDraftRepository(get()) }
     single<OcrRepository> { GeminiOcrRepository(get()) }

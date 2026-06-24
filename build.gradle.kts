@@ -8,4 +8,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.jetbrainsCompose) apply false
     alias(libs.plugins.androidx.room) apply false
+    alias(libs.plugins.binary.compatibility.validator) apply false
+    alias(libs.plugins.jetbrains.dokka) apply false
 }

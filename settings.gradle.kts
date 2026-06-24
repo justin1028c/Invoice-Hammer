@@ -26,4 +26,5 @@ rootProject.name = "InvoiceHammer"
 include(":shared")
 include(":composeApp")
 include(":androidApp")
+include(":secure-vault")
 project(":androidApp").projectDir = file("app")

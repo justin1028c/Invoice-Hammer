@@ -38,6 +38,9 @@ import com.fordham.toolbelt.util.VoiceAssistant
 import com.fordham.toolbelt.util.*
 import com.fordham.toolbelt.util.currentPlatformTarget
 import kotlinx.coroutines.Dispatchers
+import com.fordham.toolbelt.securevault.SecureVaultGateway
+import com.fordham.toolbelt.securevault.PlatformContext
+import com.fordham.toolbelt.securevault.createSecureVault
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.Module
@@ -58,6 +61,7 @@ actual fun platformModule(): Module = module {
     single { PlacesService() }
     single { SecurityManager(get()) }
     single<SecurityGateway> { get<SecurityManager>() }
+    single<SecureVaultGateway> { createSecureVault(PlatformContext(get<Context>()), get()) }
     single { NetworkObserver(get()) }
     single { createDataStore { get<Context>().filesDir.resolve(DATASTORE_FILE_NAME).absolutePath } }
     single<SettingsRepository> { DataStoreSettingsRepository(get()) }
@@ -67,7 +71,6 @@ actual fun platformModule(): Module = module {
     single { BentoReportEngine(get(), get()) }
     single<BentoReportGenerator> { AndroidBentoReportGenerator(get()) }
     single<com.fordham.toolbelt.util.TaxExporter> { AndroidTaxExporter(get(), get(), get()) }
-    single<RoomDatabase.Builder<AppDatabase>> { AndroidDatabaseBuilder(get<Context>(), get()).create() }
     single<com.fordham.toolbelt.util.PlatformTarget> { currentPlatformTarget() }
     single<StoreBillingGateway> { AndroidStoreBillingGateway(get()) }
     single { AndroidStripePaymentSheetGateway() }

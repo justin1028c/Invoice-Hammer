@@ -1,5 +1,6 @@
 package com.fordham.toolbelt.data.implementation
 
+import com.fordham.toolbelt.data.DatabaseProvider
 import com.fordham.toolbelt.data.remote.*
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.data.dto.AiInvoiceResultDto
@@ -20,14 +21,16 @@ import kotlinx.serialization.json.Json
 class KtorGeminiRepository(
     private val httpClient: HttpClient,
     private val geminiConfig: ForemanGeminiConfig,
-    private val jobNoteDao: com.fordham.toolbelt.data.JobNoteDao,
+    private val databaseProvider: DatabaseProvider,
     private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository,
     private val localLlmEngine: com.fordham.toolbelt.data.local.LocalLlmEngine
 ) : GeminiRepository {
 
-    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
-    private val agentModelName = geminiConfig.agentModelName.also { check(it.isNotBlank()) { "Gemini agent model name is blank" } }
-    private val taskModelName  = geminiConfig.taskModelName.ifBlank { geminiConfig.agentModelName }
+    private suspend fun jobNoteDao() = databaseProvider.getDatabase().jobNoteDao()
+
+    internal val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
+    internal val agentModelName = geminiConfig.agentModelName.also { check(it.isNotBlank()) { "Gemini agent model name is blank" } }
+    internal val taskModelName  = geminiConfig.taskModelName.ifBlank { geminiConfig.agentModelName }
 
     private val summarizeSchema = GeminiSchema(
         type = "OBJECT",
@@ -143,7 +146,7 @@ class KtorGeminiRepository(
                 ""
             } else {
                 val queryTerm = extractSearchKeyword(data)
-                val context = jobNoteDao.getRelevantContext(queryTerm)
+                val context = jobNoteDao().getRelevantContext(queryTerm)
                 context.joinToString("\n") { it.text }
             }
 
@@ -538,7 +541,7 @@ class KtorGeminiRepository(
         return ToolCallOutcome.Failure(FailureMessage("Foreman returned no tool call."))
     }
 
-    private suspend fun callGemini(
+    internal suspend fun callGemini(
         prompt: String,
         model: String = agentModelName,
         history: List<GeminiContent> = emptyList(),

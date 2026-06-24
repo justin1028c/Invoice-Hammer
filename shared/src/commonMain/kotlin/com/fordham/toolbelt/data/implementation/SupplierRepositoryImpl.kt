@@ -11,40 +11,46 @@ import com.fordham.toolbelt.data.SyncQueueEntity
 import com.fordham.toolbelt.util.PlatformActions
 
 class SupplierRepositoryImpl(
-    private val supplierDao: SupplierDao,
-    private val receiptDao: ReceiptDao,
-    private val syncQueueDao: SyncQueueDao,
+    private val databaseProvider: DatabaseProvider,
     private val platformActions: PlatformActions
 ) : SupplierRepository {
 
-    override fun getVisibleSuppliers(): Flow<SupplierListOutcome> {
-        return combine(
-            supplierDao.getVisibleSuppliers(),
-            receiptDao.getAllItems()
-        ) { entities, receipts ->
-            val currentYear = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
-            
-            val models = entities.map { entity ->
-                val supplierReceipts = receipts.filter { 
-                    val isSameSupplier = it.supplierId == entity.id || 
-                        (it.supplierName.isNotBlank() && it.supplierName.equals(entity.name, ignoreCase = true))
-                    
-                    val receiptYear = Instant.fromEpochMilliseconds(it.lastUpdated)
-                        .toLocalDateTime(TimeZone.currentSystemDefault()).year
-                    
-                    isSameSupplier && receiptYear == currentYear
-                }
+    private suspend fun supplierDao() = databaseProvider.getDatabase().supplierDao()
+    private suspend fun receiptDao() = databaseProvider.getDatabase().receiptDao()
+    private suspend fun syncQueueDao() = databaseProvider.getDatabase().syncQueueDao()
+
+    override fun getVisibleSuppliers(): Flow<SupplierListOutcome> = flow {
+        val sDao = supplierDao()
+        val rDao = receiptDao()
+        emitAll(
+            combine(
+                sDao.getVisibleSuppliers(),
+                rDao.getAllItems()
+            ) { entities, receipts ->
+                val currentYear = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).year
                 
-                val analytics = SupplierAnalytics(
-                    totalSpendYtd = supplierReceipts.map { it.totalPrice }.sum(),
-                    jobsLinked = supplierReceipts.map { it.clientName }.distinct().size,
-                    avgMarkup = 0.0
-                )
-                entity.toDomain().copy(analytics = analytics)
+                val models = entities.map { entity ->
+                    val supplierReceipts = receipts.filter { 
+                        val isSameSupplier = it.supplierId == entity.id || 
+                            (it.supplierName.isNotBlank() && it.supplierName.equals(entity.name, ignoreCase = true))
+                        
+                        val receiptYear = Instant.fromEpochMilliseconds(it.lastUpdated)
+                            .toLocalDateTime(TimeZone.currentSystemDefault()).year
+                        
+                        isSameSupplier && receiptYear == currentYear
+                    }
+                    
+                    val analytics = SupplierAnalytics(
+                        totalSpendYtd = supplierReceipts.map { it.totalPrice }.sum(),
+                        jobsLinked = supplierReceipts.map { it.clientName }.distinct().size,
+                        avgMarkup = 0.0
+                    )
+                    entity.toDomain().copy(analytics = analytics)
+                }
+                SupplierListOutcome.Success(models) as SupplierListOutcome
             }
-            SupplierListOutcome.Success(models) as SupplierListOutcome
-        }.catch { emit(SupplierListOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(it.message ?: "Failed to retrieve visible suppliers"))) }
-    }
+        )
+    }.catch { emit(SupplierListOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(it.message ?: "Failed to retrieve visible suppliers"))) }
 
     override suspend fun logPurchase(supplierId: SupplierId, amount: MoneyAmount): SupplierOutcome = try {
         val receipt = ReceiptEntity(
@@ -55,22 +61,24 @@ class SupplierRepositoryImpl(
             supplierId = supplierId.value,
             lastUpdated = Clock.System.now().toEpochMilliseconds()
         )
-        receiptDao.insertItems(listOf(receipt))
+        receiptDao().insertItems(listOf(receipt))
         SupplierOutcome.Success
     } catch (e: Exception) {
         logRepositoryFailure(TAG, "repository", e)
         SupplierOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to log purchase"))
     }
 
-    override fun getHiddenSuppliers(): Flow<SupplierListOutcome> {
-        return supplierDao.getHiddenSuppliers()
-            .map { entities -> SupplierListOutcome.Success(entities.map { it.toDomain() }) as SupplierListOutcome }
-            .catch { emit(SupplierListOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(it.message ?: "Failed to retrieve hidden suppliers"))) }
-    }
+    override fun getHiddenSuppliers(): Flow<SupplierListOutcome> = flow {
+        val dao = supplierDao()
+        emitAll(
+            dao.getHiddenSuppliers()
+                .map { entities -> SupplierListOutcome.Success(entities.map { it.toDomain() }) as SupplierListOutcome }
+        )
+    }.catch { emit(SupplierListOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(it.message ?: "Failed to retrieve hidden suppliers"))) }
 
     override suspend fun upsertSupplier(supplier: Supplier): SupplierOutcome = try {
-        supplierDao.insertSupplier(supplier.toEntity())
-        syncQueueDao.enqueue(
+        supplierDao().insertSupplier(supplier.toEntity())
+        syncQueueDao().enqueue(
             SyncQueueEntity(
                 operationType = "BACKUP",
                 createdAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -79,25 +87,25 @@ class SupplierRepositoryImpl(
         platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
-    logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
+        logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         SupplierOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to save supplier"))
     }
 
     override suspend fun replaceAllSuppliers(suppliers: List<Supplier>): SupplierOutcome = try {
-        supplierDao.deleteAllSuppliers()
+        val sDao = supplierDao()
+        sDao.deleteAllSuppliers()
         if (suppliers.isNotEmpty()) {
-            supplierDao.insertSuppliers(suppliers.map { it.toEntity() })
+            sDao.insertSuppliers(suppliers.map { it.toEntity() })
         }
         SupplierOutcome.Success
     } catch (e: Exception) {
-
-logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
+        logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         SupplierOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to restore suppliers"))
     }
 
     override suspend fun hideSupplier(id: SupplierId): SupplierOutcome = try {
-        supplierDao.hideSupplier(id.value)
-        syncQueueDao.enqueue(
+        supplierDao().hideSupplier(id.value)
+        syncQueueDao().enqueue(
             SyncQueueEntity(
                 operationType = "BACKUP",
                 createdAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -106,13 +114,13 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
-    logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
+        logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         SupplierOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to hide supplier"))
     }
 
     override suspend fun restoreSupplier(id: SupplierId): SupplierOutcome = try {
-        supplierDao.restoreSupplier(id.value)
-        syncQueueDao.enqueue(
+        supplierDao().restoreSupplier(id.value)
+        syncQueueDao().enqueue(
             SyncQueueEntity(
                 operationType = "BACKUP",
                 createdAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -126,8 +134,8 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
     }
 
     override suspend fun updateOrder(id: SupplierId, newOrder: Int): SupplierOutcome = try {
-        supplierDao.updateOrder(id.value, newOrder)
-        syncQueueDao.enqueue(
+        supplierDao().updateOrder(id.value, newOrder)
+        syncQueueDao().enqueue(
             SyncQueueEntity(
                 operationType = "BACKUP",
                 createdAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -141,11 +149,12 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
     }
 
     override suspend fun togglePin(id: SupplierId, isPinned: Boolean): SupplierOutcome = try {
-        val supplier = supplierDao.getSupplierById(id.value)
+        val sDao = supplierDao()
+        val supplier = sDao.getSupplierById(id.value)
         supplier?.let {
-            supplierDao.insertSupplier(it.copy(isPinned = isPinned))
+            sDao.insertSupplier(it.copy(isPinned = isPinned))
         }
-        syncQueueDao.enqueue(
+        syncQueueDao().enqueue(
             SyncQueueEntity(
                 operationType = "BACKUP",
                 createdAtMillis = Clock.System.now().toEpochMilliseconds()
@@ -154,15 +163,16 @@ logRepositoryFailure("SupplierRepositoryImpl", "repository", e)
         platformActions.triggerBackgroundSync()
         SupplierOutcome.Success
     } catch (e: Exception) {
-            logRepositoryFailure(TAG, "repository", e)
+        logRepositoryFailure(TAG, "repository", e)
         SupplierOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to pin supplier"))
     }
 
     override suspend fun seedDefaultSuppliers(): SupplierOutcome = try {
-        val suppliers = supplierDao.getVisibleSuppliersOnce()
+        val sDao = supplierDao()
+        val suppliers = sDao.getVisibleSuppliersOnce()
         if (suppliers.isEmpty()) {
-            supplierDao.insertSuppliers(com.fordham.toolbelt.data.defaultSupplierEntities())
-            syncQueueDao.enqueue(
+            sDao.insertSuppliers(com.fordham.toolbelt.data.defaultSupplierEntities())
+            syncQueueDao().enqueue(
                 SyncQueueEntity(
                     operationType = "BACKUP",
                     createdAtMillis = Clock.System.now().toEpochMilliseconds()

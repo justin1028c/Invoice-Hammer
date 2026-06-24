@@ -1,29 +1,36 @@
 package com.fordham.toolbelt.data
 
 import androidx.room.Room
-import androidx.room.RoomDatabase
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.fordham.toolbelt.securevault.PlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSUUID
 
-fun getIosDatabaseBuilder(passphrase: String): RoomDatabase.Builder<AppDatabase> {
+internal actual fun buildRoomDatabase(
+    passphrase: ByteArray,
+    context: PlatformContext
+): AppDatabase {
     val dbFile = NSHomeDirectory() + "/Documents/invoice_hammer.db"
-    // SQLite PRAGMA does not support parameter binding, so the passphrase must
-    // be inlined. Double any single quotes to keep PRAGMA key syntax-safe even
-    // if the Keychain bridge ever returns a non-UUID passphrase.
-    val escapedPassphrase = passphrase.replace("'", "''")
+    val passphraseStr = passphrase.decodeToString()
+    val escapedPassphrase = passphraseStr.replace("'", "''")
     return Room.databaseBuilder<AppDatabase>(
         name = dbFile,
         factory = { AppDatabaseConstructor.initialize() }
     ).setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .fallbackToDestructiveMigration(dropAllTables = true)
-        .addMigrations(MIGRATION_19_20)
+        .addMigrations(MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
         .addCallback(object : RoomDatabase.Callback() {
             override fun onOpen(db: SQLiteConnection) {
                 db.prepare("PRAGMA key = '$escapedPassphrase'").step()
             }
         })
+        .build()
+}
+
+internal actual fun generateSecurePassphrase(): String {
+    return NSUUID().UUIDString()
 }

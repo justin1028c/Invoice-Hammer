@@ -44,6 +44,9 @@ import com.fordham.toolbelt.util.IosSecurityServiceProvider
 import com.fordham.toolbelt.util.SecurityGateway
 import com.fordham.toolbelt.util.IosSecurityGateway
 import com.fordham.toolbelt.util.currentPlatformTarget
+import com.fordham.toolbelt.securevault.SecureVaultGateway
+import com.fordham.toolbelt.securevault.PlatformContext
+import com.fordham.toolbelt.securevault.createSecureVault
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -76,12 +79,7 @@ actual fun platformModule(): Module = module {
     single<BentoReportGenerator> { IosBentoReportGenerator() }
     single<com.fordham.toolbelt.util.TaxExporter> { com.fordham.toolbelt.util.IosTaxExporter(get(), get()) }
     single<SecurityGateway> { IosSecurityGateway() }
-    single<RoomDatabase.Builder<AppDatabase>> {
-        val passphrase = IosSecurityServiceProvider.bridge?.getDatabasePassphrase()
-        check(passphrase != null) { "iOS Security Bridge/Keychain is NOT initialized" }
-
-        getIosDatabaseBuilder(passphrase)
-    }
+    single<SecureVaultGateway> { createSecureVault(PlatformContext(platform.darwin.NSObject()), get()) }
     single<com.fordham.toolbelt.util.PlatformTarget> { currentPlatformTarget() }
     single<StoreBillingGateway> { IosStoreBillingGateway() }
     single { IosStripePaymentSheetGateway() }
