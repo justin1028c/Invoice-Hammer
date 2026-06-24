@@ -2,6 +2,8 @@
 
 `:secure-vault` is a Kotlin Multiplatform (KMP) library that provides secure, hardware-backed credential storage utilizing the **Android Keystore (EncryptedSharedPreferences)** and **iOS Keychain Services** with strict thread-confinement guarantees and Swift-safe API design.
 
+📖 **API Reference Documentation:** [justin1028c.gitlab.io/invoice-hammer/api-docs/](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
+
 ---
 
 ## 🚀 Quick Start — Non-Blocking Room/SQLCipher Passphrase Pre-warming
@@ -54,9 +56,11 @@ internal actual fun buildRoomDatabase(passphrase: ByteArray, context: PlatformCo
         .build()
 }
 
-// iosMain iOS Implementation
+// iosMain iOS Implementation (ensure /Documents directory is writable and configured with appropriate NSDataWritingOptions)
 internal actual fun buildRoomDatabase(passphrase: ByteArray, context: PlatformContext): AppDatabase {
     val dbFile = NSHomeDirectory() + "/Documents/invoice_hammer.db"
+    // Note: In production, verify directory existence or create it dynamically using NSFileManager.
+    // Ensure appropriate iOS Data Protection attributes (e.g., NSFileProtectionComplete) are applied.
     return Room.databaseBuilder<AppDatabase>(name = dbFile, factory = { AppDatabaseConstructor.initialize() })
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
@@ -95,7 +99,7 @@ sourceSets {
 ## 🛡️ Key Features
 
 1. **Domain Purity**: 100% Kotlin Common APIs. No platform namespaces leaked.
-2. **Explicit Concurrency Control**:INITIALIZATION requires an explicit `CoroutineDispatcher` ensuring cryptographic execution blocks are bound to background thread pools.
+2. **Explicit Concurrency Control**: Initialization requires an explicit `CoroutineDispatcher` ensuring cryptographic execution blocks are bound to background thread pools.
 3. **Eradication of Primitive Obsession**: Public boundaries enforce `@JvmInline value class SecretKeyLabel` and `SecretValue` to prevent developer errors at boundaries.
 4. **Swift Interoperability**: Non-generic sealed interface outcomes (`VaultOperationResult`) map to clean native enums when bridged.
 5. **Open Source Compliant**: Tracks signature dumps via the JetBrains `binary-compatibility-validator` and Dokka KDoc engines.
