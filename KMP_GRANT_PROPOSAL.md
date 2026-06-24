@@ -14,6 +14,16 @@ The Kotlin Multiplatform (KMP) ecosystem has seen rapid adoption, yet secure har
 
 ---
 
+## 🤖 Securing Edge-AI & Local LLM Workflows
+With the emergence of mobile-first AI features, local LLM execution, and client-side generative AI integration (such as Google’s Gemini SDK and on-device Llama models), KMP developers face a critical threat vector: **AI Data Leakage on the Edge**.
+
+Applications running offline voice transcription, contractor job-memory logs, or automated text generation handle massive amounts of sensitive user transcripts, customer contracts, and billing records directly in RAM and offline storage. `:secure-vault` is designed specifically to secure this next generation of mobile applications:
+* **Obfuscated AI Key Management**: Prevents reverse-engineering of cloud Gemini API keys or server endpoints by storing private key material inside the device's hardware enclave.
+* **SQLCipher Database Encryption**: Encrypts offline context caches (e.g. database-linked LLM memory logs and vector transcripts) so they cannot be retrieved by unauthorized actors on rooted or jailbroken devices.
+* **Asynchronous Thread Confinement**: Ensures that heavy AI processing pipelines (which consume significant CPU/RAM) never block the UI thread during key resolution, maintaining smooth 60fps rendering even under heavy on-device model loads.
+
+---
+
 ## 🛠️ Core Architectural Pillars & Innovations
 
 ### 1. Clean Architecture Firewall
