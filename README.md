@@ -1,5 +1,7 @@
 # Invoice Hammer — Stellar Community Fund (SCF) Technical Specification
 
+[![Kotlin Multiplatform](https://img.shields.io/badge/kotlin-multiplatform-blue.svg?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![GitLab Pipeline](https://img.shields.io/gitlab/pipeline-status/Justin1028c/invoice-hammer?branch=main)](https://gitlab.com/Justin1028c/invoice-hammer/pipelines) [![API Reference](https://img.shields.io/badge/docs-KDoc-green.svg)](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
+
 Invoice Hammer is a Kotlin Multiplatform (KMP) system designed for non-custodial invoice staging, tracking, and instant automated settlement on the Stellar network. It provides independent contractors and merchants with a lightweight, peer-to-peer alternative to traditional payment processors.
 
 ---
@@ -97,5 +99,5 @@ The project is structured into three discrete 30-day milestones (Tranches):
 ---
 
 ## 7. Open Source Alignment & Licensing
-Invoice Hammer is committed to the open-source ethos of the Stellar community. All codebase components, libraries, and platform bridging structures are fully open-source and licensed under the [MIT License](file:///c:/Users/Justin/AndroidStudioProjects/InvoiceApp/LICENSE). Reviewers and builders can inspect, compile, audit, or fork the project freely.
+Invoice Hammer is committed to the open-source ethos of the developer community. All codebase components, libraries, and platform bridging structures are fully open-source and licensed under the [Apache License 2.0](file:///c:/Users/Justin/AndroidStudioProjects/InvoiceApp/LICENSE). Reviewers and builders can inspect, compile, audit, or fork the project freely.
 

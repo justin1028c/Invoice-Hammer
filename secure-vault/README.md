@@ -1,5 +1,7 @@
 # :secure-vault — KMP Hardware-Backed Storage Library
 
+[![Kotlin Multiplatform](https://img.shields.io/badge/kotlin-multiplatform-blue.svg?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![API Reference](https://img.shields.io/badge/docs-KDoc-green.svg)](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
+
 `:secure-vault` is a Kotlin Multiplatform (KMP) library that provides secure, hardware-backed credential storage utilizing the **Android Keystore (EncryptedSharedPreferences)** and **iOS Keychain Services** with strict thread-confinement guarantees and Swift-safe API design.
 
 📖 **API Reference Documentation:** [justin1028c.gitlab.io/invoice-hammer/api-docs/](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
