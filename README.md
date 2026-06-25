@@ -1,4 +1,4 @@
-# Invoice Hammer — Stellar Community Fund (SCF) Technical Specification
+# Invoice Hammer
 
 [![Kotlin Multiplatform](https://img.shields.io/badge/kotlin-multiplatform-blue.svg?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![GitLab Pipeline](https://img.shields.io/gitlab/pipeline-status/Justin1028c/invoice-hammer?branch=main)](https://gitlab.com/Justin1028c/invoice-hammer/pipelines) [![API Reference](https://img.shields.io/badge/docs-KDoc-green.svg)](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
 
@@ -21,7 +21,6 @@ Traditional payment processors charge contractors between 1.5% and 3.5% in trans
 
 * **Public Repository**: [Invoice Hammer KMP Repository](https://gitlab.com/Justin1028c/invoice-hammer)
 * **Live Hosted Spec Page**: [Stellar Invoice Hammer Specification Site](https://invoice-hammer-1f7efb.gitlab.io)
-
 
 ---
 
@@ -79,25 +78,12 @@ Invoice Hammer utilizes the Stellar network because of its optimal features for 
 
 ---
 
-## 5. Development Roadmap & Tranche Plan
-
-The project is structured into three discrete 30-day milestones (Tranches):
-
-| Tranche | Milestone | Technical Deliverables | Funding allocation |
-| :--- | :--- | :--- | :--- |
-| **Tranche 1** | Local Staging MVP | Room KMP schema design, SQLCipher setup, client management UI, and PDF generator. | 35% |
-| **Tranche 2** | Testnet Integration | Secure Enclave / Keystore platform bridge, mock PowerPay client, Stellar Testnet transaction staging, and webhooks. | 40% |
-| **Tranche 3** | Mainnet & Audit | Production-grade UI/UX polish, third-party security audit of key bridging, and Mainnet deployment. | 25% |
-
----
-
-## 6. Solo Developer & Technical Background
+## 5. Technical Background & Clean Architecture
 
 * **Kotlin Multiplatform Expertise**: Built with strict adherence to Clean Architecture—enforcing a pure domain core containing zero platform dependencies, zero primitive obsession (using `@JvmInline value class` representation), and Swift-friendly sealed interface boundaries.
 * **Systems Engineering**: Comprehensive experience in embedded device cryptography, database security, and distributed settlement rails.
 
 ---
 
-## 7. Open Source Alignment & Licensing
-Invoice Hammer is committed to the open-source ethos of the developer community. All codebase components, libraries, and platform bridging structures are fully open-source and licensed under the [Apache License 2.0](file:///c:/Users/Justin/AndroidStudioProjects/InvoiceApp/LICENSE). Reviewers and builders can inspect, compile, audit, or fork the project freely.
-
+## 6. Open Source Alignment & Licensing
+Invoice Hammer is committed to the open-source ethos of the developer community. All codebase components, libraries, and platform bridging structures are fully open-source and licensed under the [Apache License 2.0](LICENSE). Reviewers and builders can inspect, compile, audit, or fork the project freely.

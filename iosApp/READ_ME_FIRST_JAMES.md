@@ -11,11 +11,10 @@ Dependency" wizard.
 (electricians, plumbers, contractors). It handles invoicing, expense
 capture, supplier price tracking, encrypted vaults, AI-assisted line-item
 extraction, and (where supported) Google Drive backup. Android is feature
-complete; iOS is the host wrapper we're polishing for the Stellar Community
-Fund submission.
+complete; iOS is the host wrapper we're polishing for production release.
 
 Your contribution gets the iOS host parity-clean. That's the missing piece
-for the SCF application.
+for the production application.
 
 ## The one-liner
 
@@ -57,7 +56,7 @@ sealed failure outcome. Pulled from the audit:
 
 - **Google Drive sync.** `DriveAuthBridge.swift` throws an `NSError`; the
   Kotlin layer converts it to `DriveTokenOutcome.Failure`. Wiring requires
-  `GIDSignIn` with the Drive scope on iOS. **Optional for first SCF cut.**
+  `GIDSignIn` with the Drive scope on iOS. **Optional for first release cut.**
 - **PowerPay payments.** Runs in mock mode on both platforms until
   `PowerPayConfig.baseUrl` is set to the Vercel URL. KMP-shared, not iOS-
   specific.

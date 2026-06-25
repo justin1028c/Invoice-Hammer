@@ -327,7 +327,7 @@
     <string name="builder_pack_desc">El más popular. Diseñado para contratistas en crecimiento.</string>
     <string name="contractors_choice">Elección del contratista</string>
     <string name="contractor_pack_title">Paquete contratista</string>
-    <string name="credits_count_350">350 Créditos</string>
+    <string name="credits_count_400">400 Créditos</string>
     <string name="price_contractor">$19.99</string>
     <string name="contractor_pack_desc">Mejor valor. Acceso completo a utilidades de nivel empresarial.</string>
     <string name="best_value">Mejor valor</string>
@@ -376,7 +376,7 @@
     <!-- Payment Picker options -->
     <string name="google_pay_picker_desc">Futuro pago de billetera respaldado por procesador.</string>
     <string name="apple_pay_picker_desc">Ranura de proveedor lista para iOS para pago nativo.</string>
-    <string name="stellar_usdc_picker_desc">Carril de liquidación de moneda estable para demo de SCF.</string>
+    <string name="stellar_usdc_picker_desc">Carril de liquidación de moneda estable USDC.</string>
     <string name="card_link_picker_title">Tarjeta / Enlace de pago</string>
     <string name="card_link_picker_desc">Enlace de respaldo alojado para clientes sin billeteras.</string>
     <string name="card_terminal_picker_title">Terminal de tarjeta</string>
@@ -535,4 +535,10 @@
     <string name="message_tone">TONO DEL MENSAJE</string>
     <string name="message_channel">CANAL DEL MENSAJE</string>
     <string name="send_ai_reminder">Enviar recordatorio IA</string>
+    <string name="founder_lifetime_title">Pase de por vida de fundador</string>
+    <string name="founder_lifetime_desc">Compra única · Todas las funciones Pro para siempre.</string>
+    <string name="price_founder">$79.99</string>
+    <string name="join_beta_title">Acceso para probadores Beta</string>
+    <string name="join_beta_desc">¿Eres probador beta? Haz clic aquí para desbloquear todas las funciones gratis.</string>
+    <string name="join_beta_btn">DESBLOQUEO BETA GRATIS</string>
 </resources>

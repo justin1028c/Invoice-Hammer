@@ -327,7 +327,7 @@
     <string name="builder_pack_desc">Most Popular. Designed for growing handyman operations.</string>
     <string name="contractors_choice">Contractor's Choice</string>
     <string name="contractor_pack_title">Contractor Pack</string>
-    <string name="credits_count_350">350 Credits</string>
+    <string name="credits_count_400">400 Credits</string>
     <string name="price_contractor">$19.99</string>
     <string name="contractor_pack_desc">Best Value. Complete enterprise utility access.</string>
     <string name="best_value">Best Value</string>
@@ -376,7 +376,7 @@
     <!-- Payment Picker options -->
     <string name="google_pay_picker_desc">Future processor-backed wallet payment.</string>
     <string name="apple_pay_picker_desc">iOS-ready provider slot for native checkout.</string>
-    <string name="stellar_usdc_picker_desc">Stablecoin settlement rail for SCF demo path.</string>
+    <string name="stellar_usdc_picker_desc">Stablecoin settlement rail via Stellar USDC.</string>
     <string name="card_link_picker_title">Card / Payment Link</string>
     <string name="card_link_picker_desc">Hosted fallback link for clients without wallets.</string>
     <string name="card_terminal_picker_title">Card Terminal</string>
@@ -535,4 +535,10 @@
     <string name="message_tone">MESSAGE TONE</string>
     <string name="message_channel">MESSAGE CHANNEL</string>
     <string name="send_ai_reminder">Send AI Reminder</string>
+    <string name="founder_lifetime_title">Founder\'s Lifetime Pass</string>
+    <string name="founder_lifetime_desc">One-time purchase · All Pro features forever.</string>
+    <string name="price_founder">$79.99</string>
+    <string name="join_beta_title">Beta Tester Access</string>
+    <string name="join_beta_desc">Are you a beta tester? Click here to unlock all features for free.</string>
+    <string name="join_beta_btn">FREE BETA UNLOCK</string>
 </resources>
