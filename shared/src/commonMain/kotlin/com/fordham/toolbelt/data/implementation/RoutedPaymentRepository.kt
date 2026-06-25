@@ -186,9 +186,23 @@ class RoutedPaymentRepository(
             is PowerPayClientOutcome.Success -> {
                 val stellarRequests = outcome.value.map { it.toStellarDomain() }
                 val local = paymentRequestDao.getAll().map { it.toDomain() }
+                val localStellar = local.filter { it.provider.usesStellarRail }
                 val stripeAndTerminal = local.filter { !it.provider.usesStellarRail }
-                val merged = (stellarRequests + stripeAndTerminal)
-                    .distinctBy { it.id.value }
+                
+                val mergedStellar = stellarRequests.map { remote ->
+                    val matchingLocal = localStellar.find { it.id.value == remote.id.value }
+                    if (matchingLocal != null && remote.paymentLink.value.isBlank()) {
+                        remote.copy(paymentLink = matchingLocal.paymentLink)
+                    } else {
+                        remote
+                    }
+                }
+                
+                val missingLocalStellar = localStellar.filter { localReq ->
+                    mergedStellar.none { it.id.value == localReq.id.value }
+                }
+                
+                val merged = mergedStellar + missingLocalStellar + stripeAndTerminal
                 paymentRequestDao.upsertAll(merged.map { it.toEntity() })
                 PaymentLedgerOutcome.Success(paymentRequestDao.getAll().map { it.toDomain() })
             }

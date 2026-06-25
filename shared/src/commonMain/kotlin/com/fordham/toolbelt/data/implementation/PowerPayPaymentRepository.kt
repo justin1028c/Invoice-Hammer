@@ -5,7 +5,7 @@ import com.fordham.toolbelt.data.remote.PowerPayClientOutcome
 import com.fordham.toolbelt.data.remote.PowerPayConfig
 import com.fordham.toolbelt.data.remote.PowerPayCreatePaymentRequestDto
 import com.fordham.toolbelt.data.remote.PowerPayPaymentResponseDto
-import com.fordham.toolbelt.data.PaymentRequestDao
+import com.fordham.toolbelt.data.DatabaseProvider
 import com.fordham.toolbelt.data.toDomain
 import com.fordham.toolbelt.data.toEntity
 import com.fordham.toolbelt.domain.model.FailureMessage
@@ -28,19 +28,28 @@ import com.fordham.toolbelt.domain.repository.AuthRepository
 import com.fordham.toolbelt.domain.repository.PaymentRepository
 import com.fordham.toolbelt.util.randomUUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
-class PowerPayPaymentRepository(
+public class PowerPayPaymentRepository(
     private val powerPayClient: PowerPayClient,
     private val config: PowerPayConfig,
     private val authRepository: AuthRepository,
-    private val paymentRequestDao: PaymentRequestDao
+    private val databaseProvider: DatabaseProvider
 ) : PaymentRepository {
-    override val ledger: Flow<PaymentLedgerOutcome> =
-        paymentRequestDao.observeAll().map { entities ->
-            PaymentLedgerOutcome.Success(entities.map { it.toDomain() })
-        }
+
+    private suspend fun paymentRequestDao() = databaseProvider.getDatabase().paymentRequestDao()
+
+    override val ledger: Flow<PaymentLedgerOutcome> = flow {
+        val dao = paymentRequestDao()
+        emitAll(
+            dao.observeAll().map { entities ->
+                PaymentLedgerOutcome.Success(entities.map { it.toDomain() }) as PaymentLedgerOutcome
+            }
+        )
+    }
 
     override suspend fun createPaymentRequest(
         invoice: Invoice,
@@ -73,10 +82,11 @@ class PowerPayPaymentRepository(
             )
         )
 
+        val dao = paymentRequestDao()
         return when (outcome) {
             is PowerPayClientOutcome.Success -> {
                 val request = outcome.value.toDomain()
-                paymentRequestDao.upsert(request.toEntity())
+                dao.upsert(request.toEntity())
                 PaymentRequestOutcome.Success(request)
             }
             is PowerPayClientOutcome.Failure -> PaymentRequestOutcome.Failure(outcome.error)
@@ -85,11 +95,28 @@ class PowerPayPaymentRepository(
 
     override suspend fun refreshLedger(): PaymentLedgerOutcome {
         val outcome = powerPayClient.getTransactionHistory()
+        val dao = paymentRequestDao()
         return when (outcome) {
             is PowerPayClientOutcome.Success -> {
-                val requests = outcome.value.map { it.toDomain() }
-                paymentRequestDao.upsertAll(requests.map { it.toEntity() })
-                PaymentLedgerOutcome.Success(paymentRequestDao.getAll().map { it.toDomain() })
+                val remoteRequests = outcome.value.map { it.toDomain() }
+                val local = dao.getAll().map { it.toDomain() }
+                
+                val mergedRemote = remoteRequests.map { remote ->
+                    val matchingLocal = local.find { it.id.value == remote.id.value }
+                    if (matchingLocal != null && remote.paymentLink.value.isBlank()) {
+                        remote.copy(paymentLink = matchingLocal.paymentLink)
+                    } else {
+                        remote
+                    }
+                }
+                
+                val missingLocal = local.filter { localReq ->
+                    mergedRemote.none { it.id.value == localReq.id.value }
+                }
+                
+                val merged = mergedRemote + missingLocal
+                dao.upsertAll(merged.map { it.toEntity() })
+                PaymentLedgerOutcome.Success(dao.getAll().map { it.toDomain() })
             }
             is PowerPayClientOutcome.Failure -> PaymentLedgerOutcome.Failure(outcome.error)
         }
@@ -101,14 +128,15 @@ class PowerPayPaymentRepository(
         transactionHash: StellarTransactionHash?,
         explorerUrl: StellarExplorerUrl?
     ): PaymentLedgerOutcome {
-        paymentRequestDao.markInvoicePaid(
+        val dao = paymentRequestDao()
+        dao.markInvoicePaid(
             invoiceId = invoiceId.value,
             status = "paid",
             paidAtMillis = paidAtMillis,
             transactionHash = transactionHash?.value,
             explorerUrl = explorerUrl?.value
         )
-        return PaymentLedgerOutcome.Success(paymentRequestDao.getAll().map { it.toDomain() })
+        return PaymentLedgerOutcome.Success(dao.getAll().map { it.toDomain() })
     }
 
     override suspend fun recordCardTerminalPayment(
@@ -131,7 +159,7 @@ class PowerPayPaymentRepository(
             paidAtMillis = paidAtMillis,
             assetCode = "USD"
         )
-        paymentRequestDao.upsert(request.toEntity())
+        paymentRequestDao().upsert(request.toEntity())
         return CardTerminalPaymentOutcome.Success(request)
     }
 
