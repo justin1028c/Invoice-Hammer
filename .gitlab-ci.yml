@@ -10,6 +10,8 @@ android-build:
   image: mobiledevops/android-sdk-image:latest
   before_script:
     - export GRADLE_USER_HOME=$(pwd)/.gradle
+    # Install JDK 21 to satisfy the jvmToolchain(21) requirement in the public runner
+    - apt-get update && apt-get install -y openjdk-21-jdk
   script:
     - ./gradlew clean
     - ./gradlew :secure-vault:apiCheck
@@ -30,29 +32,10 @@ android-build:
       - .gradle/wrapper/
       - .gradle/caches/
 
-ios-build:
-  stage: build
-  tags:
-    - macos
-    - shell
-    - ios
-  before_script:
-    - export GRADLE_USER_HOME=$(pwd)/.gradle
-    - export JAVA_HOME=$(/usr/libexec/java_home -v 21 || echo "")
-  script:
-    - brew install xcodegen || true
-    - chmod +x iosApp/bootstrap_ios.sh
-    - bash iosApp/bootstrap_ios.sh
-    - ./gradlew :shared:compileKotlinIosArm64
-    - xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -configuration Debug build CODE_SIGNING_ALLOWED=NO
-  cache:
-    key: "gradle-ios"
-    paths:
-      - .gradle/wrapper/
-      - .gradle/caches/
-
 pages:
   stage: deploy
+  dependencies:
+    - android-build
   script:
     - mkdir -p public
     - cp -r docs/* public/
