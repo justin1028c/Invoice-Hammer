@@ -8,28 +8,33 @@
 ---
 
 ## 1. Project Hook & Value Proposition
-Invoice Hammer is a non-custodial, offline-first invoice staging and settlement application designed for independent contractors and service merchants. By routing invoice checkouts over native Stellar USDC rails, Invoice Hammer bypasses standard credit card processors to eliminate 1.5% - 3.5% payment fee markups. The application facilitates peer-to-peer settlement directly to a contractor's self-custodied wallet in under 5 seconds with near-zero network fees.
+Invoice Hammer is a non-custodial, offline-first invoice staging and settlement application designed for independent contractors, trade professionals, and service merchants. By supporting both traditional payment card rails (Stripe, Apple Pay, Google Pay, Card Terminals) and native Stellar USDC stablecoin rails, Invoice Hammer gives merchants full control over payment options, settlement speeds, and transaction fee management. The application facilitates peer-to-peer settlement directly to a contractor's self-custodied wallet in under 5 seconds, or via standard card processing.
 
 ---
 
 ## 2. Problem & Validated User Need (Product-Market Fit)
 Independent trade contractors (electricians, plumbers, landscapers, cleaners) run high-volume, low-margin operations. We conducted structured interviews with residential contractors:
-* **Fee Overhead:** Standard card processing drains $150 to $300 from every mid-sized job.
-* **Payout Latency:** Traditional settlement takes 2–5 business days. This delay locks up operating capital, preventing contractors from purchasing materials for their next job.
+* **Fee Overhead:** Standard card processing (e.g., Stripe, Square charging 2.9% + $0.30) drains $150 to $300 from every mid-sized job (e.g., a $5,000 HVAC install).
+* **Payout Latency:** Traditional settlement takes 2–5 business days, locking up operating capital needed for materials.
 * **On-Boarding Simplicity:** Contractors need a payment flow that feels familiar to clients. They cannot ask non-technical clients to manage complex crypto wallets or exchange interfaces.
-* **Soroban Integration:** Core architecture is mapped to Soroban smart contract interfaces, enabling automated, trustless settlement triggers that bypass layout latencies.
+* **Unified Invoice Dashboard:** Contractors need a single interface to manage all their customers, offline drafts, PDF invoices, and online invoice settlement progress.
 
 ### The Solution:
-Invoice Hammer allows contractors to generate professional invoice PDFs in the field (completely offline). When ready for payment, it produces a dynamic checkout link and QR code. The client scans the QR code or opens the link, paying directly with Stellar USDC. Payouts settle instantly, allowing immediate materials purchasing, and transaction fees drop to a fraction of a cent.
+Invoice Hammer allows contractors to generate professional invoice PDFs in the field (completely offline). When ready for payment, it produces a dynamic checkout link and QR code supporting credit cards, mobile wallets, or stablecoins. Payouts settle instantly when choosing the stablecoin route, allowing immediate materials purchasing, while providing standard credit card fallbacks.
 
 ---
 
-## 3. How Invoice Hammer Boosts the Stellar Network
-Invoice Hammer acts as a direct onboarding funnel and utility accelerator for the Stellar ecosystem:
-* **USDC Circulation Velocity:** By moving standard invoicing onto the ledger, the application drives real-world utility and transaction volume for Stellar USDC.
-* **Active Wallet Expansion:** Onboarding contractors and their client networks generates self-custodial Stellar addresses directly, expanding the active, verified user base on-chain.
-* **Transaction Count Acceleration:** Every completed checkout stages and broadcasts a multiplatform signed payment operation.
-* **Real-World Asset Utility Integration:** Connects off-chain economic labor (plumbing, electrical work, HVAC installs) directly to the Stellar USDC network rails.
+## 3. Core Features
+
+* **Multi-Rail Checkout Options**:
+  * **Stripe Connect & Card Links**: Hosted checkout screens for general credit card collection.
+  * **Mobile Wallets**: Integrated Google Pay and Apple Pay checkouts.
+  * **On-Site Collection**: Integrated Card Terminal, Tap to Pay (NFC), and Bluetooth reader support.
+  * **USDC Rails**: Settle payments directly to a digital wallet within seconds.
+* **Offline-First Invoice Staging**: Create and edit professional invoices, manage client files, and catalog parts/services without active internet.
+* **Professional PDF Generation**: Generate clean, print-ready client invoices directly on-device using platform-specific rendering engines.
+* **Passphrase-Secured Local Enclave**: Derived database keys are secured behind hardware-backed biometric authentication.
+* **Multi-Language Support**: Fully localized in English and Spanish.
 
 ---
 
@@ -49,13 +54,14 @@ graph TD
             Outcomes["Sealed Payment Outcomes"]
         end
         subgraph dataPlatform ["Data & Platform Layers (shared)"]
-            RepoImpl[MockPaymentRepository]
+            RepoImpl[RoutedPaymentRepository]
             DB["Room KMP Database + SQLCipher"]
             Enclave["Secure Enclave / Keystore Bridge"]
         end
     end
     subgraph externalInfra ["External Infrastructure"]
-        HorizonNode["Stellar Horizon Node / API"]
+        Stripe["Stripe Connect Backend"]
+        PP["PowerPay Gateway / Event Webhook"]
         Stellar(("Stellar Network / USDC Ledger"))
     end
 
@@ -64,10 +70,9 @@ graph TD
     RepoImpl -.->|Implements| RepoContract
     RepoImpl -->|Reads/Writes| DB
     RepoImpl -->|Requests Signature| Enclave
-    RepoImpl -->|Submits Tx & Relays Hash| HorizonNode
-    HorizonNode -->|Publishes| Stellar
-    Stellar -.->|Confirms Transaction| HorizonNode
-    HorizonNode -.->|Returns Transaction Proof| RepoImpl
+    RepoImpl -->|Stripe Checkout| Stripe
+    RepoImpl -->|Stellar USDC| PP
+    PP -->|Submits Tx| Stellar
 ```
 
 ### Custody and Security Specifications
@@ -77,7 +82,7 @@ graph TD
 
 ---
 
-## 5. Stellar Ecosystem Standards & Integration Roadmap
+## 5. Ecosystem Standards & Integration Roadmap
 Invoice Hammer integrates standard Stellar development primitives and aligns with Ecosystem SEPs:
 * **Stellar USDC Rails:** Native USDC asset transfers are used for core invoice settlement.
 * **SEP-7 (URI Scheme for Payment Requests):** Formats QR code generation according to SEP-7 standards, allowing clients with third-party wallets to scan and sign checkouts immediately.
@@ -87,4 +92,4 @@ Invoice Hammer integrates standard Stellar development primitives and aligns wit
 ---
 
 ## 6. Open Source Alignment & Licensing
-Invoice Hammer is fully committed to the open-source community. All core modules, database abstractions, and platform bridges are published under the **MIT License**. Reviewers, developers, and ecosystem builders can audit, compile, and extend the project freely.
+Invoice Hammer is fully committed to the open-source community. All core modules, database abstractions, and platform bridges are published under the **Apache License 2.0**. Reviewers, developers, and ecosystem builders can audit, compile, and extend the project freely.
