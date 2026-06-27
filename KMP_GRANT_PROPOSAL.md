@@ -56,6 +56,14 @@ The library is designed for absolute ergonomics when bridged to iOS Swift/Object
 
 To meet the Kotlin Foundation's strict package distribution metrics, the library includes a complete JetBrains-grade verification pipeline:
 
+* **Open-Source Distribution**:
+  Published and compiled on JitPack. The package is ready for multiplatform integration:
+  `implementation("com.gitlab.Justin1028c.invoice-hammer:secure-vault:1.0.0")`
+  * GitLab Repository: [Justin1028c/invoice-hammer](https://gitlab.com/Justin1028c/invoice-hammer)
+  * JitPack Release: [JitPack Package Page](https://jitpack.io/#com.gitlab.Justin1028c/invoice-hammer)
+* **Live API Reference Documentation**:
+  API documentation is built via Dokka V2 and auto-deployed via GitLab CI/CD on every push.
+  * Live Documentation Site: [secure-vault API Docs Reference](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
 * **Explicit API Mode (`explicitApi()`)**:
   Active in Gradle configurations. Enforces that all public-facing definitions specify explicit visibility (`public`, `internal`) and explicit return types, guarding against API leaks.
 * **Binary Compatibility Validation**:
@@ -66,3 +74,4 @@ To meet the Kotlin Foundation's strict package distribution metrics, the library
   Cross-platform unit tests configured in `commonTest` (utilizing `kotlinx-coroutines-test` and a lightweight mock `FakeSecureVault`), ensuring platform-independent correctness.
 * **Automated CI/CD Verification**:
   Active GitLab CI/CD YAML configuration that compiles modules, executes unit tests, verifies binary compatibility, and automatically publishes updated Dokka HTML documents directly to GitLab Pages on every release branch commit.
+
