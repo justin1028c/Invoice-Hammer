@@ -1,0 +1,10 @@
+# JitPack Configuration File
+# Read more at https://jitpack.io/docs/
+
+jdk:
+  - openjdk21
+
+install:
+  # Publish only the library module to local Maven so JitPack can index it.
+  # We skip tests in the build server to speed up compile times.
+  - ./gradlew :secure-vault:publishToMavenLocal -x test
