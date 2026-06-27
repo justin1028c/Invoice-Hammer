@@ -16,7 +16,7 @@ android-build:
     - ./gradlew clean
     - ./gradlew :secure-vault:apiCheck
     - ./gradlew :secure-vault:testDebugUnitTest
-    - ./gradlew :secure-vault:dokkaHtml
+    - ./gradlew :secure-vault:dokkaGeneratePublicationHtml
     - ./gradlew :shared:compileKotlinMetadata
     - ./gradlew :shared:compileDebugKotlinAndroid
     - ./gradlew :androidApp:assembleDebug
