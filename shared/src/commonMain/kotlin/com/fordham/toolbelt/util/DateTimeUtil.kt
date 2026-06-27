@@ -35,7 +35,23 @@ object DateTimeUtil {
         val whole = if (divisor > 0L) cents / divisor else cents
         val fraction = if (divisor > 0L) cents % divisor else 0L
         val fractionStr = if (decimals > 0) fraction.toString().padStart(decimals, '0') else ""
-        return if (decimals > 0) "$sign$whole.$fractionStr" else "$sign$whole"
+        val wholeStr = formatWholeWithCommas(whole)
+        return if (decimals > 0) "$sign$wholeStr.$fractionStr" else "$sign$wholeStr"
+    }
+
+    private fun formatWholeWithCommas(whole: Long): String {
+        val s = whole.toString()
+        val len = s.length
+        if (len <= 3) return s
+        val sb = StringBuilder()
+        for (i in 0 until len) {
+            sb.append(s[i])
+            val remaining = len - 1 - i
+            if (remaining > 0 && remaining % 3 == 0) {
+                sb.append(',')
+            }
+        }
+        return sb.toString()
     }
 
     fun getNowFormatted(): String = formatEpoch(nowEpochMillis())
@@ -122,20 +138,19 @@ object DateTimeUtil {
 
 
     /**
-     * Displays a stored invoice date. Converts legacy M/D/Y values to D/M/Y for Spanish locale.
+     * Displays a stored invoice date. Parses and normalizes dates dynamically based on system locale.
      */
     fun formatDateForDisplay(stored: String): String {
-        if (AppLocale.fromSystem() != AppLocale.Spanish) return stored
-        val parts = stored.trim().split("/")
-        if (parts.size != 3) return stored
-        val first = parts[0].toIntOrNull() ?: return stored
-        val second = parts[1].toIntOrNull() ?: return stored
-        val year = parts[2]
-        if (first in 1..12 && second in 1..31) {
-            return "${second.toString().padStart(2, '0')}/" +
-                "${first.toString().padStart(2, '0')}/$year"
+        val date = parseDate(stored) ?: return stored
+        val isSpanish = AppLocale.fromSystem() == AppLocale.Spanish
+        val day = date.dayOfMonth.toString().padStart(2, '0')
+        val month = date.monthNumber.toString().padStart(2, '0')
+        val year = date.year.toString()
+        return if (isSpanish) {
+            "$day/$month/$year"
+        } else {
+            "${date.monthNumber}/${date.dayOfMonth}/$year"
         }
-        return stored
     }
 
     /** Filesystem-safe stamp for export filenames, e.g. `20260519_143052`. */

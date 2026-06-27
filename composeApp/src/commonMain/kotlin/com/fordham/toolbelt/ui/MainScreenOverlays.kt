@@ -60,7 +60,8 @@ fun BoxScope.MainScreenOverlays(
     onChannelChange: (com.fordham.toolbelt.domain.usecase.ReminderChannel) -> Unit,
     onGenerateReminder: () -> Unit,
     onUpdateGeneratedText: (String, String) -> Unit,
-    onSendShareReminder: () -> Unit
+    onSendShareReminder: () -> Unit,
+    onBetaUnlock: () -> Unit
 ) {
     var pendingToastKey by remember { mutableStateOf<String?>(null) }
     val localizedToast = pendingToastKey?.let { localizeUiMessage(it) }
@@ -169,7 +170,8 @@ fun BoxScope.MainScreenOverlays(
             onDismiss = onDismissPaywall,
             onPurchase = { subscriptionViewModel.purchase(it) },
             onPurchaseCreditPack = { subscriptionViewModel.purchaseProduct(it) },
-            onRestore = { subscriptionViewModel.restore() }
+            onRestore = { subscriptionViewModel.restore() },
+            onBetaUnlock = onBetaUnlock
         )
     }
 

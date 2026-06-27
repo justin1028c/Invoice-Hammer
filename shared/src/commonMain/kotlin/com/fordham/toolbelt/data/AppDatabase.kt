@@ -17,7 +17,7 @@ import androidx.room.RoomDatabaseConstructor
         PaymentRequestEntity::class,
         SyncQueueEntity::class
     ], 
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 @ConstructedBy(AppDatabaseConstructor::class)

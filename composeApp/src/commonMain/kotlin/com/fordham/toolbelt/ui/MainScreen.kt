@@ -21,6 +21,7 @@ import com.fordham.toolbelt.util.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 /**
@@ -57,6 +58,7 @@ fun MainScreen(
     var pendingLogoToast by remember { mutableStateOf<String?>(null) }
     var pendingAuthToast by remember { mutableStateOf<String?>(null) }
     var pendingPaymentToast by remember { mutableStateOf<String?>(null) }
+    var showPaywall by remember { mutableStateOf(false) }
 
     val localizedLogoToast = pendingLogoToast?.let { localizeUiMessage(it) }
     val localizedAuthToast = pendingAuthToast?.let { localizeUiMessage(it) }
@@ -90,7 +92,17 @@ fun MainScreen(
         authMessage?.let { pendingAuthToast = it }
         authViewModel.clearAuthMessage()
     }
-
+ 
+    LaunchedEffect(currentBusinessSettings) {
+        if (!currentBusinessSettings.isPremium && !currentBusinessSettings.hasSeenPreLaunchPaywall) {
+            delay(1500)
+            showPaywall = true
+            sharedViewModel.saveBusinessSettings(
+                currentBusinessSettings.copy(hasSeenPreLaunchPaywall = true)
+            )
+        }
+    }
+ 
     LaunchedEffect(localizedAuthToast) {
         localizedAuthToast?.let {
             platformActions.showToast(it)
@@ -142,7 +154,6 @@ fun MainScreen(
     }
 
     var showPremiumLockDialog by remember { mutableStateOf(false) }
-    var showPaywall by remember { mutableStateOf(false) }
     val subscriptionUiState by subscriptionViewModel.uiState.collectAsStateWithLifecycle()
     val receiptsUiState by receiptsViewModel.uiState.collectAsStateWithLifecycle()
     val canUseForeman = subscriptionUiState.canUseForemanAgent
@@ -475,6 +486,11 @@ fun MainScreen(
                             recipientEmail = historyUiState.reminderInvoice?.clientEmail?.value.orEmpty(),
                             recipientPhone = historyUiState.reminderInvoice?.clientPhone?.value.orEmpty()
                         )
+                    },
+                    onBetaUnlock = {
+                        val newSettings = currentBusinessSettings.copy(isPremium = true)
+                        sharedViewModel.saveBusinessSettings(newSettings)
+                        showPaywall = false
                     }
                 )
             }

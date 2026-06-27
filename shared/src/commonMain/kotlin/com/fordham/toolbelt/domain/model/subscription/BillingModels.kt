@@ -57,7 +57,7 @@ sealed interface PurchasableProduct {
 
     data object HammerCreditPack400 : PurchasableProduct {
         override val productId = ProductId("hammer_credit_pack_400")
-        override val displayName = "350 Hammer Credits"
+        override val displayName = "400 Hammer Credits"
         override val appleProductId = ProductId("hammer_credit_pack_400")
         override val googlePlayProductId = ProductId("hammer_credit_pack_400")
     }
@@ -76,6 +76,13 @@ sealed interface PurchasableProduct {
         override val displayName = "Pro Yearly"
         override val appleProductId = ProductId("invoice_hammer_pro_yearly")
         override val googlePlayProductId = ProductId("invoice_hammer_pro_yearly")
+    }
+
+    data object FounderLifetime : PurchasableProduct {
+        override val productId = ProductId("invoice_hammer_founder_lifetime")
+        override val displayName = "Founder's Lifetime Pass"
+        override val appleProductId = ProductId("invoice_hammer_founder_lifetime")
+        override val googlePlayProductId = ProductId("invoice_hammer_founder_lifetime")
     }
 }
 

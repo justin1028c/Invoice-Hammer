@@ -1,11 +1,14 @@
 package com.fordham.toolbelt.data.implementation
 
-import com.fordham.toolbelt.data.JobNoteDao
+import com.fordham.toolbelt.data.DatabaseProvider
 import com.fordham.toolbelt.domain.repository.ForemanJobMemoryPort
 
-class RoomForemanJobMemoryAdapter(
-    private val jobNoteDao: JobNoteDao
+public class RoomForemanJobMemoryAdapter(
+    private val databaseProvider: DatabaseProvider
 ) : ForemanJobMemoryPort {
+
+    private suspend fun jobNoteDao() = databaseProvider.getDatabase().jobNoteDao()
+
     override suspend fun appendRelevantNotes(context: String, userInput: String): String = buildString {
         append(context)
         try {
@@ -29,9 +32,10 @@ class RoomForemanJobMemoryAdapter(
                 .filter { it.length > 2 && it !in stopWords }
                 .distinct()
 
+            val dao = jobNoteDao()
             val addedNotes = mutableSetOf<String>()
             for (term in cleanTerms) {
-                val matchingNotes = jobNoteDao.getRelevantContext(term)
+                val matchingNotes = dao.getRelevantContext(term)
                 val newNotes = matchingNotes.filter { it.text !in addedNotes }.take(3)
                 if (newNotes.isNotEmpty()) {
                     append("\n\n[RELEVANT JOB MEMORY FOR \"$term\"]")

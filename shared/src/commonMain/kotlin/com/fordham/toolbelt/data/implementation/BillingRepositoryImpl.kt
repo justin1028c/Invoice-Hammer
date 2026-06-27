@@ -86,7 +86,8 @@ class BillingRepositoryImpl(
             PurchasableProduct.HammerCreditPack150,
             PurchasableProduct.HammerCreditPack400,
             PurchasableProduct.ProMonthly,
-            PurchasableProduct.ProYearly
+            PurchasableProduct.ProYearly,
+            PurchasableProduct.FounderLifetime
         )
         return BillingCatalogOutcome.Success(products)
     }
@@ -127,11 +128,16 @@ class BillingRepositoryImpl(
                             return BillingOutcome.Failure(FailureMessage("Transaction validation failed on secure server."))
                         }
                     }
-                    PurchasableProduct.ProMonthly, PurchasableProduct.ProYearly -> {
+                    PurchasableProduct.ProMonthly, PurchasableProduct.ProYearly, PurchasableProduct.FounderLifetime -> {
                         val isYearly = product is PurchasableProduct.ProYearly
+                        val isLifetime = product is PurchasableProduct.FounderLifetime
                         val matchedTier = catalog.value.find { 
-                            if (isYearly) it.id.value == "pro_yearly" else it.id.value == "pro" 
-                        } ?: SubscriptionTierMapper.proTierFallback()
+                            when {
+                                isLifetime -> it.id.value == "founder_lifetime"
+                                isYearly -> it.id.value == "pro_yearly"
+                                else -> it.id.value == "pro"
+                            }
+                        } ?: if (isLifetime) SubscriptionTierMapper.founderLifetimeFallback() else if (isYearly) SubscriptionTierMapper.proYearlyFallback() else SubscriptionTierMapper.proTierFallback()
                         
                         val entitlement = UserEntitlement(
                             tierId = matchedTier.id,
@@ -164,7 +170,11 @@ class BillingRepositoryImpl(
                     catalog.value,
                     productId,
                     platformTarget == PlatformTarget.Android
-                ) ?: SubscriptionTierMapper.proTierFallback()
+                ) ?: when (productId) {
+                    "invoice_hammer_founder_lifetime" -> SubscriptionTierMapper.founderLifetimeFallback()
+                    "invoice_hammer_pro_yearly" -> SubscriptionTierMapper.proYearlyFallback()
+                    else -> SubscriptionTierMapper.proTierFallback()
+                }
                 val entitlement = UserEntitlement(
                     tierId = tier.id,
                     source = when (platformTarget) {
@@ -308,13 +318,16 @@ class BillingRepositoryImpl(
     private suspend fun applyEntitlement(entitlement: UserEntitlement) {
         _entitlement.update { entitlement }
         val settings = settingsRepository.getBusinessSettings()
-        settingsRepository.saveBusinessSettings(settings.copy(isPremium = entitlement.isPro))
+        if (entitlement.isPro || !settings.isPremium) {
+            settingsRepository.saveBusinessSettings(settings.copy(isPremium = entitlement.isPro))
+        }
     }
 
     private fun defaultCatalog(): List<SubscriptionTier> = listOf(
         SubscriptionTierMapper.freeTier(),
         SubscriptionTierMapper.proTierFallback(),
-        SubscriptionTierMapper.proYearlyFallback()
+        SubscriptionTierMapper.proYearlyFallback(),
+        SubscriptionTierMapper.founderLifetimeFallback()
     )
 
     private fun freeEntitlement(): UserEntitlement = UserEntitlement(
@@ -339,7 +352,7 @@ class BillingRepositoryImpl(
             val amount = when (productId) {
                 "hammer_credit_pack_50" -> 50
                 "hammer_credit_pack_150" -> 150
-                "hammer_credit_pack_400" -> 350
+                "hammer_credit_pack_400" -> 400
                 else -> 0
             }
             return ServerVerificationResult.Success(amount)

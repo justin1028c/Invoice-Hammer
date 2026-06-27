@@ -14,11 +14,11 @@ create index if not exists invoice_hammer_backups_exported_idx
 
 alter table public.invoice_hammer_backups enable row level security;
 
--- DEV / demo: permissive policy when using the anon key from the mobile app.
--- Tighten before production (e.g. Supabase Auth JWT: auth.uid()::text = user_id).
 drop policy if exists invoice_hammer_backup_dev_all on public.invoice_hammer_backups;
-create policy invoice_hammer_backup_dev_all
+drop policy if exists invoice_hammer_backup_user_policy on public.invoice_hammer_backups;
+
+create policy invoice_hammer_backup_user_policy
     on public.invoice_hammer_backups
     for all
-    using (true)
-    with check (true);
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);

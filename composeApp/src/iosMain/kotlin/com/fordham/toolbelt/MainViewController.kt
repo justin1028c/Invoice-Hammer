@@ -25,6 +25,11 @@ fun initKoinIos() {
     initKoin(
         additionalModules = listOf(viewModelModule)
     )
+    CoroutineScope(Dispatchers.Default).launch {
+        try {
+            org.koin.core.context.GlobalContext.get().get<com.fordham.toolbelt.data.DatabaseProvider>().getDatabase()
+        } catch (_: Exception) {}
+    }
 }
 
 fun triggerIosBackgroundSync(completion: (Boolean) -> Unit) {

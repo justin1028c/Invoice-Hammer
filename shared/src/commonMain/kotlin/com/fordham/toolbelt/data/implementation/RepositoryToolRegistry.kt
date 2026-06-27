@@ -169,81 +169,73 @@ class RepositoryToolRegistry(
 
 
 
-    private val executions = RepositoryToolRegistryExecutions(
+    private val clientExecutions = ClientToolExecutions(
+        clientRepository = clientRepository,
+        invoiceRepository = invoiceRepository,
+        addJobNoteUseCase = addJobNoteUseCase
+    )
+
+    private val invoiceExecutions = InvoiceToolExecutions(
+        clientToolExecutions = clientExecutions,
         clientRepository = clientRepository,
         receiptRepository = receiptRepository,
         draftRepository = draftRepository,
         invoiceRepository = invoiceRepository,
         settingsRepository = settingsRepository,
+        generateAndSaveInvoiceUseCase = generateAndSaveInvoiceUseCase
+    )
+
+    private val receiptExecutions = ReceiptToolExecutions(
+        clientToolExecutions = clientExecutions,
+        receiptRepository = receiptRepository,
+        draftRepository = draftRepository,
         supplierRepository = supplierRepository,
-        addJobNoteUseCase = addJobNoteUseCase,
-        generateAndSaveInvoiceUseCase = generateAndSaveInvoiceUseCase,
-        processReceiptUseCase = processReceiptUseCase,
         hasSubscriptionFeature = hasSubscriptionFeature,
+        processReceiptUseCase = processReceiptUseCase
+    )
+
+    private val communicationExecutions = CommunicationToolExecutions(
+        invoiceRepository = invoiceRepository
+    )
+
+    private val helperExecutions = HelperToolExecutions(
         getProfitGuardianStatus = getProfitGuardianStatus,
         detectChangeOrders = detectChangeOrders,
         getDailyBriefing = getDailyBriefing
     )
 
-
-
     override suspend fun execute(toolName: ToolName, arguments: ToolArguments): ToolExecutionResult {
-
         return when (arguments) {
-
-            is SearchClientsArgs -> executions.executeSearchClients(arguments)
-
-            is SelectClientArgs -> executions.executeSelectClient(arguments)
-
-            is GetClientDetailsArgs -> executions.executeGetClientDetails(arguments)
-
-            is GetUnbilledReceiptsArgs -> executions.executeGetUnbilledReceipts(arguments)
-
-            is OpenTabArgs -> executions.executeOpenTab(arguments)
-
-            is CreateClientArgs -> executions.executeCreateClient(arguments)
-
-            is CreateDraftInvoiceArgs -> executions.executeCreateDraftInvoice(arguments)
-
-            is UpdateDraftInvoiceArgs -> executions.executeUpdateDraftInvoice(arguments)
-
-            is AddJobNoteArgs -> executions.executeAddJobNote(arguments)
-
-            is SaveInvoiceFromDraftArgs -> executions.executeSaveInvoiceFromDraft(arguments)
-
-            is SearchInvoiceHistoryArgs -> executions.executeSearchInvoiceHistory(arguments)
-
-            is ScanLastReceiptArgs -> executions.executeScanLastReceipt(arguments)
-
-            is QuickInvoiceArgs -> executions.executeQuickInvoice(arguments)
-
-            is QuickClientAndInvoiceArgs -> executions.executeQuickClientAndInvoice(arguments)
-
-            is QuickClientLookupArgs -> executions.executeQuickClientLookup(arguments)
-
-            is AppendDraftLinesArgs -> executions.executeAppendDraftLines(arguments)
-
-            is DuplicateLastInvoiceArgs -> executions.executeDuplicateLastInvoice(arguments)
-
-            is DuplicateAndEditArgs -> executions.executeDuplicateAndEdit(arguments)
-
-            is QuickInvoiceFromUnbilledReceiptsArgs -> executions.executeQuickInvoiceFromUnbilledReceipts(arguments)
-
-            is QuickSendInvoiceArgs -> executions.executeQuickSendInvoice(arguments)
-
-            is SendInvoiceEmailArgs -> executions.executeSendInvoiceEmail(arguments)
-
-            is SendInvoiceSmsArgs -> executions.executeSendInvoiceSms(arguments)
-
-            is DeleteInvoiceApprovalArgs -> executions.executeDeleteInvoice(arguments)
-            is OpenLastInvoiceArgs -> executions.executeOpenLastInvoice(arguments)
-            is OpenSupplierArgs -> executions.executeOpenSupplier(arguments)
-            is GetProfitGuardianStatusArgs -> executions.executeGetProfitGuardianStatus(arguments)
-            is DetectChangeOrdersArgs -> executions.executeDetectChangeOrders(arguments)
-            is GetDailyBriefingArgs -> executions.executeGetDailyBriefing(arguments)
-            is CreateChangeOrderArgs -> executions.executeCreateChangeOrder(arguments)
+            is SearchClientsArgs -> clientExecutions.executeSearchClients(arguments)
+            is SelectClientArgs -> clientExecutions.executeSelectClient(arguments)
+            is GetClientDetailsArgs -> clientExecutions.executeGetClientDetails(arguments)
+            is GetUnbilledReceiptsArgs -> receiptExecutions.executeGetUnbilledReceipts(arguments)
+            is OpenTabArgs -> helperExecutions.executeOpenTab(arguments)
+            is CreateClientArgs -> clientExecutions.executeCreateClient(arguments)
+            is CreateDraftInvoiceArgs -> invoiceExecutions.executeCreateDraftInvoice(arguments)
+            is UpdateDraftInvoiceArgs -> invoiceExecutions.executeUpdateDraftInvoice(arguments)
+            is AddJobNoteArgs -> clientExecutions.executeAddJobNote(arguments)
+            is SaveInvoiceFromDraftArgs -> invoiceExecutions.executeSaveInvoiceFromDraft(arguments)
+            is SearchInvoiceHistoryArgs -> invoiceExecutions.executeSearchInvoiceHistory(arguments)
+            is ScanLastReceiptArgs -> receiptExecutions.executeScanLastReceipt(arguments)
+            is QuickInvoiceArgs -> invoiceExecutions.executeQuickInvoice(arguments)
+            is QuickClientAndInvoiceArgs -> invoiceExecutions.executeQuickClientAndInvoice(arguments)
+            is QuickClientLookupArgs -> clientExecutions.executeQuickClientLookup(arguments)
+            is AppendDraftLinesArgs -> invoiceExecutions.executeAppendDraftLines(arguments)
+            is DuplicateLastInvoiceArgs -> invoiceExecutions.executeDuplicateLastInvoice(arguments)
+            is DuplicateAndEditArgs -> invoiceExecutions.executeDuplicateAndEdit(arguments)
+            is QuickInvoiceFromUnbilledReceiptsArgs -> invoiceExecutions.executeQuickInvoiceFromUnbilledReceipts(arguments)
+            is QuickSendInvoiceArgs -> communicationExecutions.executeQuickSendInvoice(arguments)
+            is SendInvoiceEmailArgs -> communicationExecutions.executeSendInvoiceEmail(arguments)
+            is SendInvoiceSmsArgs -> communicationExecutions.executeSendInvoiceSms(arguments)
+            is DeleteInvoiceApprovalArgs -> invoiceExecutions.executeDeleteInvoice(arguments)
+            is OpenLastInvoiceArgs -> invoiceExecutions.executeOpenLastInvoice(arguments)
+            is OpenSupplierArgs -> receiptExecutions.executeOpenSupplier(arguments)
+            is GetProfitGuardianStatusArgs -> helperExecutions.executeGetProfitGuardianStatus(arguments)
+            is DetectChangeOrdersArgs -> helperExecutions.executeDetectChangeOrders(arguments)
+            is GetDailyBriefingArgs -> helperExecutions.executeGetDailyBriefing(arguments)
+            is CreateChangeOrderArgs -> invoiceExecutions.executeCreateChangeOrder(arguments)
         }
-
     }
 
 

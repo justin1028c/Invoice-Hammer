@@ -17,6 +17,7 @@ data class BusinessSettings(
     val hammerCredits: Int = 0,
     val aiActionsUsedThisMonth: Int = 0,
     val autoSaveVoiceInvoices: Boolean = false,
-    val cumulativeLlmCostUsd: Double = 0.0
+    val cumulativeLlmCostUsd: Double = 0.0,
+    val hasSeenPreLaunchPaywall: Boolean = false
 )
 

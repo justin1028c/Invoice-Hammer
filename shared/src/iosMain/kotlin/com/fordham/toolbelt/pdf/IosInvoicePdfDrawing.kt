@@ -61,5 +61,3 @@ internal object IosInvoicePdfDrawing {
         CGContextRestoreGState(cgContext)
     }
 }
-
-}

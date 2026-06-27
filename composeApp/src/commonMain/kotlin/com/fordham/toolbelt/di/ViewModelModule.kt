@@ -8,7 +8,10 @@ val viewModelModule = module {
     viewModel { SuppliersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ClientsViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { HistoryViewModel(get(), get()) }
-    viewModel { PaymentViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { InvoicePaymentViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { StripeConnectViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { StripeTerminalViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { PaymentViewModel(get(), get(), get()) }
     viewModel { StatsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { AgentViewModel(get()) }
     viewModel { ReceiptsViewModel(get(), get(), get(), get(), get(), get()) }

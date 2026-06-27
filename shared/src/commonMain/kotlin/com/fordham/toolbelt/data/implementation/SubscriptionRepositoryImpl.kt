@@ -136,7 +136,11 @@ class SubscriptionRepositoryImpl(
                     catalog.value,
                     productId,
                     platformTarget == PlatformTarget.Android
-                ) ?: SubscriptionTierMapper.proTierFallback()
+                ) ?: when (productId) {
+                    "invoice_hammer_founder_lifetime" -> SubscriptionTierMapper.founderLifetimeFallback()
+                    "invoice_hammer_pro_yearly" -> SubscriptionTierMapper.proYearlyFallback()
+                    else -> SubscriptionTierMapper.proTierFallback()
+                }
                 val entitlement = UserEntitlement(
                     tierId = tier.id,
                     source = when (platformTarget) {
@@ -190,13 +194,16 @@ class SubscriptionRepositoryImpl(
     private suspend fun applyEntitlement(entitlement: UserEntitlement) {
         _entitlement.update { entitlement }
         val settings = settingsRepository.getBusinessSettings()
-        settingsRepository.saveBusinessSettings(settings.copy(isPremium = entitlement.isPro))
+        if (entitlement.isPro || !settings.isPremium) {
+            settingsRepository.saveBusinessSettings(settings.copy(isPremium = entitlement.isPro))
+        }
     }
 
     private fun defaultCatalog(): List<SubscriptionTier> = listOf(
         SubscriptionTierMapper.freeTier(),
         SubscriptionTierMapper.proTierFallback(),
-        SubscriptionTierMapper.proYearlyFallback()
+        SubscriptionTierMapper.proYearlyFallback(),
+        SubscriptionTierMapper.founderLifetimeFallback()
     )
 
     private fun freeEntitlement(): UserEntitlement = UserEntitlement(

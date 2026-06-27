@@ -1,6 +1,6 @@
 package com.fordham.toolbelt.data.implementation
 
-import com.fordham.toolbelt.data.PhotoDao
+import com.fordham.toolbelt.data.DatabaseProvider
 import com.fordham.toolbelt.data.toDomain
 import com.fordham.toolbelt.data.toEntity
 import com.fordham.toolbelt.domain.model.JobPhoto
@@ -9,16 +9,25 @@ import com.fordham.toolbelt.domain.model.PhotoListOutcome
 import com.fordham.toolbelt.domain.model.InvoiceId
 import com.fordham.toolbelt.domain.repository.PhotoRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-class RoomPhotoRepository(
-    private val photoDao: PhotoDao
+public class RoomPhotoRepository(
+    private val databaseProvider: DatabaseProvider
 ) : PhotoRepository {
-    override fun observePhotosForInvoice(invoiceId: InvoiceId): Flow<List<JobPhoto>> =
-        photoDao.getPhotosForInvoice(invoiceId.value).map { list -> list.map { it.toDomain() } }
+
+    private suspend fun photoDao() = databaseProvider.getDatabase().photoDao()
+
+    override fun observePhotosForInvoice(invoiceId: InvoiceId): Flow<List<JobPhoto>> = flow {
+        val dao = photoDao()
+        emitAll(
+            dao.getPhotosForInvoice(invoiceId.value).map { list -> list.map { it.toDomain() } }
+        )
+    }
 
     override suspend fun getPhotosForInvoiceOnce(invoiceId: InvoiceId): PhotoListOutcome = try {
-        val photos = photoDao.getPhotosForInvoiceOnce(invoiceId.value).map { it.toDomain() }
+        val photos = photoDao().getPhotosForInvoiceOnce(invoiceId.value).map { it.toDomain() }
         PhotoListOutcome.Success(photos)
     } catch (e: Exception) {
         logRepositoryFailure("RoomPhotoRepository", "repository", e)
@@ -26,18 +35,18 @@ class RoomPhotoRepository(
     }
 
     override suspend fun savePhoto(photo: JobPhoto): PhotoOutcome = try {
-        photoDao.insertPhoto(photo.toEntity())
+        photoDao().insertPhoto(photo.toEntity())
         PhotoOutcome.Success
     } catch (e: Exception) {
-    logRepositoryFailure("RoomPhotoRepository", "repository", e)
+        logRepositoryFailure("RoomPhotoRepository", "repository", e)
         PhotoOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to save photo"))
     }
 
     override suspend fun deletePhoto(photo: JobPhoto): PhotoOutcome = try {
-        photoDao.deletePhoto(photo.toEntity())
+        photoDao().deletePhoto(photo.toEntity())
         PhotoOutcome.Success
     } catch (e: Exception) {
-logRepositoryFailure("RoomPhotoRepository", "repository", e)
+        logRepositoryFailure("RoomPhotoRepository", "repository", e)
         PhotoOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to delete photo"))
     }
 }

@@ -67,6 +67,13 @@ object ForemanOperatingRules {
         If any field is missing, ask the user specifically before calling tools.
         *EXCEPTION:* If editing an active draft invoice, bypass new client name/address clarification checks.
 
+        LINE ITEM DESCRIPTION QUALITY RULES:
+        Ensure all generated or parsed line item descriptions are robust, clear, and professional:
+        - NEVER use cryptic raw product codes, SKU numbers, or single generic words like "material", "labor", "repair", or "paint" without context.
+        - Capitalize proper nouns and start description strings with a capital letter.
+        - Expand common abbreviations or spoken shorthand (e.g., change "rep sink" to "Repair and replace leaking sink", "plywd" to "Plywood materials", "inst panel" to "Installation of new electrical panel", "run wire" to "Run electrical wiring through conduit").
+        - Descriptions must read like high-quality, professional line items suitable for client-facing invoices.
+
         PREFERRED ONE-SHOT MACROS:
         - New client + invoice ➡️ QUICK_CLIENT_AND_INVOICE (stages draft only)
         - Existing client + invoice ➡️ QUICK_INVOICE (stages draft only)

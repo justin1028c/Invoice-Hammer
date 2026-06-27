@@ -79,6 +79,27 @@ internal object SubscriptionTierMapper {
             SubscriptionFeature.InstantPayouts
         )
     )
+    
+    fun founderLifetimeFallback(): SubscriptionTier = SubscriptionTier(
+        id = SubscriptionTierId("founder_lifetime"),
+        displayName = "Founder's Lifetime Pass",
+        description = "One-time purchase · All Pro features forever",
+        sortOrder = 3,
+        googlePlayProductId = "invoice_hammer_founder_lifetime",
+        appleProductId = "invoice_hammer_founder_lifetime",
+        billingPeriod = SubscriptionBillingPeriod.None,
+        priceLabel = "$79.99",
+        enabledFeatures = setOf(
+            SubscriptionFeature.AiAgent,
+            SubscriptionFeature.ReceiptOcr,
+            SubscriptionFeature.TaxExport,
+            SubscriptionFeature.BentoReports,
+            SubscriptionFeature.ForemanAgent,
+            SubscriptionFeature.BluetoothCardReader,
+            SubscriptionFeature.RecurringCardBilling,
+            SubscriptionFeature.InstantPayouts
+        )
+    )
 
     private fun parseFeatures(features: JsonObject): Set<SubscriptionFeature> {
         val enabled = mutableSetOf<SubscriptionFeature>()

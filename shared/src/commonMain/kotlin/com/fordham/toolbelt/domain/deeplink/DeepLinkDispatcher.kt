@@ -69,6 +69,10 @@ class DeepLinkDispatcherImpl : DeepLinkDispatcher {
                 )
                 true
             }
+            "stripe-callback" -> {
+                com.fordham.toolbelt.navigation.MainTabNavigation.request(com.fordham.toolbelt.domain.model.agent.AppTab.Settings)
+                true
+            }
             else -> false
         }
     }

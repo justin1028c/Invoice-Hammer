@@ -9,7 +9,7 @@ $dist = Join-Path $root "dist\release"
 $apk = Join-Path $dist "androidApp-universal.apk"
 
 if (-not (Test-Path $apk)) {
-    Write-Host "APK missing — building first..."
+    Write-Host "APK missing - building first..."
     & "$PSScriptRoot\build-beta-download.ps1"
 }
 

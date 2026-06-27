@@ -53,7 +53,8 @@ fun PaywallSheet(
     onDismiss: () -> Unit,
     onPurchase: (SubscriptionTierId) -> Unit,
     onPurchaseCreditPack: (PurchasableProduct) -> Unit,
-    onRestore: () -> Unit
+    onRestore: () -> Unit,
+    onBetaUnlock: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -74,6 +75,41 @@ fun PaywallSheet(
                 }
             }
  
+            Spacer(Modifier.height(12.dp))
+ 
+            // Beta Tester Quick Override Card
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = BrandOrange.copy(alpha = 0.08f)
+                ),
+                border = BorderStroke(1.dp, BrandOrange.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        stringResource(Res.string.join_beta_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandOrange
+                    )
+                    Text(
+                        stringResource(Res.string.join_beta_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TacticalButton(
+                        onClick = onBetaUnlock,
+                        text = stringResource(Res.string.join_beta_btn),
+                        containerColor = BrandOrange,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             Spacer(Modifier.height(12.dp))
  
             ProFeatureRow(stringResource(Res.string.pro_feat_ai), Icons.Default.AutoAwesome)
@@ -143,7 +179,7 @@ fun PaywallSheet(
  
             CreditPackCard(
                 title = stringResource(Res.string.contractor_pack_title),
-                credits = stringResource(Res.string.credits_count_350),
+                credits = stringResource(Res.string.credits_count_400),
                 price = stringResource(Res.string.price_contractor),
                 description = stringResource(Res.string.contractor_pack_desc),
                 badgeText = stringResource(Res.string.best_value),
@@ -192,25 +228,27 @@ private fun PaywallTierCard(
     onClick: () -> Unit
 ) {
     val isYearly = tier.id.value == "pro_yearly"
+    val isLifetime = tier.id.value == "founder_lifetime"
     
     // Override DB placeholder pricing strings to place real costs back in their card positions
     val cleanPrice = when {
         tier.id.value == "pro_monthly" || tier.priceLabel == "Pro / month" -> "$19.99"
         tier.id.value == "pro_yearly" || tier.priceLabel == "Pro / year" -> "$159.99"
+        tier.id.value == "founder_lifetime" -> "$79.99"
         else -> tier.priceLabel
     }
-
+ 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .clickable(enabled = enabled) { onClick() },
         shape = RoundedCornerShape(14.dp),
-        color = if (isYearly)
+        color = if (isYearly || isLifetime)
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
         else
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = if (isYearly)
+        border = if (isYearly || isLifetime)
             BorderStroke(1.5.dp, BrandOrange.copy(alpha = 0.8f))
         else null
     ) {
@@ -229,6 +267,9 @@ private fun PaywallTierCard(
                 if (isYearly) {
                     Spacer(Modifier.height(4.dp))
                     PaywallBadgeChip(stringResource(Res.string.best_value))
+                } else if (isLifetime) {
+                    Spacer(Modifier.height(4.dp))
+                    PaywallBadgeChip("FOUNDER PASS")
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -245,26 +286,37 @@ private fun PaywallTierCard(
                     fontWeight = FontWeight.Black,
                     style = MaterialTheme.typography.titleMedium
                 )
-                if (isYearly) {
-                    Text(
-                        text = stringResource(Res.string.pro_year),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = stringResource(Res.string.pro_yearly_equivalent),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                } else {
-                    Text(
-                        text = stringResource(Res.string.pro_month),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
-                    )
+                when {
+                    isLifetime -> {
+                        Text(
+                            text = "one-time",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    isYearly -> {
+                        Text(
+                            text = stringResource(Res.string.pro_year),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = stringResource(Res.string.pro_yearly_equivalent),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = stringResource(Res.string.pro_month),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

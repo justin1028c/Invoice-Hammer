@@ -12,6 +12,7 @@ data class ReceiptEntity(
     val quantity: Double,
     val unitPrice: Double,
     val totalPrice: Double,
+    val category: String = "Other",
     val clientName: String = "",
     val imagePath: String = "",
     val isBilled: Boolean = false,

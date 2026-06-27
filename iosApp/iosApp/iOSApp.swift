@@ -8,6 +8,9 @@ import BackgroundTasks
 @main
 struct iOSApp: App {
     private static let notificationDelegate = NotificationNavigationDelegate()
+    
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var showPrivacyOverlay = false
 
     init() {
         // Initialize Firebase with safety guards
@@ -31,6 +34,7 @@ struct iOSApp: App {
         IosDriveAuthServiceProvider.shared.bridge = DriveAuthBridge()
         IosStoreBillingServiceProvider.shared.bridge = StoreBillingBridge()
         IosStripePaymentBridgeProvider.shared.bridge = StripePaymentBridge()
+        IosLocalLlmEngine.companion.bridge = LocalLlmBridge()
 
         // Initialize KMP Shared Layer after native bridges are available.
         MainViewControllerKt.initKoinIos()
@@ -75,14 +79,25 @@ struct iOSApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .onOpenURL { url in
-                    if url.scheme == "invoicehammer" {
-                        _ = DeepLinkRouter.shared.dispatch(url: url.absoluteString)
-                    } else {
-                        GIDSignIn.sharedInstance.handle(url)
-                    }
+            ZStack {
+                ContentView()
+                if showPrivacyOverlay {
+                    PrivacyShieldView()
+                        .transition(.opacity)
                 }
+            }
+            .onOpenURL { url in
+                if url.scheme == "invoicehammer" {
+                    _ = DeepLinkRouter.shared.dispatch(url: url.absoluteString)
+                } else {
+                    GIDSignIn.sharedInstance.handle(url)
+                }
+            }
+            .onChange(of: scenePhase) { newPhase in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showPrivacyOverlay = (newPhase == .inactive || newPhase == .background)
+                }
+            }
         }
     }
     
@@ -175,6 +190,42 @@ struct iOSApp: App {
             let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty, !trimmed.hasPrefix("$(") else { continue }
             bridge.saveSecret(key: keychainKey, value: trimmed)
+        }
+    }
+}
+
+struct VisualEffectView: UIViewRepresentable {
+    let effect: UIVisualEffect
+    
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: effect)
+    }
+    
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = effect
+    }
+}
+
+struct PrivacyShieldView: View {
+    var body: some View {
+        ZStack {
+            VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+                .ignoresSafeArea()
+            
+            VStack(spacing: 20) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 64))
+                    .foregroundColor(.white.opacity(0.85))
+                
+                Text("Invoice Hammer")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text("Secure Billing Environment")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+            }
         }
     }
 }

@@ -34,8 +34,13 @@ create policy subscription_tiers_read
     on public.subscription_tiers for select using (true);
 
 drop policy if exists user_entitlements_dev_all on public.user_entitlements;
-create policy user_entitlements_dev_all
-    on public.user_entitlements for all using (true) with check (true);
+drop policy if exists user_entitlements_user_policy on public.user_entitlements;
+
+create policy user_entitlements_user_policy
+    on public.user_entitlements
+    for all
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
 
 insert into public.subscription_tiers (
     id, display_name, description, sort_order,

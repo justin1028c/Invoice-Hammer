@@ -92,7 +92,7 @@ final class StoreBillingBridge: NSObject, IosStoreBillingBridge {
 
     func finishTransaction(transactionId: String) async -> Bool {
         guard let transactionIdUInt = UInt64(transactionId) else { return false }
-        for await result in Transaction.all {
+        for await result in Transaction.unfinished {
             if case .verified(let transaction) = result {
                 if transaction.id == transactionIdUInt {
                     await transaction.finish()

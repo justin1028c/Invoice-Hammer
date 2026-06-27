@@ -1,6 +1,6 @@
 package com.fordham.toolbelt.data.implementation
 
-import com.fordham.toolbelt.data.DraftDao
+import com.fordham.toolbelt.data.DatabaseProvider
 import com.fordham.toolbelt.data.DraftInvoiceEntity
 import com.fordham.toolbelt.data.dto.CapturedJobPhotoDto
 import com.fordham.toolbelt.data.dto.LineItemDto
@@ -9,46 +9,53 @@ import com.fordham.toolbelt.domain.model.JobPhotoPhase
 import com.fordham.toolbelt.domain.model.DraftInvoice
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class RoomDraftRepository(
-    private val draftDao: DraftDao
+public class RoomDraftRepository(
+    private val databaseProvider: DatabaseProvider
 ) : DraftRepository {
 
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
-    override fun getDraft(): Flow<DraftInvoice> {
-        return draftDao.getDraft().map { entity ->
-            val e = entity ?: DraftInvoiceEntity()
-            DraftInvoice(
-                clientName = e.clientName,
-                clientAddress = e.clientAddress,
-                taxRate = e.taxRate,
-                deposit = e.deposit,
-                hourlyRate = e.hourlyRate,
-                logoUri = e.logoUri,
-                selectedCategory = e.selectedCategory,
-                itemDesc = e.itemDesc,
-                itemAmt = e.itemAmt,
-                elapsedSeconds = e.elapsedSeconds,
-                startTime = e.startTime,
-                timerRunning = e.timerRunning,
-                saveToClientDirectory = e.saveToClientDirectory,
-                lineItems = try {
-                    json.decodeFromString<List<LineItemDto>>(e.lineItemsJson).map { it.toDomain() }
-                } catch (t: Throwable) {
-                    emptyList()
-                },
-                capturedPhotos = decodeCapturedPhotos(e.capturedPhotosJson),
-                linkedReceiptIds = try {
-                    json.decodeFromString<List<String>>(e.linkedReceiptIdsJson)
-                } catch (t: Throwable) {
-                    emptyList()
-                }
-            )
-        }
+    private suspend fun draftDao() = databaseProvider.getDatabase().draftDao()
+
+    override fun getDraft(): Flow<DraftInvoice> = flow {
+        val dao = draftDao()
+        emitAll(
+            dao.getDraft().map { entity ->
+                val e = entity ?: DraftInvoiceEntity()
+                DraftInvoice(
+                    clientName = e.clientName,
+                    clientAddress = e.clientAddress,
+                    taxRate = e.taxRate,
+                    deposit = e.deposit,
+                    hourlyRate = e.hourlyRate,
+                    logoUri = e.logoUri,
+                    selectedCategory = e.selectedCategory,
+                    itemDesc = e.itemDesc,
+                    itemAmt = e.itemAmt,
+                    elapsedSeconds = e.elapsedSeconds,
+                    startTime = e.startTime,
+                    timerRunning = e.timerRunning,
+                    saveToClientDirectory = e.saveToClientDirectory,
+                    lineItems = try {
+                        json.decodeFromString<List<LineItemDto>>(e.lineItemsJson).map { it.toDomain() }
+                    } catch (t: Throwable) {
+                        emptyList()
+                    },
+                    capturedPhotos = decodeCapturedPhotos(e.capturedPhotosJson),
+                    linkedReceiptIds = try {
+                        json.decodeFromString<List<String>>(e.linkedReceiptIdsJson)
+                    } catch (t: Throwable) {
+                        emptyList()
+                    }
+                )
+            }
+        )
     }
 
     override suspend fun saveDraft(draft: DraftInvoice) {
@@ -72,11 +79,11 @@ class RoomDraftRepository(
             ),
             linkedReceiptIdsJson = json.encodeToString(draft.linkedReceiptIds)
         )
-        draftDao.saveDraft(entity)
+        draftDao().saveDraft(entity)
     }
 
     override suspend fun clearDraft() {
-        draftDao.clearDraft()
+        draftDao().clearDraft()
     }
 
     private fun decodeCapturedPhotos(jsonText: String): List<CapturedJobPhoto> {

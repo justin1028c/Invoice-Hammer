@@ -60,6 +60,7 @@ internal object KtorSyncBackupJsonBuilder {
                 put("isDarkMode", settings.isDarkMode)
                 put("useMetricUnits", settings.useMetricUnits)
                 put("notificationsEnabled", settings.notificationsEnabled)
+                put("hasSeenPreLaunchPaywall", settings.hasSeenPreLaunchPaywall)
             }
             putJsonArray("clients") {
                 clients.forEach { client ->

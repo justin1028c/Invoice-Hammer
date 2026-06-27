@@ -64,12 +64,14 @@ function buildAppDeeplink(path: string, params: Record<string, string | null>): 
 
 function publicBrowserPage(route: string, url: URL): Response {
   if (route.endsWith("/v1/connect/return")) {
-    return htmlPage(
-      "Stripe setup complete",
-      "<p>Your Stripe Connect onboarding step finished.</p>" +
-        "<p><strong>Switch back to Invoice Hammer</strong>, open " +
-        "<em>Settings → STRIPE PAYOUTS</em>, and tap <strong>Refresh status</strong>.</p>",
-    );
+    const deeplink = "invoicehammer://stripe-callback";
+    return paymentBridgePage({
+      title: "Stripe setup complete",
+      message: "Your Stripe Connect Express onboarding step finished. Returning to Invoice Hammer...",
+      deeplink,
+      buttonLabel: "Return to Invoice Hammer",
+      footnote: "If the app does not open automatically, tap the button above to return.",
+    });
   }
   if (route.endsWith("/v1/connect/refresh")) {
     return htmlPage(

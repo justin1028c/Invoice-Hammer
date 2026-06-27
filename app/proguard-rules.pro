@@ -1,6 +1,6 @@
-# Project specific ProGuard rules
+# Hardened Android Obfuscation & ProGuard Configuration
 
-# Hilt rules
+# Android Core Components
 -keep public class * extends android.app.Service
 -keep public class * extends android.app.Application
 -keep public class * extends android.app.Activity
@@ -17,10 +17,14 @@
 -classobfuscationdictionary dictionary.txt
 -packageobfuscationdictionary dictionary.txt
 
-# Room: Allow obfuscation of entities but keep necessary infrastructure
--keep @androidx.room.Entity class *
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Dao interface *
+# Preserve essential annotations, generics signature metadata, and Kotlin reflection metadata
+-keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod, Metadata, AnnotationDefault
+
+# Room Database: Preserve infrastructure and constructor reflection pathways
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep class * implements androidx.room.RoomDatabaseConstructor { *; }
+-keep @androidx.room.Dao interface * { *; }
+-keep @androidx.room.Entity class * { *; }
 -keepclassmembers class * {
   @androidx.room.PrimaryKey *;
   @androidx.room.ColumnInfo *;
@@ -28,8 +32,13 @@
   @androidx.room.Relation *;
 }
 
-# Kotlin Serialization: Allow obfuscation but keep Serializer infrastructure
--keepattributes *Annotation*, EnclosingMethod, Signature
+# Android WorkManager: Keep reflection-based instantiation of Workers
+-keep class * extends androidx.work.ListenableWorker {
+    <init>(...);
+}
+
+# Kotlin Serialization: Preserve serializer companion references
+-keep @kotlinx.serialization.Serializable class * { *; }
 -keepclassmembers class * {
     @kotlinx.serialization.SerialName <fields>;
 }
@@ -37,44 +46,56 @@
     *** Companion;
     *** $serializer;
 }
+-keepclassmembers class kotlinx.serialization.** { *; }
 
-# Gemini SDK (Generative AI) rules
--keep class com.google.ai.client.generativeai.** { *; }
--dontwarn com.google.ai.client.generativeai.**
+# Koin Dependency Injection
+-keep class org.koin.** { *; }
+-dontwarn org.koin.**
 
-# SQLCipher: JNI reads field names — must not be stripped/renamed by R8
+# Ktor HTTP Client Engine
+-keep class io.ktor.** { *; }
+-dontwarn io.ktor.**
+
+# Kotlin Coroutines internal resolution
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembernames class kotlinx.coroutines.android.AndroidDispatcherFactory {
+    public *** createDispatcher(...);
+}
+-dontwarn kotlinx.coroutines.**
+
+# SQLCipher / SQLite Database Encryption
 -keep class net.zetetic.database.sqlcipher.** { *; }
 -keepclassmembers class net.zetetic.database.sqlcipher.** { *; }
 -keep class net.sqlcipher.** { *; }
 -keepclassmembers class net.sqlcipher.** { *; }
 -dontwarn net.zetetic.database.sqlcipher.**
 
-# Koin / app wiring (release DI)
--keep class org.koin.** { *; }
--keep class com.fordham.toolbelt.** { *; }
--keep class com.fordham.toolbelt.di.** { *; }
--keep class com.fordham.toolbelt.util.AndroidPlatformActions { *; }
--keep class com.fordham.toolbelt.data.implementation.AndroidDriveAuthTokenProvider { *; }
-
-# Kotlin serialization
--keepattributes RuntimeVisibleAnnotations,AnnotationDefault
--keepclassmembers class kotlinx.serialization.** { *; }
--keep @kotlinx.serialization.Serializable class * { *; }
-
-# Stripe / Firebase (reflection-heavy SDKs)
+# Stripe payment SDK reflections
 -keep class com.stripe.** { *; }
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
 -dontwarn com.stripe.**
 
-# Native libs loaded from Kotlin
+# Firebase & Google Services Client SDKs
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
+# Gemini SDK (Generative AI) rules
+-keep class com.google.ai.client.generativeai.** { *; }
+-dontwarn com.google.ai.client.generativeai.**
+
+# Native library bindings
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# Strip debug logs in production
+# Strip debug logs in production builds
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);
     public static *** i(...);
 }
+
+# Suppress warnings from missing Protobuf classes in Google MediaPipe Tasks SDK
+-dontwarn com.google.protobuf.**

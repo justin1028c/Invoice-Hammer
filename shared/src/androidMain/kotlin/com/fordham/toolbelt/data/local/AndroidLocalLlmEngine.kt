@@ -1,6 +1,8 @@
 package com.fordham.toolbelt.data.local
 
+import android.app.DownloadManager
 import android.content.Context
+import android.net.Uri
 import com.fordham.toolbelt.domain.model.GeminiOutcome
 import com.fordham.toolbelt.domain.model.LlmPrompt
 import com.fordham.toolbelt.domain.model.FailureMessage
@@ -10,14 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import io.ktor.client.*
-import io.ktor.client.plugins.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.core.readBytes
 import java.io.File
-import java.io.FileOutputStream
 
 class AndroidLocalLlmEngine(
     private val context: Context,
@@ -26,12 +21,63 @@ class AndroidLocalLlmEngine(
 ) : LocalLlmEngine {
 
     private val modelFile = File(context.filesDir, "llama-3.2-3b.task")
+    private val tempFile = File(context.getExternalFilesDir(null), "llama-3.2-3b.task.tmp")
+    private val sharedPrefs = context.getSharedPreferences("llm_downloader_prefs", Context.MODE_PRIVATE)
+    
     private var inference: LlmInference? = null
     private var isDownloading = false
     private var downloadProgress = 0.0f
-    
+
+    private var activeProgressCallback: ((Float) -> Unit)? = null
+    private var activeCompleteCallback: ((Boolean) -> Unit)? = null
+
     // Remote endpoint hosting the compiled Llama 3.2 3B task file for MediaPipe Tasks GenAI
-    private val modelUrl = "https://huggingface.co/google/mediapipe/resolve/main/llama-3.2-3b-instruct-gpu.task"
+    private val modelUrl = "https://huggingface.co/vimal-yuvabe/llama-3.2-3b-tflite/resolve/main/llama-3.2-3B-q8.task"
+
+    init {
+        val downloadId = sharedPrefs.getLong("download_id", -1L)
+        if (downloadId != -1L) {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val query = DownloadManager.Query().setFilterById(downloadId)
+            val cursor = downloadManager.query(query)
+            if (cursor != null && cursor.moveToFirst()) {
+                val statusCol = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                val status = if (statusCol >= 0) cursor.getInt(statusCol) else -1
+                if (status == DownloadManager.STATUS_RUNNING || 
+                    status == DownloadManager.STATUS_PENDING || 
+                    status == DownloadManager.STATUS_PAUSED) {
+                    isDownloading = true
+                    startPolling(downloadId)
+                } else if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    isDownloading = false
+                    downloadProgress = 1.0f
+                    moveTempToInternal()
+                    sharedPrefs.edit().remove("download_id").apply()
+                } else {
+                    isDownloading = false
+                    if (tempFile.exists()) tempFile.delete()
+                    sharedPrefs.edit().remove("download_id").apply()
+                }
+            } else {
+                sharedPrefs.edit().remove("download_id").apply()
+            }
+            cursor?.close()
+        }
+    }
+
+    private fun moveTempToInternal(): Boolean {
+        return try {
+            if (!tempFile.exists()) return false
+            if (modelFile.exists()) modelFile.delete()
+            modelFile.parentFile?.mkdirs()
+            tempFile.copyTo(modelFile, overwrite = true)
+            tempFile.delete()
+            true
+        } catch (e: Exception) {
+            com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Failed to move downloaded model file", e)
+            false
+        }
+    }
 
     override suspend fun isSupported(): Boolean {
         if (inference != null) return true
@@ -79,54 +125,146 @@ class AndroidLocalLlmEngine(
     }
 
     override fun startDownload(onProgress: (Float) -> Unit, onComplete: (Boolean) -> Unit) {
-        if (isDownloading) return
+        activeProgressCallback = onProgress
+        activeCompleteCallback = onComplete
+
+        if (isDownloading) {
+            onProgress(downloadProgress)
+            return
+        }
+
+        if (isModelDownloaded()) {
+            onComplete(true)
+            return
+        }
+
         isDownloading = true
         downloadProgress = 0.0f
-        
+
         scope.launch(ioDispatcher) {
-            val client = HttpClient()
             try {
-                com.fordham.toolbelt.util.AppLogger.d("AndroidLocalLlmEngine", "Starting model download from $modelUrl")
-                val response = client.get(modelUrl) {
-                    onDownload { bytesSentTotal, contentLength ->
-                        if (contentLength != null && contentLength > 0) {
-                            downloadProgress = bytesSentTotal.toFloat() / contentLength
-                            onProgress(downloadProgress)
-                        }
-                    }
-                }
+                if (tempFile.exists()) tempFile.delete()
                 
-                val channel: ByteReadChannel = response.bodyAsChannel()
-                modelFile.parentFile?.mkdirs()
-                val outputStream = FileOutputStream(modelFile)
-                val buffer = ByteArray(8192)
+                val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val request = DownloadManager.Request(Uri.parse(modelUrl))
+                    .setTitle("Llama 3.2 Offline Model")
+                    .setDescription("Downloading Llama model for offline AI capabilities...")
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setAllowedOverMetered(false)
+                    .setAllowedOverRoaming(false)
+                    .setDestinationUri(Uri.fromFile(tempFile))
+
+                val downloadId = downloadManager.enqueue(request)
+                sharedPrefs.edit().putLong("download_id", downloadId).apply()
                 
-                while (!channel.isClosedForRead) {
-                    val read = channel.readAvailable(buffer)
-                    if (read > 0) {
-                        outputStream.write(buffer, 0, read)
-                    }
-                }
-                outputStream.close()
-                com.fordham.toolbelt.util.AppLogger.d("AndroidLocalLlmEngine", "Download complete. Model size: ${modelFile.length()}")
-                
-                isDownloading = false
-                downloadProgress = 1.0f
-                onComplete(true)
+                startPolling(downloadId)
             } catch (e: Exception) {
-                com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Download failed", e)
-                if (modelFile.exists()) modelFile.delete()
+                com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Failed to enqueue download", e)
                 isDownloading = false
                 downloadProgress = 0.0f
-                onComplete(false)
-            } finally {
-                client.close()
+                if (tempFile.exists()) tempFile.delete()
+                sharedPrefs.edit().remove("download_id").apply()
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onComplete(false)
+                }
+            }
+        }
+    }
+
+    private fun startPolling(downloadId: Long) {
+        scope.launch(ioDispatcher) {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            var polling = true
+            while (polling) {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = downloadManager.query(query)
+                if (cursor != null && cursor.moveToFirst()) {
+                    val statusCol = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                    val status = if (statusCol >= 0) cursor.getInt(statusCol) else -1
+
+                    val downloadedCol = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val downloadedBytes = if (downloadedCol >= 0) cursor.getLong(downloadedCol) else 0L
+
+                    val totalCol = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val totalBytes = if (totalCol >= 0) cursor.getLong(totalCol) else 0L
+
+                    when (status) {
+                        DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PENDING -> {
+                            if (totalBytes > 0) {
+                                downloadProgress = downloadedBytes.toFloat() / totalBytes
+                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    activeProgressCallback?.invoke(downloadProgress)
+                                }
+                            }
+                        }
+                        DownloadManager.STATUS_PAUSED -> {
+                            if (totalBytes > 0) {
+                                downloadProgress = downloadedBytes.toFloat() / totalBytes
+                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    activeProgressCallback?.invoke(downloadProgress)
+                                }
+                            }
+                        }
+                        DownloadManager.STATUS_SUCCESSFUL -> {
+                            polling = false
+                            isDownloading = false
+                            downloadProgress = 1.0f
+                            
+                            val success = moveTempToInternal()
+                            sharedPrefs.edit().remove("download_id").apply()
+
+                            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                activeCompleteCallback?.invoke(success)
+                            }
+                        }
+                        DownloadManager.STATUS_FAILED -> {
+                            polling = false
+                            isDownloading = false
+                            downloadProgress = 0.0f
+
+                            if (tempFile.exists()) tempFile.delete()
+                            sharedPrefs.edit().remove("download_id").apply()
+
+                            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                activeCompleteCallback?.invoke(false)
+                            }
+                        }
+                    }
+                } else {
+                    polling = false
+                    isDownloading = false
+                    downloadProgress = 0.0f
+                    sharedPrefs.edit().remove("download_id").apply()
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        activeCompleteCallback?.invoke(false)
+                    }
+                }
+                cursor?.close()
+                if (polling) {
+                    kotlinx.coroutines.delay(500)
+                }
             }
         }
     }
 
     override fun deleteModel(): Boolean {
+        try {
+            inference?.close()
+        } catch (e: Exception) {
+            com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Failed to close LlmInference instance", e)
+        }
         inference = null
+        val downloadId = sharedPrefs.getLong("download_id", -1L)
+        if (downloadId != -1L) {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.remove(downloadId)
+            sharedPrefs.edit().remove("download_id").apply()
+        }
+        isDownloading = false
+        downloadProgress = 0.0f
+        if (tempFile.exists()) {
+            tempFile.delete()
+        }
         if (modelFile.exists()) {
             return modelFile.delete()
         }

@@ -121,6 +121,10 @@ class IosInvoiceEngine : InvoiceEngine {
                 NSFontAttributeName to UIFont.systemFontOfSize(9.0),
                 NSForegroundColorAttributeName to grayColor
             )
+            val boldBodyAttributes = mapOf(
+                NSFontAttributeName to UIFont.boldSystemFontOfSize(9.0),
+                NSForegroundColorAttributeName to charcoalColor
+            )
             
             (pdf.billedTo() as NSString).drawAtPoint(CGPointMake(65.0, cardTop + 10.0), withAttributes = sectionHeaderAttributes as Map<Any?, *>)
 

@@ -46,7 +46,7 @@ data class SubscriptionTier(
     val enabledFeatures: Set<SubscriptionFeature>,
     val isActive: Boolean = true
 ) {
-    val isPaidTier: Boolean get() = billingPeriod != SubscriptionBillingPeriod.None
+    val isPaidTier: Boolean get() = id.value != "free"
 
     fun hasFeature(feature: SubscriptionFeature): Boolean = feature in enabledFeatures
 }

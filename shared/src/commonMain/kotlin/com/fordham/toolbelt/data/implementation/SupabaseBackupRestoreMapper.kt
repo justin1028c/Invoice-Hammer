@@ -48,7 +48,8 @@ internal object SupabaseBackupRestoreMapper {
             isPremium = settings.booleanValue("isPremium"),
             isDarkMode = settings.booleanValue("isDarkMode", default = true),
             useMetricUnits = settings.booleanValue("useMetricUnits"),
-            notificationsEnabled = settings.booleanValue("notificationsEnabled", default = true)
+            notificationsEnabled = settings.booleanValue("notificationsEnabled", default = true),
+            hasSeenPreLaunchPaywall = settings.booleanValue("hasSeenPreLaunchPaywall")
         )
     }
 

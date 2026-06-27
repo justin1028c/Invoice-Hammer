@@ -8,6 +8,9 @@ import com.google.firebase.FirebaseApp
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.androidx.workmanager.koin.workManagerFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ToolbeltApp : Application() {
 
@@ -31,6 +34,15 @@ class ToolbeltApp : Application() {
             androidLogger()
             androidContext(this@ToolbeltApp)
             workManagerFactory()
+        }
+
+        // Pre-resolve database asynchronously on a background thread
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                org.koin.core.context.GlobalContext.get().get<com.fordham.toolbelt.data.DatabaseProvider>().getDatabase()
+            } catch (e: Exception) {
+                android.util.Log.e("ToolbeltApp", "Failed to pre-resolve database", e)
+            }
         }
     }
 }

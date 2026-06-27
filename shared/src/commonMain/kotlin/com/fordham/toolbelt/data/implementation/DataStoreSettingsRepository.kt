@@ -29,7 +29,8 @@ class DataStoreSettingsRepository(
             hammerCredits = prefs[HAMMER_CREDITS] ?: 0,
             aiActionsUsedThisMonth = prefs[AI_ACTIONS_USED] ?: 0,
             autoSaveVoiceInvoices = prefs[AUTO_SAVE_VOICE_INVOICES] ?: false,
-            cumulativeLlmCostUsd = prefs[CUMULATIVE_LLM_COST] ?: 0.0
+            cumulativeLlmCostUsd = prefs[CUMULATIVE_LLM_COST] ?: 0.0,
+            hasSeenPreLaunchPaywall = prefs[HAS_SEEN_PRE_LAUNCH_PAYWALL] ?: false
         )
     }
 
@@ -54,6 +55,7 @@ class DataStoreSettingsRepository(
             prefs[AI_ACTIONS_USED] = settings.aiActionsUsedThisMonth
             prefs[AUTO_SAVE_VOICE_INVOICES] = settings.autoSaveVoiceInvoices
             prefs[CUMULATIVE_LLM_COST] = settings.cumulativeLlmCostUsd
+            prefs[HAS_SEEN_PRE_LAUNCH_PAYWALL] = settings.hasSeenPreLaunchPaywall
             settings.logoUri?.let { prefs[LOGO_URI] = it } ?: prefs.remove(LOGO_URI)
         }
 
@@ -80,6 +82,7 @@ class DataStoreSettingsRepository(
         private val AI_ACTIONS_USED = intPreferencesKey("ai_actions_used_this_month")
         private val AUTO_SAVE_VOICE_INVOICES = booleanPreferencesKey("auto_save_voice_invoices")
         private val CUMULATIVE_LLM_COST = doublePreferencesKey("cumulative_llm_cost")
+        private val HAS_SEEN_PRE_LAUNCH_PAYWALL = booleanPreferencesKey("has_seen_pre_launch_paywall")
     }
 }
 

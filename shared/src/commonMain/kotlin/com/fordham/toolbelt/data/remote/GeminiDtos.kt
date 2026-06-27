@@ -59,6 +59,8 @@ data class GeminiCandidate(
 @Serializable
 data class AiReceiptItemDto(
     val description: String,
+    val quantity: Double? = null,
+    val unitPrice: Double? = null,
     val totalPrice: Double,
     val category: String? = null
 )
