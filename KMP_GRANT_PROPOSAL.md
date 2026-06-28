@@ -61,6 +61,9 @@ To meet the Kotlin Foundation's strict package distribution metrics, the library
   `implementation("com.gitlab.Justin1028c.invoice-hammer:secure-vault:1.0.0")`
   * GitLab Repository: [Justin1028c/invoice-hammer](https://gitlab.com/Justin1028c/invoice-hammer)
   * JitPack Release: [JitPack Package Page](https://jitpack.io/#com.gitlab.Justin1028c/invoice-hammer)
+* **Architecture Walkthrough Video**:
+  A full walkthrough of the codebase architecture, expect/actual parity setup, binary compatibility API verification, and build compilation proof.
+  * Demo Video: [KMP Secure Vault Demo (Google Drive)](https://drive.google.com/file/d/1P8dOjEBrAG_W-q5Qqx3swI2cuU8WKrEa/view?usp=sharing)
 * **Live API Reference Documentation**:
   API documentation is built via Dokka V2 and auto-deployed via GitLab CI/CD on every push.
   * Live Documentation Site: [secure-vault API Docs Reference](https://justin1028c.gitlab.io/invoice-hammer/api-docs/)
