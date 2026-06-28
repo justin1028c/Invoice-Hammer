@@ -21,7 +21,6 @@ internal actual fun buildRoomDatabase(
         factory = { AppDatabaseConstructor.initialize() }
     ).setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .fallbackToDestructiveMigration(dropAllTables = true)
         .addMigrations(MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
         .addCallback(object : RoomDatabase.Callback() {
             override fun onOpen(db: SQLiteConnection) {

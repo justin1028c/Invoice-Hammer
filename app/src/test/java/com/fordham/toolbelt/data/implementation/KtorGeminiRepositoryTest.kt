@@ -1,5 +1,7 @@
 package com.fordham.toolbelt.data.implementation
 
+import com.fordham.toolbelt.data.AppDatabase
+import com.fordham.toolbelt.data.DatabaseProvider
 import com.fordham.toolbelt.data.JobNoteDao
 import com.fordham.toolbelt.data.JobNoteEntity
 import com.fordham.toolbelt.data.local.LocalLlmEngine
@@ -20,6 +22,8 @@ class KtorGeminiRepositoryTest {
     private val httpClient: HttpClient = mockk()
     private val geminiConfig: ForemanGeminiConfig = mockk()
     private val jobNoteDao = FakeJobNoteDao()
+    private val databaseProvider: DatabaseProvider = mockk()
+    private val appDatabase: AppDatabase = mockk()
     private val settingsRepository: SettingsRepository = mockk()
     private val localLlmEngine = FakeLocalLlmEngine()
     
@@ -30,11 +34,13 @@ class KtorGeminiRepositoryTest {
         // Set up default non-blank config properties to prevent validation failures in constructor
         every { geminiConfig.agentModelName } returns "gemini-1.5-pro"
         every { geminiConfig.taskModelName } returns "gemini-1.5-flash"
+        coEvery { databaseProvider.getDatabase() } returns appDatabase
+        every { appDatabase.jobNoteDao() } returns jobNoteDao
 
         repository = KtorGeminiRepository(
             httpClient = httpClient,
             geminiConfig = geminiConfig,
-            jobNoteDao = jobNoteDao,
+            databaseProvider = databaseProvider,
             settingsRepository = settingsRepository,
             localLlmEngine = localLlmEngine
         )

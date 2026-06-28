@@ -79,7 +79,8 @@ actual fun platformModule(): Module = module {
     single<BentoReportGenerator> { IosBentoReportGenerator() }
     single<com.fordham.toolbelt.util.TaxExporter> { com.fordham.toolbelt.util.IosTaxExporter(get(), get()) }
     single<SecurityGateway> { IosSecurityGateway() }
-    single<SecureVaultGateway> { createSecureVault(PlatformContext(platform.darwin.NSObject()), get()) }
+    single { PlatformContext(platform.darwin.NSObject()) }
+    single<SecureVaultGateway> { createSecureVault(get(), get()) }
     single<com.fordham.toolbelt.util.PlatformTarget> { currentPlatformTarget() }
     single<StoreBillingGateway> { IosStoreBillingGateway() }
     single { IosStripePaymentSheetGateway() }

@@ -10,12 +10,6 @@ value class PaymentRequestId(val value: String)
 @JvmInline
 value class PaymentLinkUrl(val value: String)
 
-@JvmInline
-value class StellarTransactionHash(val value: String)
-
-@JvmInline
-value class StellarExplorerUrl(val value: String)
-
 enum class PaymentRequestType {
     Deposit,
     FullBalance
@@ -24,7 +18,6 @@ enum class PaymentRequestType {
 enum class PaymentProviderType {
     GooglePay,
     ApplePay,
-    StellarUsdc,
     CardLink,
     CardTerminal,
     TapToPay,
@@ -49,13 +42,8 @@ data class InvoicePaymentRequest(
     val status: InvoicePaymentStatus,
     val paymentLink: PaymentLinkUrl,
     val createdAtMillis: Long = Clock.System.now().toEpochMilliseconds(),
-    val paidAtMillis: Long? = null,
-    val stellarTransactionHash: StellarTransactionHash? = null,
-    val stellarExplorerUrl: StellarExplorerUrl? = null,
-    val assetCode: String = "USDC"
+    val paidAtMillis: Long? = null
 ) {
-    val onChainProofUrl: String?
-        get() = stellarExplorerUrl?.value?.takeIf { it.isNotBlank() }
     val formattedAmount: String get() = DateTimeUtil.formatMoney(requestedAmount.value)
     val statusLabel: String get() = status.name.uppercase()
     val providerLabel: String get() = provider.label
@@ -65,16 +53,11 @@ val PaymentProviderType.label: String
     get() = when (this) {
         PaymentProviderType.GooglePay -> "Google Pay"
         PaymentProviderType.ApplePay -> "Apple Pay"
-        PaymentProviderType.StellarUsdc -> "Stellar USDC"
         PaymentProviderType.CardLink -> "Card / Link"
         PaymentProviderType.CardTerminal -> "Card Terminal"
         PaymentProviderType.TapToPay -> "Tap to Pay"
         PaymentProviderType.BluetoothReader -> "Bluetooth Reader (Pro)"
     }
-
-/** Stellar / PowerPay settlement rail (USDC on-chain). */
-val PaymentProviderType.usesStellarRail: Boolean
-    get() = this == PaymentProviderType.StellarUsdc
 
 /** Stripe Connect hosted checkout (card link, Google Pay, Apple Pay). */
 val PaymentProviderType.usesStripeRail: Boolean
@@ -95,15 +78,8 @@ val PaymentProviderType.isOnSiteCollection: Boolean
     }
 
 fun PaymentProviderType.checkoutInstructions(
-    isStellarLive: Boolean,
     isStripeLive: Boolean
 ): String = when (this) {
-    PaymentProviderType.StellarUsdc ->
-        if (isStellarLive) {
-            "Stellar USDC checkout via PowerPay. Client pays on-chain; settlement posts to your ledger."
-        } else {
-            "Demo Stellar link — add PowerPay credentials in local.properties for live USDC checkout."
-        }
     PaymentProviderType.GooglePay ->
         if (isStripeLive) {
             "Stripe Connect checkout with Google Pay enabled. Share this link with your client."

@@ -20,7 +20,6 @@ import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
 import com.fordham.toolbelt.domain.model.InvoicePaymentStatus
 import com.fordham.toolbelt.domain.model.PaymentProviderType
 import com.fordham.toolbelt.domain.model.PaymentRequestType
-import com.fordham.toolbelt.domain.model.usesStellarRail
 import com.fordham.toolbelt.domain.payment.qr.PaymentCheckoutUrl
 import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.ui.theme.BrandOrange
@@ -30,7 +29,6 @@ import invoicehammer.composeapp.generated.resources.*
 @Composable
 fun PaymentRequestCreatedDialog(
     request: InvoicePaymentRequest,
-    isLivePowerPay: Boolean,
     isLiveStripe: Boolean,
     checkoutUrl: String?,
     checkoutLinkCanPay: Boolean,
@@ -49,7 +47,6 @@ fun PaymentRequestCreatedDialog(
         PaymentProviderType.GooglePay -> stringResource(Res.string.google_pay_ready)
         PaymentProviderType.ApplePay -> stringResource(Res.string.apple_pay_ready)
         PaymentProviderType.CardLink -> stringResource(Res.string.card_checkout_ready)
-        PaymentProviderType.StellarUsdc -> stringResource(Res.string.stellar_payment_ready)
         else -> stringResource(Res.string.payment_link_ready)
     }
     AlertDialog(
@@ -67,7 +64,6 @@ fun PaymentRequestCreatedDialog(
                 )
                 Text(
                     request.provider.checkoutInstructions(
-                        isStellarLive = isLivePowerPay && request.provider.usesStellarRail,
                         isStripeLive = isLiveStripe
                     ),
                     style = MaterialTheme.typography.bodySmall,
@@ -141,7 +137,6 @@ fun PaymentMethodPickerSheet(
 ) {
     val googlePayDesc = stringResource(Res.string.google_pay_picker_desc)
     val applePayDesc = stringResource(Res.string.apple_pay_picker_desc)
-    val stellarUsdcDesc = stringResource(Res.string.stellar_usdc_picker_desc)
     val cardLinkTitle = stringResource(Res.string.card_link_picker_title)
     val cardLinkDesc = stringResource(Res.string.card_link_picker_desc)
     val cardTerminalTitle = stringResource(Res.string.card_terminal_picker_title)
@@ -152,7 +147,7 @@ fun PaymentMethodPickerSheet(
     val bluetoothReaderDesc = stringResource(Res.string.bluetooth_reader_picker_desc)
 
     val providers = remember(
-        googlePayDesc, applePayDesc, stellarUsdcDesc, cardLinkTitle, cardLinkDesc,
+        googlePayDesc, applePayDesc, cardLinkTitle, cardLinkDesc,
         cardTerminalTitle, cardTerminalDesc, tapToPayTitle, tapToPayDesc,
         bluetoothReaderTitle, bluetoothReaderDesc
     ) {
@@ -168,12 +163,6 @@ fun PaymentMethodPickerSheet(
                 "Apple Pay",
                 applePayDesc,
                 PaymentPickerIcon.Phone
-            ),
-            PaymentPickerRow(
-                PaymentProviderType.StellarUsdc,
-                "Stellar USDC",
-                stellarUsdcDesc,
-                PaymentPickerIcon.Globe
             ),
             PaymentPickerRow(
                 PaymentProviderType.CardLink,
@@ -314,8 +303,7 @@ internal fun LedgerMetric(label: String, value: String, modifier: Modifier = Mod
 @Composable
 internal fun PaymentLedgerRow(
     request: InvoicePaymentRequest,
-    onOpenPaymentLink: (String) -> Unit,
-    onOpenExplorer: (String) -> Unit = onOpenPaymentLink
+    onOpenPaymentLink: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
@@ -343,11 +331,6 @@ internal fun PaymentLedgerRow(
                         Text(stringResource(Res.string.pay_label), fontWeight = FontWeight.Black)
                     }
                 }
-                request.onChainProofUrl?.let { explorer ->
-                    TextButton(onClick = { onOpenExplorer(explorer) }) {
-                        Text(stringResource(Res.string.tx_label), fontWeight = FontWeight.Black)
-                    }
-                }
             }
         }
     }
@@ -363,7 +346,6 @@ internal fun PaymentRequestType.label(): String = when (this) {
 fun PaymentProviderType.localizedLabel(): String = when (this) {
     PaymentProviderType.GooglePay -> "Google Pay"
     PaymentProviderType.ApplePay -> "Apple Pay"
-    PaymentProviderType.StellarUsdc -> "Stellar USDC"
     PaymentProviderType.CardLink -> stringResource(Res.string.card_link_picker_title)
     PaymentProviderType.CardTerminal -> stringResource(Res.string.card_terminal_picker_title)
     PaymentProviderType.TapToPay -> stringResource(Res.string.tap_to_pay_picker_title)
@@ -381,15 +363,8 @@ fun InvoicePaymentStatus.localizedLabel(): String = when (this) {
 
 @Composable
 fun PaymentProviderType.checkoutInstructions(
-    isStellarLive: Boolean,
     isStripeLive: Boolean
 ): String = when (this) {
-    PaymentProviderType.StellarUsdc ->
-        if (isStellarLive) {
-            stringResource(Res.string.checkout_instr_stellar_live)
-        } else {
-            stringResource(Res.string.checkout_instr_stellar_demo)
-        }
     PaymentProviderType.GooglePay ->
         if (isStripeLive) {
             stringResource(Res.string.checkout_instr_gpay_live)

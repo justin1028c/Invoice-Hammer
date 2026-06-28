@@ -6,7 +6,6 @@ import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
 import com.fordham.toolbelt.domain.model.InvoicePaymentStatus
 import com.fordham.toolbelt.domain.model.PaymentProviderType
 import com.fordham.toolbelt.domain.model.PaymentRequestType
-import com.fordham.toolbelt.domain.model.PowerPayConnectionMode
 import com.fordham.toolbelt.domain.model.cardterminal.CardTerminalDraft
 import com.fordham.toolbelt.domain.model.cardterminal.CardTerminalPhase
 import com.fordham.toolbelt.domain.model.stripe.StripePaymentMode
@@ -28,7 +27,6 @@ data class PaymentUiState(
     val isCreatingPaymentRequest: Boolean = false,
     val lastReceiptUrl: String? = null,
     val lastPaidInvoiceId: String? = null,
-    val connectionMode: PowerPayConnectionMode = PowerPayConnectionMode.Demo,
     val isGeneratingCheckoutSession: Boolean = false,
     val paymentSuccessMessage: String? = null,
     val activeCheckoutUrl: String? = null,
@@ -38,12 +36,6 @@ data class PaymentUiState(
 ) {
     val pendingCount: Int get() = requests.count { it.status != InvoicePaymentStatus.Paid }
     val totalRequested: Double get() = requests.sumOf { it.requestedAmount.value }
-    val isLivePowerPay: Boolean get() = connectionMode is PowerPayConnectionMode.Live
-    val connectionBanner: String
-        get() = when (val mode = connectionMode) {
-            PowerPayConnectionMode.Demo -> "Demo mode — configure PowerPay credentials for live Stellar checkout."
-            is PowerPayConnectionMode.Live -> "Stellar PowerPay · ${mode.presetLabel} · ${mode.environmentLabel}"
-        }
 }
 
 class PaymentViewModel(

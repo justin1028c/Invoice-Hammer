@@ -12,8 +12,6 @@ import com.fordham.toolbelt.domain.model.PaymentProviderType
 import com.fordham.toolbelt.domain.model.PaymentRequestId
 import com.fordham.toolbelt.domain.model.PaymentRequestOutcome
 import com.fordham.toolbelt.domain.model.PaymentRequestType
-import com.fordham.toolbelt.domain.model.StellarExplorerUrl
-import com.fordham.toolbelt.domain.model.StellarTransactionHash
 import com.fordham.toolbelt.domain.model.cardterminal.CardBrand
 import com.fordham.toolbelt.domain.model.cardterminal.CardTerminalPaymentOutcome
 import com.fordham.toolbelt.domain.repository.PaymentRepository
@@ -45,8 +43,7 @@ class MockPaymentRepository : PaymentRepository {
             provider = provider,
             requestedAmount = MoneyAmount(amount),
             status = InvoicePaymentStatus.Requested,
-            paymentLink = PaymentLinkUrl("https://pay.invoicehammer.dev/mock/${provider.pathSegment}/${invoice.id.value}"),
-            assetCode = if (provider == PaymentProviderType.StellarUsdc) "USDC" else "USD"
+            paymentLink = PaymentLinkUrl("https://pay.invoicehammer.dev/mock/${provider.pathSegment}/${invoice.id.value}")
         )
 
         val current = (requests.value as? PaymentLedgerOutcome.Success)?.requests.orEmpty()
@@ -61,18 +58,14 @@ class MockPaymentRepository : PaymentRepository {
 
     override suspend fun markInvoicePaid(
         invoiceId: InvoiceId,
-        paidAtMillis: Long,
-        transactionHash: StellarTransactionHash?,
-        explorerUrl: StellarExplorerUrl?
+        paidAtMillis: Long
     ): PaymentLedgerOutcome {
         val current = (requests.value as? PaymentLedgerOutcome.Success)?.requests.orEmpty()
         val updated = current.map { request ->
             if (request.invoiceId == invoiceId) {
                 request.copy(
                     status = InvoicePaymentStatus.Paid,
-                    paidAtMillis = paidAtMillis,
-                    stellarTransactionHash = transactionHash ?: request.stellarTransactionHash,
-                    stellarExplorerUrl = explorerUrl ?: request.stellarExplorerUrl
+                    paidAtMillis = paidAtMillis
                 )
             } else {
                 request
@@ -100,8 +93,7 @@ class MockPaymentRepository : PaymentRepository {
             requestedAmount = MoneyAmount(amount),
             status = InvoicePaymentStatus.Paid,
             paymentLink = PaymentLinkUrl("terminal://${brand.name.lowercase()}/••••$lastFourDigits"),
-            paidAtMillis = paidAtMillis,
-            assetCode = "USD"
+            paidAtMillis = paidAtMillis
         )
         val current = (requests.value as? PaymentLedgerOutcome.Success)?.requests.orEmpty()
         requests.value = PaymentLedgerOutcome.Success(listOf(request) + current)
@@ -117,7 +109,6 @@ private val PaymentProviderType.pathSegment: String
     get() = when (this) {
         PaymentProviderType.GooglePay -> "google-pay"
         PaymentProviderType.ApplePay -> "apple-pay"
-        PaymentProviderType.StellarUsdc -> "stellar-usdc"
         PaymentProviderType.CardLink -> "card"
         PaymentProviderType.CardTerminal -> "card-terminal"
         PaymentProviderType.TapToPay -> "tap-to-pay"

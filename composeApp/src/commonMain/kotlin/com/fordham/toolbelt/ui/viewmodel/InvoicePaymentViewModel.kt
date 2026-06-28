@@ -6,16 +6,12 @@ import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
 import com.fordham.toolbelt.domain.model.InvoicePaymentStatus
 import com.fordham.toolbelt.domain.model.PaymentLedgerOutcome
-import com.fordham.toolbelt.domain.model.PowerPayConnectionMode
-import com.fordham.toolbelt.domain.model.PowerPayEvent
 import com.fordham.toolbelt.domain.model.InvoiceId
 import com.fordham.toolbelt.domain.model.usesStripeRail
 import com.fordham.toolbelt.domain.repository.AuthRepository
 import com.fordham.toolbelt.domain.repository.InvoiceRepository
 import com.fordham.toolbelt.domain.repository.PaymentRepository
 import com.fordham.toolbelt.domain.usecase.GetPaymentLedgerUseCase
-import com.fordham.toolbelt.domain.usecase.GetPowerPayConnectionModeUseCase
-import com.fordham.toolbelt.domain.usecase.PollPowerPayClientEventsUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.PollStripeInvoicePaymentStatusUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.VerifyStripeCheckoutSessionUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.VerifyStripeCheckoutOutcome
@@ -40,8 +36,6 @@ import kotlinx.datetime.Clock
 
 class InvoicePaymentViewModel(
     getPaymentLedgerUseCase: GetPaymentLedgerUseCase,
-    getPowerPayConnectionModeUseCase: GetPowerPayConnectionModeUseCase,
-    private val pollPowerPayClientEventsUseCase: PollPowerPayClientEventsUseCase,
     private val deepLinkDispatcher: DeepLinkDispatcher,
     private val authRepository: AuthRepository,
     private val invoiceRepository: InvoiceRepository,
@@ -50,8 +44,7 @@ class InvoicePaymentViewModel(
     private val pollStripeInvoicePaymentStatusUseCase: PollStripeInvoicePaymentStatusUseCase
 ) : ViewModel() {
 
-    private val connectionMode = getPowerPayConnectionModeUseCase()
-    private val transientState = MutableStateFlow(PaymentUiState(connectionMode = connectionMode))
+    private val transientState = MutableStateFlow(PaymentUiState())
     
     var pendingCheckoutSessionId: String? = null
         private set
@@ -65,12 +58,10 @@ class InvoicePaymentViewModel(
             .map { outcome ->
                 when (outcome) {
                     is PaymentLedgerOutcome.Success -> PaymentUiState(
-                        requests = outcome.requests,
-                        connectionMode = connectionMode
+                        requests = outcome.requests
                     )
                     is PaymentLedgerOutcome.Failure -> PaymentUiState(
-                        errorMessage = outcome.error.value,
-                        connectionMode = connectionMode
+                        errorMessage = outcome.error.value
                     )
                 }
             }
@@ -84,7 +75,6 @@ class InvoicePaymentViewModel(
             isCreatingPaymentRequest = transient.isCreatingPaymentRequest,
             lastReceiptUrl = transient.lastReceiptUrl,
             lastPaidInvoiceId = transient.lastPaidInvoiceId,
-            connectionMode = connectionMode,
             isGeneratingCheckoutSession = transient.isGeneratingCheckoutSession,
             paymentSuccessMessage = transient.paymentSuccessMessage,
             activeCheckoutUrl = transient.activeCheckoutUrl,
@@ -93,14 +83,11 @@ class InvoicePaymentViewModel(
             isResolvingCheckoutLink = transient.isResolvingCheckoutLink
         )
     }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PaymentUiState(connectionMode = connectionMode))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PaymentUiState())
 
     init {
         viewModelScope.launch {
             while (isActive) {
-                runCatching { pollPowerPayClientEventsUseCase() }
-                    .getOrNull()
-                    ?.forEach { event -> applyClientEventUi(event) }
                 pollPendingStripePayments(showToast = false)
                 val hasPending = uiState.value.requests.any {
                     it.status == InvoicePaymentStatus.Pending || it.status == InvoicePaymentStatus.Requested
@@ -163,17 +150,7 @@ class InvoicePaymentViewModel(
         updateTransient(clearOpenUrlOnce = true)
     }
 
-    private fun applyClientEventUi(event: PowerPayEvent) {
-        when (event) {
-            is PowerPayEvent.InvoicePaid -> updateTransient(
-                lastReceiptUrl = event.receiptUrl?.value,
-                lastPaidInvoiceId = event.invoiceId.value,
-                clearErrorMessage = true
-            )
-            is PowerPayEvent.DepositReceived,
-            is PowerPayEvent.MilestoneReleased -> Unit
-        }
-    }
+
 
     private suspend fun handlePaymentSuccessReturn(
         invoiceId: String,
@@ -281,7 +258,7 @@ class InvoicePaymentViewModel(
         val existingInvoice = invoiceRepository.getInvoiceById(InvoiceId(invoiceId))
         val wasAlreadyPaid = existingInvoice?.isPaid == true && existingInvoice.isEstimate == false
         val paidAt = Clock.System.now().toEpochMilliseconds()
-        paymentRepository.markInvoicePaid(InvoiceId(invoiceId), paidAt, null, null)
+        paymentRepository.markInvoicePaid(InvoiceId(invoiceId), paidAt)
         existingInvoice?.let { invoice ->
             val updated = invoice.copy(isPaid = true, isEstimate = false)
             if (updated != invoice) {

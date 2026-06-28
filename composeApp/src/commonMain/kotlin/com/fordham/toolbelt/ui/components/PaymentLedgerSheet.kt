@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.fordham.toolbelt.domain.model.PowerPayConnectionMode
 import com.fordham.toolbelt.ui.theme.BrandOrange
 import com.fordham.toolbelt.ui.viewmodel.PaymentUiState
 import com.fordham.toolbelt.util.DateTimeUtil
@@ -43,12 +42,8 @@ fun PaymentLedgerSheet(
                 Icon(Icons.Default.AccountBalanceWallet, null, tint = BrandOrange)
                 Column {
                     Text(stringResource(Res.string.payment_ledger_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                    val connectionBanner = when (val mode = uiState.connectionMode) {
-                        PowerPayConnectionMode.Demo -> stringResource(Res.string.powerpay_demo_banner)
-                        is PowerPayConnectionMode.Live -> stringResource(Res.string.powerpay_live_banner, mode.presetLabel, mode.environmentLabel)
-                    }
                     Text(
-                        connectionBanner,
+                        "Track and manage invoice client payments.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

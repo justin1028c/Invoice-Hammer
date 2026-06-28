@@ -278,18 +278,21 @@ fun SettingsTab(
                                     tint = Color(0xFF2E7D32),
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = "Model Downloaded",
+                                    text = "Ready",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF2E7D32)
                                 )
                             }
-                            TextButton(onClick = onDeleteLlama) {
+                            TextButton(
+                                onClick = onDeleteLlama,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
                                 Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Delete Model", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                                Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else if (isLlamaDownloading) {
@@ -326,14 +329,14 @@ fun SettingsTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Offline Model Status: Not Cached",
+                                text = "Status: Not Cached",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             TacticalButton(
                                 onClick = onDownloadLlama,
-                                text = "Download (1.8GB)",
+                                text = "Download",
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         }

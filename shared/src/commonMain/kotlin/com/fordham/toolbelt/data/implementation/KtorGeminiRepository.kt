@@ -315,7 +315,8 @@ class KtorGeminiRepository(
         }
     }
 
-    override suspend fun processInvoiceText(text: String, categories: List<String>): InvoiceTextOutcome = try {
+    override suspend fun processInvoiceText(text: String, categories: List<String>): InvoiceTextOutcome {
+        return try {
         val currentDate = DateTimeUtil.getNowFormatted()
         val prompt = LlmLocalePolicy.wrapPrompt(
             """
@@ -379,6 +380,22 @@ class KtorGeminiRepository(
             """.trimIndent(),
             LlmLocalePolicy.OutputMode.StructuredJson
         )
+        if (localLlmEngine.isSupported()) {
+            val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(prompt))
+            if (localOutcome is GeminiOutcome.Success) {
+                AppLogger.d("KtorGeminiRepository", "Using local LLM for processInvoiceText successfully.")
+                val cleaned = AiUtil.cleanJson(localOutcome.text)
+                try {
+                    val result = json.decodeFromString<AiInvoiceResultDto>(cleaned).toDomain()
+                    return InvoiceTextOutcome.Success(result)
+                } catch (e: Exception) {
+                    AppLogger.e("KtorGeminiRepository", "Failed to parse local LLM invoice JSON. Raw: ${localOutcome.text}", e)
+                }
+            } else {
+                AppLogger.d("KtorGeminiRepository", "Local LLM returned failure in processInvoiceText. Falling back to cloud.")
+            }
+        }
+
         val response = callGemini(
             prompt = prompt,
             model = agentModelName,
@@ -398,6 +415,7 @@ class KtorGeminiRepository(
     } catch (e: Exception) {
         InvoiceTextOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process invoice text"))
     }
+}
 
     override suspend fun processReceiptImage(imageBytes: ByteArray): ReceiptImageOutcome = try {
         val prompt = LlmLocalePolicy.wrapPrompt(

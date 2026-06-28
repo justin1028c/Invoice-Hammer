@@ -2,8 +2,6 @@ package com.fordham.toolbelt.di
 
 import com.fordham.toolbelt.data.*
 import com.fordham.toolbelt.data.implementation.*
-import com.fordham.toolbelt.data.remote.PowerPayClient
-import com.fordham.toolbelt.data.remote.PowerPayConfig
 import com.fordham.toolbelt.data.remote.SupabaseClient
 import com.fordham.toolbelt.data.remote.SupabaseConfig
 import com.fordham.toolbelt.data.remote.SupabaseSubscriptionClient
@@ -82,7 +80,6 @@ val dataModule = module {
     single<ToolRegistry> {
         RepositoryToolRegistry(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
     }
-    single { createDefaultPowerPayConfig(get()) }
     single { createDefaultSupabaseConfig(get()) }
     single { createDefaultStripeConfig(get()) }
     single<StripePaymentBackendClient> {
@@ -95,16 +92,7 @@ val dataModule = module {
     }
     single<StripeIntegrationRepository> { StripeIntegrationRepositoryImpl(get()) }
     single<StripePaymentIntentRepository> { StripePaymentIntentRepositoryImpl(get(), get()) }
-    single<PowerPayIntegrationRepository> { PowerPayIntegrationRepositoryImpl(get()) }
     single<SupabaseIntegrationRepository> { SupabaseIntegrationRepositoryImpl(get()) }
-    single<PowerPayClient> {
-        val config = get<PowerPayConfig>()
-        if (config.isConfigured) {
-            KtorPowerPayClient(get(), config)
-        } else {
-            MockPowerPayClient()
-        }
-    }
     single<SupabaseClient> {
         val config = get<SupabaseConfig>()
         if (config.isConfigured) {
@@ -114,11 +102,10 @@ val dataModule = module {
         }
     }
     single<PaymentRepository> {
-        RoutedPaymentRepository(get(), get(), get(), get(), get(), get())
+        RoutedPaymentRepository(get(), get(), get(), get())
     }
     single<DeepLinkDispatcher> { DeepLinkDispatcherImpl() }
     single<StripeCheckoutRepository> { StripeCheckoutRepositoryImpl(get(), get()) }
-    single<PowerPayEventRepository> { PowerPayEventRepositoryImpl(get(), get()) }
     single<ForemanAgentDispatchers> {
         object : ForemanAgentDispatchers {
             override val background = Dispatchers.Default
@@ -196,9 +183,6 @@ val useCaseModule = module {
     factory { ObserveTokenBalancesUseCase(get()) }
     factory { CreatePaymentRequestUseCase(get()) }
     factory { GetPaymentLedgerUseCase(get()) }
-    factory { HandlePowerPayEventUseCase(get(), get()) }
-    factory { PollPowerPayClientEventsUseCase(get(), get()) }
-    factory { GetPowerPayConnectionModeUseCase(get()) }
     factory { GetSupabaseConnectionModeUseCase(get()) }
     factory { GetBusinessStatsUseCase(get(), get()) }
     factory { GetClientFinancialSummaryUseCase(get(), get()) }

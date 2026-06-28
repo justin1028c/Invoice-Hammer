@@ -184,6 +184,23 @@ class ReceiptsViewModel(
         }
     }
 
+    fun acceptSingleExpenseMatch(item: ReceiptItem) {
+        val match = _uiState.value.pendingMatch ?: return
+        viewModelScope.launch {
+            val markup = _uiState.value.markupPercentage.toDoubleOrNull() ?: 0.0
+            val success = appendReceiptToDraftUseCase(match, listOf(item), markup)
+            if (success) {
+                _uiState.update { state ->
+                    state.copy(
+                        processedItems = state.processedItems.map {
+                            if (it.id == item.id) it.copy(isBilled = true) else it
+                        }
+                    )
+                }
+            }
+        }
+    }
+
     fun declineExpenseMatch() {
         _uiState.update { it.copy(pendingMatch = null, processedItems = emptyList()) }
     }

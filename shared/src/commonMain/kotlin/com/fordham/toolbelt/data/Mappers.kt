@@ -176,7 +176,7 @@ fun PaymentRequestEntity.toDomain(): InvoicePaymentRequest = InvoicePaymentReque
     provider = when (provider) {
         "google_pay" -> PaymentProviderType.GooglePay
         "apple_pay" -> PaymentProviderType.ApplePay
-        "stellar_usdc" -> PaymentProviderType.StellarUsdc
+        "stellar_usdc" -> PaymentProviderType.CardLink
         "card_terminal" -> PaymentProviderType.CardTerminal
         "tap_to_pay" -> PaymentProviderType.TapToPay
         "bluetooth_reader" -> PaymentProviderType.BluetoothReader
@@ -193,10 +193,7 @@ fun PaymentRequestEntity.toDomain(): InvoicePaymentRequest = InvoicePaymentReque
     },
     paymentLink = PaymentLinkUrl(paymentLink),
     createdAtMillis = createdAtMillis,
-    paidAtMillis = paidAtMillis,
-    stellarTransactionHash = stellarTransactionHash?.let { StellarTransactionHash(it) },
-    stellarExplorerUrl = stellarExplorerUrl?.let { StellarExplorerUrl(it) },
-    assetCode = assetCode
+    paidAtMillis = paidAtMillis
 )
 
 fun InvoicePaymentRequest.toEntity(): PaymentRequestEntity = PaymentRequestEntity(
@@ -210,7 +207,6 @@ fun InvoicePaymentRequest.toEntity(): PaymentRequestEntity = PaymentRequestEntit
     provider = when (provider) {
         PaymentProviderType.GooglePay -> "google_pay"
         PaymentProviderType.ApplePay -> "apple_pay"
-        PaymentProviderType.StellarUsdc -> "stellar_usdc"
         PaymentProviderType.CardLink -> "card_link"
         PaymentProviderType.CardTerminal -> "card_terminal"
         PaymentProviderType.TapToPay -> "tap_to_pay"
@@ -227,7 +223,7 @@ fun InvoicePaymentRequest.toEntity(): PaymentRequestEntity = PaymentRequestEntit
     paymentLink = paymentLink.value,
     createdAtMillis = createdAtMillis,
     paidAtMillis = paidAtMillis,
-    stellarTransactionHash = stellarTransactionHash?.value,
-    stellarExplorerUrl = stellarExplorerUrl?.value,
-    assetCode = assetCode
+    stellarTransactionHash = null,
+    stellarExplorerUrl = null,
+    assetCode = "USD"
 )

@@ -157,6 +157,7 @@ fun MainPagerContent(
                     onToggleReceiptBilled = { receiptsViewModel.toggleReceiptBilled(it) },
                     onDeleteReceiptItem = { receiptsViewModel.deleteReceiptItem(it) },
                     onAcceptExpenseMatch = { receiptsViewModel.acceptExpenseMatch() },
+                    onAcceptSingleExpenseMatch = { receiptsViewModel.acceptSingleExpenseMatch(it) },
                     onDeclineExpenseMatch = { receiptsViewModel.declineExpenseMatch() },
                     platformActions = platformActions
                 )

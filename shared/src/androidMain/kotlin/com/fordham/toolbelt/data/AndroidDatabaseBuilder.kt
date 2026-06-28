@@ -15,7 +15,6 @@ internal actual fun buildRoomDatabase(
         context = context.context,
         name = dbFile.absolutePath
     ).openHelperFactory(factory)
-        .fallbackToDestructiveMigration(dropAllTables = true)
         .addMigrations(MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
         .build()
 }

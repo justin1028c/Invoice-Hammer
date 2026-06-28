@@ -84,8 +84,7 @@ class AndroidStripePaymentSheetGateway : StripePaymentSheetGateway {
                     requestedAmount = MoneyAmount(amount),
                     status = InvoicePaymentStatus.Paid,
                     paymentLink = PaymentLinkUrl("stripe://payment_intent/$paymentIntentId"),
-                    paidAtMillis = kotlinx.datetime.Clock.System.now().toEpochMilliseconds(),
-                    assetCode = "USD"
+                    paidAtMillis = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
                 ),
                 paymentIntentId = StripePaymentIntentId(paymentIntentId)
             )

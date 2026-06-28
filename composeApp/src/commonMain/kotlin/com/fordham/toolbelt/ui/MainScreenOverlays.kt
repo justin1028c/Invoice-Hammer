@@ -178,7 +178,6 @@ fun BoxScope.MainScreenOverlays(
     paymentState.latestRequest?.let { request ->
         PaymentRequestCreatedDialog(
             request = request,
-            isLivePowerPay = paymentState.isLivePowerPay,
             isLiveStripe = stripePaymentMode == StripePaymentMode.PaymentSheet,
             checkoutUrl = paymentState.activeCheckoutUrl ?: request.paymentLink.value,
             checkoutLinkCanPay = paymentState.checkoutLinkCanPay,

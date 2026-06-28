@@ -5,6 +5,7 @@ import com.fordham.toolbelt.domain.model.SyncOutcome
 import com.fordham.toolbelt.domain.repository.SyncRepository
 import com.fordham.toolbelt.util.NetworkObserver
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -17,15 +18,24 @@ public class SyncQueueProcessor(
     private val coroutineScope: CoroutineScope
 ) {
     private suspend fun syncQueueDao() = databaseProvider.getDatabase().syncQueueDao()
+    private var isProcessing = false
 
     public fun start() {
         coroutineScope.launch {
             networkObserver.isOnline.collectLatest { online ->
                 if (online) {
                     val dao = syncQueueDao()
-                    dao.getPendingCountFlow().collectLatest { count ->
-                        if (count > 0) {
-                            processPendingOperations()
+                    dao.getPendingCountFlow().collect { count ->
+                        if (count > 0 && !isProcessing) {
+                            coroutineScope.launch {
+                                if (isProcessing) return@launch
+                                try {
+                                    isProcessing = true
+                                    processPendingOperations()
+                                } finally {
+                                    isProcessing = false
+                                }
+                            }
                         }
                     }
                 }

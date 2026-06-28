@@ -247,6 +247,7 @@ class AndroidVoiceAssistant(
                                     onEnd()
                                 } else {
                                     accumulatedText = finalCombined
+                                    onPartialResult(finalCombined)
                                     Log.d("VoiceAssistant", "Segment complete. Restarting recognizer. Current accumulated: $accumulatedText")
                                     scope.launch(Dispatchers.Main) {
                                         if (sessionId == currentSessionId && !isFinalizing) {

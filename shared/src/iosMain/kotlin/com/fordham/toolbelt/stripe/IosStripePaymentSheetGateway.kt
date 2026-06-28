@@ -57,8 +57,7 @@ class IosStripePaymentSheetGateway : StripePaymentSheetGateway {
                 requestedAmount = MoneyAmount(amount),
                 status = InvoicePaymentStatus.Paid,
                 paymentLink = PaymentLinkUrl("stripe://payment_intent/$paymentIntentId"),
-                paidAtMillis = Clock.System.now().toEpochMilliseconds(),
-                assetCode = "USD"
+                paidAtMillis = Clock.System.now().toEpochMilliseconds()
             ),
             paymentIntentId = StripePaymentIntentId(paymentIntentId)
         )

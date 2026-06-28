@@ -3,9 +3,14 @@ package com.fordham.toolbelt.ui.tabs
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +45,7 @@ fun ReceiptsTab(
     onToggleReceiptBilled: (ReceiptItem) -> Unit,
     onDeleteReceiptItem: (ReceiptItem) -> Unit,
     onAcceptExpenseMatch: () -> Unit,
+    onAcceptSingleExpenseMatch: (ReceiptItem) -> Unit,
     onDeclineExpenseMatch: () -> Unit,
     platformActions: PlatformActions
 ) {
@@ -72,31 +78,111 @@ fun ReceiptsTab(
 
     if (uiState.pendingMatch != null) {
         val match = uiState.pendingMatch
-        val formatAmount = com.fordham.toolbelt.util.DateTimeUtil.formatMoney(match.totalAmount)
         AlertDialog(
             onDismissRequest = onDeclineExpenseMatch,
-            title = { Text(stringResource(Res.string.match_expense_title), fontWeight = FontWeight.Black) },
-            text = {
+            title = {
                 Text(
-                    stringResource(
-                        Res.string.match_expense_desc,
-                        match.clientName,
-                        match.category,
-                        formatAmount
-                    )
+                    text = "Review Scanned Items",
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.titleMedium
                 )
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Match found for ${match.clientName} (${match.category}). Choose items to add:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 280.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        uiState.processedItems.forEach { item ->
+                            key(item.id.value) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = item.description,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "${item.quantity}x @ ${com.fordham.toolbelt.util.DateTimeUtil.formatMoney(item.unitPrice ?: 0.0)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    
+                                    if (item.isBilled) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Added",
+                                                tint = Color(0xFF2E7D32),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "Added",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color(0xFF2E7D32),
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    } else {
+                                        val markup = uiState.markupPercentage.toDoubleOrNull() ?: 0.0
+                                        val priceText = if (markup > 0.0) {
+                                            val billedPrice = item.totalPrice * (1.0 + (markup / 100.0))
+                                            "+$${com.fordham.toolbelt.util.DateTimeUtil.formatDecimal(billedPrice, 2)}"
+                                        } else {
+                                            "+$${com.fordham.toolbelt.util.DateTimeUtil.formatDecimal(item.totalPrice, 2)}"
+                                        }
+                                        
+                                        Button(
+                                            onClick = { onAcceptSingleExpenseMatch(item) },
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                            shape = RoundedCornerShape(4.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text(
+                                                text = priceText,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                        }
+                                    }
+                                }
+                                HorizontalDivider(
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                )
+                            }
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TacticalButton(
-                    onClick = onAcceptExpenseMatch,
-                    text = stringResource(Res.string.append_to_invoice),
-                    containerColor = MaterialTheme.colorScheme.primary
+                    onClick = onDeclineExpenseMatch,
+                    text = "Done",
+                    containerColor = MaterialTheme.colorScheme.secondary
                 )
-            },
-            dismissButton = {
-                TextButton(onClick = onDeclineExpenseMatch) {
-                    Text(stringResource(Res.string.no_thanks))
-                }
             }
         )
     }

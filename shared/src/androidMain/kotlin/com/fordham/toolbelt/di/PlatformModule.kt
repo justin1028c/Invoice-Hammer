@@ -61,7 +61,8 @@ actual fun platformModule(): Module = module {
     single { PlacesService() }
     single { SecurityManager(get()) }
     single<SecurityGateway> { get<SecurityManager>() }
-    single<SecureVaultGateway> { createSecureVault(PlatformContext(get<Context>()), get()) }
+    single { PlatformContext(get<Context>()) }
+    single<SecureVaultGateway> { createSecureVault(get(), get()) }
     single { NetworkObserver(get()) }
     single { createDataStore { get<Context>().filesDir.resolve(DATASTORE_FILE_NAME).absolutePath } }
     single<SettingsRepository> { DataStoreSettingsRepository(get()) }
