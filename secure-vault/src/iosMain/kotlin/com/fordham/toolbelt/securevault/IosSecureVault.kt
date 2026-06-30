@@ -9,11 +9,17 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import platform.CoreFoundation.CFDictionaryRef
+import platform.CoreFoundation.kCFAllocatorDefault
+import platform.CoreFoundation.CFDictionaryCreateMutable
+import platform.CoreFoundation.CFDictionaryAddValue
+import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
+import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.CoreFoundation.kCFBooleanTrue
 import platform.darwin.NSObject
 import platform.Foundation.CFBridgingRelease
+import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
-import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
@@ -41,24 +47,43 @@ internal class IosSecureVault(
     override suspend fun storeSecret(label: SecretKeyLabel, value: SecretValue): VaultOperationResult =
         withContext(ioDispatcher) {
             try {
-                val query = NSMutableDictionary().apply {
-                    setObject(kSecClassGenericPassword, kSecClass as String)
-                    setObject(label.value, kSecAttrAccount as String)
-                }
+                memScoped {
+                    val query = CFDictionaryCreateMutable(
+                        kCFAllocatorDefault,
+                        0,
+                        kCFTypeDictionaryKeyCallBacks.ptr,
+                        kCFTypeDictionaryValueCallBacks.ptr
+                    ) ?: return@withContext VaultOperationResult.Failure("Failed to create CFDictionary")
 
-                // Delete any existing item first
-                SecItemDelete(query as CFDictionaryRef)
+                    try {
+                        CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword)
+                        
+                        val cfLabel = CFBridgingRetain(label.value as NSString)
+                        CFDictionaryAddValue(query, kSecAttrAccount, cfLabel)
+                        CFRelease(cfLabel)
 
-                // Add new item
-                val nsValue = value.value as NSString
-                val data = nsValue.dataUsingEncoding(NSUTF8StringEncoding)
-                query.setObject(data!!, kSecValueData as String)
+                        // Delete any existing item first
+                        SecItemDelete(query as CFDictionaryRef)
 
-                val status = SecItemAdd(query as CFDictionaryRef, null)
-                if (status == errSecSuccess) {
-                    VaultOperationResult.Success(value)
-                } else {
-                    VaultOperationResult.Failure("Keychain store error code: $status")
+                        // Add new item
+                        val nsValue = value.value as NSString
+                        val data = nsValue.dataUsingEncoding(NSUTF8StringEncoding)
+                        if (data == null) {
+                            return@withContext VaultOperationResult.Failure("Failed to encode secret value")
+                        }
+                        val cfData = CFBridgingRetain(data)
+                        CFDictionaryAddValue(query, kSecValueData, cfData)
+                        CFRelease(cfData)
+
+                        val status = SecItemAdd(query as CFDictionaryRef, null)
+                        if (status == errSecSuccess) {
+                            VaultOperationResult.Success(value)
+                        } else {
+                            VaultOperationResult.Failure("Keychain store error code: $status")
+                        }
+                    } finally {
+                        CFRelease(query)
+                    }
                 }
             } catch (e: Exception) {
                 VaultOperationResult.Failure(e.message ?: "Unknown iOS Keychain write error")
@@ -69,33 +94,46 @@ internal class IosSecureVault(
     override suspend fun retrieveSecret(label: SecretKeyLabel): VaultOperationResult =
         withContext(ioDispatcher) {
             try {
-                val query = NSMutableDictionary().apply {
-                    setObject(kSecClassGenericPassword, kSecClass as String)
-                    setObject(label.value, kSecAttrAccount as String)
-                    setObject(kCFBooleanTrue, kSecReturnData as String)
-                    setObject(kSecMatchLimitOne, kSecMatchLimit as String)
-                }
-
                 memScoped {
-                    val resultVar = alloc<CFTypeRefVar>()
-                    val status = SecItemCopyMatching(query as CFDictionaryRef, resultVar.ptr)
+                    val query = CFDictionaryCreateMutable(
+                        kCFAllocatorDefault,
+                        0,
+                        kCFTypeDictionaryKeyCallBacks.ptr,
+                        kCFTypeDictionaryValueCallBacks.ptr
+                    ) ?: return@withContext VaultOperationResult.Failure("Failed to create CFDictionary")
 
-                    when (status) {
-                        errSecSuccess -> {
-                            val data = CFBridgingRelease(resultVar.value) as? NSData
-                            if (data != null) {
-                                val decryptedString = NSString.create(data = data, encoding = NSUTF8StringEncoding) as String
-                                VaultOperationResult.Success(SecretValue(decryptedString))
-                            } else {
-                                VaultOperationResult.Failure("Failed to cast keychain result to NSData")
+                    try {
+                        CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword)
+                        
+                        val cfLabel = CFBridgingRetain(label.value as NSString)
+                        CFDictionaryAddValue(query, kSecAttrAccount, cfLabel)
+                        CFRelease(cfLabel)
+
+                        CFDictionaryAddValue(query, kSecReturnData, kCFBooleanTrue)
+                        CFDictionaryAddValue(query, kSecMatchLimit, kSecMatchLimitOne)
+
+                        val resultVar = alloc<CFTypeRefVar>()
+                        val status = SecItemCopyMatching(query as CFDictionaryRef, resultVar.ptr)
+
+                        when (status) {
+                            errSecSuccess -> {
+                                val data = CFBridgingRelease(resultVar.value) as? NSData
+                                if (data != null) {
+                                    val decryptedString = NSString.create(data = data, encoding = NSUTF8StringEncoding) as String
+                                    VaultOperationResult.Success(SecretValue(decryptedString))
+                                } else {
+                                    VaultOperationResult.Failure("Failed to cast keychain result to NSData")
+                                }
+                            }
+                            errSecItemNotFound -> {
+                                VaultOperationResult.Failure("Secret not found for label: ${label.value}")
+                            }
+                            else -> {
+                                VaultOperationResult.Failure("Keychain retrieve error code: $status")
                             }
                         }
-                        errSecItemNotFound -> {
-                            VaultOperationResult.Failure("Secret not found for label: ${label.value}")
-                        }
-                        else -> {
-                            VaultOperationResult.Failure("Keychain retrieve error code: $status")
-                        }
+                    } finally {
+                        CFRelease(query)
                     }
                 }
             } catch (e: Exception) {

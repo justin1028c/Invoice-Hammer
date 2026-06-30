@@ -20,8 +20,8 @@ class AndroidLocalLlmEngine(
     private val ioDispatcher: CoroutineDispatcher
 ) : LocalLlmEngine {
 
-    private val modelFile = File(context.filesDir, "llama-3.2-3b.task")
-    private val tempFile = File(context.getExternalFilesDir(null), "llama-3.2-3b.task.tmp")
+    private val modelFile = File(context.filesDir, "gemma-2b-it-cpu-int4.bin")
+    private val tempFile = File(context.getExternalFilesDir(null), "gemma-2b-it-cpu-int4.bin.tmp")
     private val sharedPrefs = context.getSharedPreferences("llm_downloader_prefs", Context.MODE_PRIVATE)
     
     private var inference: LlmInference? = null
@@ -31,10 +31,25 @@ class AndroidLocalLlmEngine(
     private var activeProgressCallback: ((Float) -> Unit)? = null
     private var activeCompleteCallback: ((Boolean) -> Unit)? = null
 
-    // Remote endpoint hosting the compiled Llama 3.2 3B task file for MediaPipe Tasks GenAI
-    private val modelUrl = "https://huggingface.co/vimal-yuvabe/llama-3.2-3b-tflite/resolve/main/llama-3.2-3B-q8.task"
+    // Remote endpoint hosting the compiled Gemma 2B INT4 file for MediaPipe Tasks GenAI
+    private val modelUrl = "https://huggingface.co/ASahu16/gemma/resolve/main/gemma-2b-it-cpu-int4.bin"
 
     init {
+        // Safely purge legacy Llama 3.2 3B and 1B models to recover up to ~7.5GB of user device space
+        try {
+            val legacy3b = File(context.filesDir, "llama-3.2-3b.task")
+            if (legacy3b.exists()) legacy3b.delete()
+            val legacy3bTmp = File(context.getExternalFilesDir(null), "llama-3.2-3b.task.tmp")
+            if (legacy3bTmp.exists()) legacy3bTmp.delete()
+
+            val legacy1b = File(context.filesDir, "llama-3.2-1b.task")
+            if (legacy1b.exists()) legacy1b.delete()
+            val legacy1bTmp = File(context.getExternalFilesDir(null), "llama-3.2-1b.task.tmp")
+            if (legacy1bTmp.exists()) legacy1bTmp.delete()
+        } catch (e: Exception) {
+            com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Failed to clean legacy model files", e)
+        }
+
         val downloadId = sharedPrefs.getLong("download_id", -1L)
         if (downloadId != -1L) {
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -87,7 +102,7 @@ class AndroidLocalLlmEngine(
             try {
                 val options = LlmInferenceOptions.builder()
                     .setModelPath(modelFile.absolutePath)
-                    .setMaxTokens(1024)
+                    .setMaxTokens(2048)
                     .build()
                 inference = LlmInference.createFromOptions(context, options)
                 true
@@ -107,7 +122,7 @@ class AndroidLocalLlmEngine(
                 val response = inference?.generateResponse(prompt.value) ?: ""
                 GeminiOutcome.Success(response)
             } catch (e: Exception) {
-                GeminiOutcome.Failure(FailureMessage(e.message ?: "Local Llama inference failed"))
+                GeminiOutcome.Failure(FailureMessage(e.message ?: "Local Gemma inference failed"))
             }
         }
     }
@@ -147,8 +162,8 @@ class AndroidLocalLlmEngine(
                 
                 val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 val request = DownloadManager.Request(Uri.parse(modelUrl))
-                    .setTitle("Llama 3.2 Offline Model")
-                    .setDescription("Downloading Llama model for offline AI capabilities...")
+                    .setTitle("Gemma 2B Offline Model")
+                    .setDescription("Downloading Gemma 2B model for offline AI capabilities...")
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setAllowedOverMetered(false)
                     .setAllowedOverRoaming(false)

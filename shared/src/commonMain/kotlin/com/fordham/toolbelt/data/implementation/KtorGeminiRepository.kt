@@ -5,6 +5,7 @@ import com.fordham.toolbelt.data.remote.*
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.data.dto.AiInvoiceResultDto
 import com.fordham.toolbelt.domain.model.agent.AgentFunction
+import com.fordham.toolbelt.domain.model.agent.toApiName
 import com.fordham.toolbelt.domain.repository.GeminiRepository
 import com.fordham.toolbelt.util.*
 import io.ktor.client.*
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 
 class KtorGeminiRepository(
@@ -264,6 +267,72 @@ class KtorGeminiRepository(
         return cleanTerms.firstOrNull() ?: data.take(20).trim()
     }
 
+    private suspend fun runLocalToolCall(
+        input: String,
+        context: String,
+        session: com.fordham.toolbelt.domain.model.agent.ForemanSession,
+        functions: List<AgentFunction>,
+        systemInstruction: String?
+    ): ToolCallOutcome? {
+        return try {
+            val toolsDescription = buildString {
+                append("You are an AI assistant. Select the single best tool to execute from the list below based on the user request, or reply with text.\n\n")
+                append("Available Tools:\n")
+                for (fn in functions) {
+                    val args = fn.parameters.joinToString(", ") { "${it.name.value}${if (it.required) "*" else ""}" }
+                    append("- ${fn.toolName.toApiName()}($args): ${fn.description.value}\n")
+                }
+                append("\nOUTPUT FORMAT:\n")
+                append("If selecting a tool, return ONLY JSON matching: \n")
+                append("{\n  \"name\": \"tool_name\",\n  \"args\": {\n    \"arg_name\": \"value\"\n  }\n}\n\n")
+                append("If responding with conversational text, return ONLY JSON matching:\n")
+                append("{\n  \"text\": \"Your response text\"\n}\n\n")
+                append("CRITICAL: Output ONLY raw JSON. No markdown backticks, no markdown code blocks, no other text.")
+            }
+
+            val conversationHistory = buildString {
+                for (turn in session.history) {
+                    val role = if (turn.role == com.fordham.toolbelt.domain.model.agent.AgentRole.User) "User" else "Assistant"
+                    append("$role: ${turn.content.value}\n")
+                }
+                append("Context:\n$context\n\nUser: $input\n")
+            }
+
+            val prompt = "$toolsDescription\n\n$conversationHistory"
+            val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(prompt))
+            if (localOutcome is GeminiOutcome.Success) {
+                val cleaned = AiUtil.cleanJson(localOutcome.text)
+                try {
+                    val jsonElement = json.parseToJsonElement(cleaned)
+                    val jsonObject = jsonElement.jsonObject
+                    
+                    if (jsonObject.containsKey("name")) {
+                        val name = jsonObject["name"]?.jsonPrimitive?.content.orEmpty()
+                        val argsElement = jsonObject["args"] ?: kotlinx.serialization.json.JsonObject(emptyMap())
+                        val argsObj = argsElement.jsonObject
+                        
+                        val funcCall = GeminiFunctionCall(name = name, args = argsObj)
+                        val mapped = ForemanGeminiFunctionMapper.map(funcCall)
+                        if (mapped != null) {
+                            AppLogger.d("KtorGeminiRepository", "Local LLM matched tool successfully: $name")
+                            return ToolCallOutcome.Success(toolCall = mapped, completionReasoning = "")
+                        }
+                    } else if (jsonObject.containsKey("text")) {
+                        val text = jsonObject["text"]?.jsonPrimitive?.content.orEmpty()
+                        AppLogger.d("KtorGeminiRepository", "Local LLM returned conversational response successfully.")
+                        return ToolCallOutcome.Success(toolCall = null, completionReasoning = text)
+                    }
+                } catch (e: Exception) {
+                    AppLogger.e("KtorGeminiRepository", "Failed to parse local LLM tool JSON. Raw: ${localOutcome.text}", e)
+                }
+            }
+            null
+        } catch (e: Exception) {
+            AppLogger.e("KtorGeminiRepository", "Local tool call execution threw exception", e)
+            null
+        }
+    }
+
     override suspend fun generateToolCall(
         input: String,
         context: String,
@@ -279,6 +348,13 @@ class KtorGeminiRepository(
                     FailureMessage("Foreman requires native function calling; no tools were registered.")
                 )
             } else {
+                if (localLlmEngine.isSupported()) {
+                    val localResult = runLocalToolCall(input, context, session, functions, systemInstruction)
+                    if (localResult != null) {
+                        return localResult
+                    }
+                }
+
                 generateToolCallWithFunctions(
                     input = input,
                     context = context,
@@ -301,6 +377,8 @@ class KtorGeminiRepository(
     private fun mapForemanFailure(e: Exception): FailureMessage {
         val msg = e.message.orEmpty()
         return when {
+            msg.contains("502", ignoreCase = true) || msg.contains("Google API connection failed", ignoreCase = true) ->
+                FailureMessage("Foreman Cloud API error — check if your Google AI Developer billing is active or paid.")
             msg.contains("not configured", ignoreCase = true) ->
                 FailureMessage("Can't reach Foreman — add foreman.gemini.backend.url in local.properties.")
             msg.contains("401", ignoreCase = true) || msg.contains("Unauthorized", ignoreCase = true) ->

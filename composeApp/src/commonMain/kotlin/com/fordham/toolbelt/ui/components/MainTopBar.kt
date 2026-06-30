@@ -27,6 +27,7 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTopBar(
+    showLedgerIcon: Boolean = true,
     onLedgerClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -68,8 +69,10 @@ fun MainTopBar(
         },
         actions = {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
-                IconButton(onClick = onLedgerClick) {
-                    Icon(Icons.Default.AccountBalanceWallet, paymentLedgerCd, tint = MaterialTheme.colorScheme.primary)
+                if (showLedgerIcon) {
+                    IconButton(onClick = onLedgerClick) {
+                        Icon(Icons.Default.AccountBalanceWallet, paymentLedgerCd, tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
                 IconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.onBackground)

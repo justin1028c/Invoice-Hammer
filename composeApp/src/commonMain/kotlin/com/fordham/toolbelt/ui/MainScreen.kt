@@ -342,6 +342,7 @@ fun MainScreen(
         Scaffold(
             topBar = { 
                 MainTopBar(
+                    showLedgerIcon = pagerState.currentPage != 0,
                     onLedgerClick = { showPaymentLedger = true },
                     onSettingsClick = { scope.launch { pagerState.animateScrollToPage(6) } }
                 )

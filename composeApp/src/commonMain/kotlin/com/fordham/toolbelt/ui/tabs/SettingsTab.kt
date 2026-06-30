@@ -255,11 +255,11 @@ fun SettingsTab(
         if (com.fordham.toolbelt.util.currentPlatformTarget() == com.fordham.toolbelt.util.PlatformTarget.Android) {
             Spacer(Modifier.height(16.dp))
 
-            // OFFLINE AI (LLAMA 3.2) SECTION
-            SettingsSection(title = "Offline AI (Llama 3.2)") {
+            // OFFLINE AI (GEMMA 2B) SECTION
+            SettingsSection(title = "Offline AI (Gemma 2B)") {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Download the Llama 3.2 3B model (approx. 1.8GB) to enable fully offline local invoice parsing and voice assistant capabilities.",
+                        text = "Download the Gemma 2B model (approx. 1.3GB) to enable fully offline local invoice parsing and voice assistant capabilities.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
