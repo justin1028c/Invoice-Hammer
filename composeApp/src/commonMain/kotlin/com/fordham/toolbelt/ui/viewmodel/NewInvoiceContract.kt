@@ -72,6 +72,7 @@ sealed interface NewInvoiceIntent {
     data object AddManualLineItem : NewInvoiceIntent
     data object BillLabor : NewInvoiceIntent
     data class RemoveLineItem(val item: LineItem) : NewInvoiceIntent
+    data class UpdateLineItem(val original: LineItem, val updated: LineItem) : NewInvoiceIntent
     data object AcceptAiItems : NewInvoiceIntent
     data class ProcessInvoiceAi(val categories: List<String>) : NewInvoiceIntent
     data class LinkReceipt(val receipt: ReceiptItem, val markupPercent: Double) : NewInvoiceIntent

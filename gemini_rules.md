@@ -196,3 +196,29 @@ The prompt **and**, if necessary, downstream processing must ensure locale align
 Raw model output must not be assumed to be correctly localized without this step.
 
 **Failure condition:** Any Gemini response surface that displays user-visible text without a locale hint in the prompt and/or downstream processing is a violation.
+
+---
+
+## 🔒 Security Rules
+
+### RULE 1 — SECURE VAULT IS THE ONLY SOURCE OF TRUTH
+All secrets, passphrases, API keys, encryption material, and sensitive data must be stored and retrieved exclusively through the `:secure-vault` library. 
+No hardcoded credentials, plaintext storage, or alternative storage mechanisms are allowed.
+
+### RULE 2 — BIOMETRIC / DEVICE CREDENTIAL GUARD
+Any access to sensitive vault operations, payment flows, or high-risk AI actions must respect biometric authentication (or device passcode) where supported by the platform.
+
+### RULE 3 — NO SENSITIVE DATA IN LOGS
+Never log raw secrets, full voice transcripts, customer PII, payment details, or unredacted sensitive information. Use only redacted or anonymized logging.
+
+### RULE 4 — INPUT VALIDATION & SANITIZATION
+All external input (especially voice transcription and AI-generated content) must be validated and sanitized before processing, storage, or display.
+
+### RULE 5 — PLATFORM SECURITY PARITY
+- **iOS**: Apply proper Data Protection attributes (e.g. `NSFileProtectionComplete`) for database and file storage.
+- **Android**: Use `EncryptedSharedPreferences` + `StrongBox` Keystore where available.
+All platform-specific implementations must meet or exceed their native security standards.
+
+### RULE 6 — KEY MANAGEMENT
+Implement secure key generation, storage, and rotation policies. Avoid long-lived static keys when possible.
+

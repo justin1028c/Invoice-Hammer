@@ -64,8 +64,9 @@ val dataModule = module {
     single<PhotoRepository> { RoomPhotoRepository(get()) }
     single<DraftRepository> { RoomDraftRepository(get()) }
     single<OcrRepository> { GeminiOcrRepository(get()) }
+    single<LocalAiCapabilityRepository> { DefaultLocalAiCapabilityRepository(get()) }
     single { createDefaultForemanGeminiConfig(get()) }
-    single<GeminiRepository> { KtorGeminiRepository(get(), get(), get(), get(), get()) }
+    single<GeminiRepository> { KtorGeminiRepository(get(), get(), get(), get(), get(), get()) }
     single { SyncQueueProcessor(get(), get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Main)) }
     single<ForemanJobMemoryPort> { RoomForemanJobMemoryAdapter(get()) }
     single { ForemanToolCallMapper(get(), get()) }
@@ -157,10 +158,15 @@ val useCaseModule = module {
     factory { AddJobNoteUseCase(get()) }
     factory { DeleteJobNoteUseCase(get()) }
     factory { DeleteClientUseCase(get()) }
+    factory { UpdateClientUseCase(get()) }
     factory { LinkReceiptToClientUseCase(get()) }
     factory { SaveJobPhotoUseCase(get()) }
     factory { SaveBusinessLogoUseCase(get(), get()) }
-    factory { ProcessInvoiceAiUseCase(get(), get()) }
+    factory { ParseVoiceInvoiceDeterministicallyUseCase() }
+    factory { ValidateVoiceInvoiceResultUseCase() }
+    factory { BuildVoiceInvoiceApplicationPlanUseCase() }
+    factory { PolishLineItemDescriptionsUseCase(get()) }
+    factory { ProcessInvoiceAiUseCase(get(), get(), get(), get()) }
     factory { BillLaborUseCase(get()) }
     factory { GenerateAndSaveInvoiceUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { GetProfitGuardianStatusUseCase(get(), get(), get()) }
@@ -195,11 +201,16 @@ val useCaseModule = module {
             draftRepository = get(),
             dispatchers = get(),
             hasSubscriptionFeature = get(),
-            consumeToken = get(),
-            platformActions = get(),
-            settingsRepository = get()
-        )
-    }
+             consumeToken = get(),
+             platformActions = get(),
+             settingsRepository = get(),
+             localAiCapabilityRepository = get(),
+             parseVoiceInvoiceDeterministically = get(),
+             validateVoiceInvoiceResult = get(),
+             polishLineItemDescriptions = get(),
+             processInvoiceAi = get()
+         )
+     }
     single { CoroutineScope(SupervisorJob() + get<kotlinx.coroutines.CoroutineDispatcher>()) }
     single<ForemanSessionPersistencePort> { DataStoreForemanSessionPersistence(get()) }
     single { ForemanSessionStore(get(), get()) }

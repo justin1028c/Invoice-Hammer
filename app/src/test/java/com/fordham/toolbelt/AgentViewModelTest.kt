@@ -22,11 +22,14 @@ import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.repository.SubscriptionRepository
 import com.fordham.toolbelt.domain.repository.SettingsRepository
+import com.fordham.toolbelt.domain.repository.LocalAiCapabilityRepository
 import com.fordham.toolbelt.domain.model.DraftInvoice
 import kotlinx.coroutines.flow.flowOf
 import com.fordham.toolbelt.domain.repository.ToolRegistry
 import com.fordham.toolbelt.domain.usecase.ForemanOrchestrator
+import com.fordham.toolbelt.domain.usecase.ParseVoiceInvoiceDeterministicallyUseCase
 import com.fordham.toolbelt.domain.usecase.RunForemanAgentUseCase
+import com.fordham.toolbelt.domain.usecase.ValidateVoiceInvoiceResultUseCase
 import com.fordham.toolbelt.domain.model.agent.ForemanAppContextBundle
 import com.fordham.toolbelt.domain.model.agent.ForemanRuntimeSnapshot
 import com.fordham.toolbelt.domain.model.agent.ForemanSessionStore
@@ -34,6 +37,10 @@ import com.fordham.toolbelt.domain.repository.NoOpForemanSessionPersistencePort
 import com.fordham.toolbelt.domain.usecase.subscription.ConsumeTokenUseCase
 import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
 import com.fordham.toolbelt.util.PlatformActions
+import com.fordham.toolbelt.data.local.LocalLlmEngine
+import com.fordham.toolbelt.domain.model.GeminiOutcome
+import com.fordham.toolbelt.domain.model.LlmPrompt
+import com.fordham.toolbelt.domain.usecase.PolishLineItemDescriptionsUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -50,6 +57,17 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+
+/** Test stub: local LLM always reports unsupported → polish step skipped, originals used. */
+private object NoOpLocalLlmEngine : LocalLlmEngine {
+    override suspend fun isSupported() = false
+    override suspend fun generateText(prompt: LlmPrompt) = GeminiOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage("no-op"))
+    override fun isModelDownloaded() = false
+    override fun getDownloadProgress() = 0f
+    override fun isDownloading() = false
+    override fun startDownload(onProgress: (Float) -> Unit, onComplete: (Boolean) -> Unit) { onComplete(false) }
+    override fun deleteModel() = false
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AgentViewModelTest {
@@ -85,6 +103,8 @@ class AgentViewModelTest {
             TokenConsumptionOutcome.Success(TokenCount(5))
         coEvery { draftRepository.getDraft() } returns flowOf(DraftInvoice())
         val platformActions = mockk<PlatformActions>(relaxed = true)
+        val localAiCapabilityRepository = mockk<LocalAiCapabilityRepository>(relaxed = true)
+        coEvery { localAiCapabilityRepository.isOnDeviceAgentAvailable() } returns false
         val useCase = RunForemanAgentUseCase(
             llmGateway = llmGateway,
             toolRegistry = toolRegistry,
@@ -93,7 +113,11 @@ class AgentViewModelTest {
             hasSubscriptionFeature = HasSubscriptionFeatureUseCase(subscriptionRepository),
             consumeToken = ConsumeTokenUseCase(billingRepository),
             platformActions = platformActions,
-            settingsRepository = settingsRepository
+            settingsRepository = settingsRepository,
+            localAiCapabilityRepository = localAiCapabilityRepository,
+            parseVoiceInvoiceDeterministically = ParseVoiceInvoiceDeterministicallyUseCase(),
+            validateVoiceInvoiceResult = ValidateVoiceInvoiceResultUseCase(),
+            polishLineItemDescriptions = PolishLineItemDescriptionsUseCase(NoOpLocalLlmEngine)
         )
         return AgentViewModel(
             ForemanOrchestrator(

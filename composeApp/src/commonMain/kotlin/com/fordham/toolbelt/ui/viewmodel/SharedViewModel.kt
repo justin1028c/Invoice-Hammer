@@ -26,8 +26,16 @@ class SharedViewModel(
     private val _logoMessage = MutableSharedFlow<String>()
     val logoMessage = _logoMessage.asSharedFlow()
 
-    private val _selectedClient = MutableStateFlow<Client?>(null)
-    val selectedClient: StateFlow<Client?> = _selectedClient.asStateFlow()
+    private val _selectedClientId = MutableStateFlow<ClientId?>(null)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val selectedClient: StateFlow<Client?> = _selectedClientId.flatMapLatest { id ->
+        if (id == null) flowOf(null)
+        else clientRepository.getAllClients().map { outcome ->
+            if (outcome is ClientListOutcome.Success) {
+                outcome.clients.find { it.id == id }
+            } else null
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val businessSettings: Flow<BusinessSettings> = settingsRepository.businessSettingsFlow
     val allClients: Flow<List<Client>> = clientRepository.getAllClients().map { result ->
@@ -37,13 +45,13 @@ class SharedViewModel(
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val selectedClientSummary: StateFlow<com.fordham.toolbelt.domain.usecase.FinancialSummary?> = _selectedClient.flatMapLatest { client ->
+    val selectedClientSummary: StateFlow<com.fordham.toolbelt.domain.usecase.FinancialSummary?> = selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(null)
         else getClientFinancialSummaryUseCase(client.name.value)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val selectedClientInvoices: StateFlow<List<Invoice>> = _selectedClient.flatMapLatest { client ->
+    val selectedClientInvoices: StateFlow<List<Invoice>> = selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList<Invoice>())
         else invoiceRepository.allInvoices.map { list -> 
             list.filter { it.clientName.value.trim().equals(client.name.value.trim(), ignoreCase = true) } 
@@ -51,7 +59,7 @@ class SharedViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val selectedClientPhotos: StateFlow<List<JobPhoto>> = _selectedClient.flatMapLatest { client ->
+    val selectedClientPhotos: StateFlow<List<JobPhoto>> = selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList())
         else invoiceRepository.allInvoices.flatMapLatest { invoices ->
             val clientInvoiceIds = invoices.filter { it.clientName.value.trim().equals(client.name.value.trim(), ignoreCase = true) }.map { it.id }
@@ -69,13 +77,13 @@ class SharedViewModel(
 
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val selectedClientNotes: StateFlow<List<JobNote>> = _selectedClient.flatMapLatest { client ->
+    val selectedClientNotes: StateFlow<List<JobNote>> = selectedClient.flatMapLatest { client ->
         if (client == null) flowOf(emptyList<JobNote>())
         else jobNoteRepository.getNotesByClient(client.name.value)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun selectClient(client: Client?) {
-        _selectedClient.value = client
+        _selectedClientId.value = client?.id
     }
 
     fun selectClientByName(name: String) {
@@ -83,18 +91,13 @@ class SharedViewModel(
             val clients = allClients.first()
             val match = clients.find { it.name.value.equals(name, ignoreCase = true) }
             if (match != null) {
-                _selectedClient.value = match
+                _selectedClientId.value = match.id
             }
         }
     }
 
     fun selectClientById(clientId: com.fordham.toolbelt.domain.model.ClientId) {
-        viewModelScope.launch {
-            val match = allClients.first().find { it.id == clientId }
-            if (match != null) {
-                _selectedClient.value = match
-            }
-        }
+        _selectedClientId.value = clientId
     }
 
     fun saveBusinessSettings(settings: BusinessSettings) {

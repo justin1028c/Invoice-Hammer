@@ -137,8 +137,8 @@ class SubscriptionRepositoryImpl(
                     productId,
                     platformTarget == PlatformTarget.Android
                 ) ?: when (productId) {
-                    "invoice_hammer_founder_lifetime" -> SubscriptionTierMapper.founderLifetimeFallback()
-                    "invoice_hammer_pro_yearly" -> SubscriptionTierMapper.proYearlyFallback()
+                    "invoice-hammer-founder-lifetime" -> SubscriptionTierMapper.founderLifetimeFallback()
+                    "invoice-hammer-pro-yearly" -> SubscriptionTierMapper.proYearlyFallback()
                     else -> SubscriptionTierMapper.proTierFallback()
                 }
                 val entitlement = UserEntitlement(

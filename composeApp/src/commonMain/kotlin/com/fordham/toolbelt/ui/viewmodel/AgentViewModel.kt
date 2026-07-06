@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.model.agent.*
 import com.fordham.toolbelt.domain.usecase.ForemanOrchestrator
+import com.fordham.toolbelt.util.AppLogger
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
@@ -48,6 +49,11 @@ class AgentViewModel(
 
         activeCommandJob?.cancel()
         activeCommandJob = viewModelScope.launch {
+            AppLogger.d(
+                "VoiceInvoiceTrace",
+                "Agent command accepted='$trimmed' runtimeClient='${appContext.runtime.selectedClientName.orEmpty()}' " +
+                    "activeTab=${appContext.runtime.activeTab}"
+            )
             _uiState.update {
                 it.copy(
                     isProcessing = true,
@@ -65,6 +71,10 @@ class AgentViewModel(
                 command = NaturalLanguage(trimmed),
                 systemPrompt = NaturalLanguage(appContext.systemPrompt),
                 runtime = appContext.runtime
+            )
+            AppLogger.d(
+                "VoiceInvoiceTrace",
+                "Agent run outcome=${run.outcome::class.simpleName}"
             )
             deliverRun(run, onIntent, onEffect)
         }

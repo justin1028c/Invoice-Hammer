@@ -136,7 +136,7 @@ class AndroidVoiceAssistant(
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 8)
                         val locale = if (AppLocale.fromSystem() == AppLocale.Spanish) "es-ES" else "en-US"
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale)
                         // Standard values (may be ignored by Google recognition engine, hence our loop wrapper)
@@ -221,16 +221,27 @@ class AndroidVoiceAssistant(
                                     }
                                 } else {
                                     isFinalizing = true
-                                    val finalCombined = accumulatedText
-                                    onResult(VoiceTranscriptMeta(finalCombined, 1.0f))
+                                    val finalCombined = accumulatedText.trim()
+                                    onResult(
+                                        VoiceTranscriptMeta(
+                                            text = finalCombined,
+                                            confidence = if (finalCombined.isBlank()) 0.0f else 0.55f,
+                                            alternatives = emptyList()
+                                        )
+                                    )
                                     onEnd()
                                 }
                             }
                         }
                         override fun onResults(results: Bundle?) {
-                            val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                            val text = matches?.firstOrNull() ?: ""
-                            Log.d("VoiceAssistant", "SpeechRecognizer results: $text")
+                            val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
+                            val confidences = results?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+                            val ranked = rankSpeechCandidates(matches, confidences)
+                            val text = ranked.firstOrNull()?.text.orEmpty()
+                            Log.d(
+                                "VoiceAssistant",
+                                "SpeechRecognizer ranked results: ${ranked.take(5).joinToString(" | ") { "${it.text} (${it.confidence})" }}"
+                            )
                             isRecognizerListening = false
 
                             if (sessionId == currentSessionId) {
@@ -243,7 +254,13 @@ class AndroidVoiceAssistant(
                                 val elapsed = System.currentTimeMillis() - lastSpeechTimestamp
                                 if (isFinalizing || elapsed >= 3500L) {
                                     isFinalizing = true
-                                    onResult(VoiceTranscriptMeta(finalCombined, 1.0f))
+                                    onResult(
+                                        VoiceTranscriptMeta(
+                                            text = finalCombined.trim(),
+                                            confidence = ranked.firstOrNull()?.confidence,
+                                            alternatives = buildCombinedAlternatives(accumulatedText, ranked.map { it.text }, finalCombined)
+                                        )
+                                    )
                                     onEnd()
                                 } else {
                                     accumulatedText = finalCombined
@@ -263,6 +280,9 @@ class AndroidVoiceAssistant(
                             if (text.isNotBlank() && sessionId == currentSessionId) {
                                 Log.d("VoiceAssistant", "SpeechRecognizer partial results: $text")
                                 lastSpeechTimestamp = System.currentTimeMillis()
+                                if (accumulatedText.isNotEmpty() && isTinyRestartFragment(text)) {
+                                    return
+                                }
                                 val combined = if (accumulatedText.isEmpty()) text else "$accumulatedText $text"
                                 onPartialResult(combined)
                             }
@@ -279,6 +299,74 @@ class AndroidVoiceAssistant(
                 }
             }
         }
+    }
+
+    private data class SpeechCandidate(
+        val text: String,
+        val confidence: Float?,
+        val score: Float
+    )
+
+    private fun rankSpeechCandidates(
+        matches: List<String>,
+        confidences: FloatArray?
+    ): List<SpeechCandidate> {
+        return matches
+            .mapIndexedNotNull { index, raw ->
+                val text = raw.trim()
+                if (text.isBlank()) return@mapIndexedNotNull null
+                val confidence = confidences?.getOrNull(index)?.takeIf { it >= 0f }
+                SpeechCandidate(
+                    text = text,
+                    confidence = confidence,
+                    score = invoiceSpeechScore(text) + ((confidence ?: 0.5f) * 3f) - (index * 0.15f)
+                )
+            }
+            .sortedByDescending { it.score }
+    }
+
+    private fun buildCombinedAlternatives(
+        prefix: String,
+        candidates: List<String>,
+        selected: String
+    ): List<String> {
+        return candidates
+            .map { candidate ->
+                if (prefix.isBlank()) candidate else "$prefix $candidate"
+            }
+            .map { it.trim() }
+            .filter { it.isNotBlank() && it != selected.trim() }
+            .distinct()
+            .take(5)
+    }
+
+    private fun invoiceSpeechScore(text: String): Float {
+        val lower = text.lowercase()
+        var score = 0f
+
+        score += Regex("""\$\s*\d+|\b\d+(?:\.\d+)?\s*(?:dollars?|bucks?|cents?)\b""").findAll(lower).count() * 2.2f
+        score += Regex("""\b\d+\s*(?:each|per|x|times|ft|feet|foot|sq\s*ft|square\s+feet|hours?|linear\s+feet)\b""").findAll(lower).count() * 1.5f
+        score += Regex("""\b(?:client|customer|for|at|address|invoice|estimate|charge|tax|deposit|paid)\b""").findAll(lower).count() * 1.0f
+        score += Regex("""\b(?:install(?:ed)?|replace(?:d)?|repair(?:ed)?|paint(?:ed)?|haul(?:ed)?|remove(?:d)?|pressure\s+wash(?:ed)?|drywall|trim|valves?|outlets?|labor|material)\b""").findAll(lower).count() * 1.2f
+        score += Regex("""\b\d{5}(?:-\d{4})?\b""").findAll(lower).count() * 1.4f
+        score += Regex("""\b\d+\s+[a-z0-9 .'-]+(?:street|st|road|rd|drive|dr|court|ct|lane|ln|avenue|ave|boulevard|blvd|way|circle|cir)\b""").findAll(lower).count() * 2.0f
+
+        if (Regex("""\bto\s+shut\s+off\s+valves?\b""").containsMatchIn(lower)) score -= 1.5f
+        if (Regex("""\bto\s+(?:nail\s+pops?|outlets?|receptacles?|valves?|boards?|fixtures?)\b""").containsMatchIn(lower)) score -= 1.5f
+        if (Regex("""\btwo\s+(?:nail\s+pops?|outlets?|receptacles?|valves?|boards?|fixtures?)\b""").containsMatchIn(lower)) score += 1.2f
+        if (Regex("""\bgo\s+wash(?:ed)?\b""").containsMatchIn(lower)) score -= 1.0f
+        if (Regex("""\baway\s+the\s+old\s+unit\b""").containsMatchIn(lower)) score -= 0.8f
+        // "pass material(s)" is a STT mishear of "patch materials"
+        if (Regex("""\bpass\s+materials?\b""").containsMatchIn(lower)) score -= 1.5f
+        if (Regex("""\bpatch\s+materials?\b""").containsMatchIn(lower)) score += 1.2f
+
+        return score
+    }
+
+    private fun isTinyRestartFragment(text: String): Boolean {
+        val trimmed = text.trim()
+        if (Regex("""\$\s*\d+|\b\d+(?:\.\d+)?\b""").containsMatchIn(trimmed)) return false
+        return trimmed.split(Regex("""\s+""")).size <= 2
     }
 
     private fun startMediaRecorderListening(

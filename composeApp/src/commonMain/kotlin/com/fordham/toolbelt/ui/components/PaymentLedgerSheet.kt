@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.ui.theme.BrandOrange
+import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
 import com.fordham.toolbelt.ui.viewmodel.PaymentUiState
 import com.fordham.toolbelt.util.DateTimeUtil
 import org.jetbrains.compose.resources.stringResource
@@ -34,7 +35,8 @@ import invoicehammer.composeapp.generated.resources.*
 fun PaymentLedgerSheet(
     uiState: PaymentUiState,
     onDismiss: () -> Unit,
-    onOpenPaymentLink: (String) -> Unit
+    onOpenPaymentLink: (String) -> Unit,
+    onSelectRequest: (InvoicePaymentRequest) -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -83,7 +85,11 @@ fun PaymentLedgerSheet(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().height(360.dp)) {
                     items(uiState.requests, key = { it.id.value }) { request ->
-                        PaymentLedgerRow(request = request, onOpenPaymentLink = onOpenPaymentLink)
+                        PaymentLedgerRow(
+                            request = request,
+                            onOpenPaymentLink = onOpenPaymentLink,
+                            onSelectRequest = { onSelectRequest(request) }
+                        )
                     }
                 }
             }

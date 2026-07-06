@@ -16,9 +16,9 @@ class IosStoreBillingGateway : StoreBillingGateway {
         "scan_token_pack_40",
         "invoice_pack_10",
         "tax_export_oneshot",
-        "hammer_credit_pack_50",
-        "hammer_credit_pack_150",
-        "hammer_credit_pack_400"
+        "hammer-credit-pack-50",
+        "hammer-credit-pack-150",
+        "hammer-credit-pack-400"
     )
 
     override suspend fun queryProductIds(tiers: List<SubscriptionTier>): StoreProductQueryOutcome {

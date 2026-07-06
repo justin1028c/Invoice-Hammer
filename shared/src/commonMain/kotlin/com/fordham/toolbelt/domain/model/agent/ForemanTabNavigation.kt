@@ -1,8 +1,12 @@
 package com.fordham.toolbelt.domain.model.agent
 
 /**
- * Bottom-bar tab navigation — labels match [MainBottomBar] left-to-right order.
+ * Bottom-bar tab navigation – labels match [MainBottomBar] left-to-right order.
  * Used for local routing without a Gemini round-trip.
+ *
+ * FIX (Spanish voice-routing gap): tab-name and nav-verb matching now recognizes
+ * Spanish equivalents alongside English, so "ve a recibos" routes locally instead
+ * of falling through to the LLM every time.
  */
 object ForemanTabNavigation {
     /** Same order as the main navigation bar. */
@@ -17,24 +21,30 @@ object ForemanTabNavigation {
     )
 
     private val NAV_VERBS = Regex(
-        """^(?:open|go\s+to|switch\s+to|show|take\s+me\s+to|navigate\s+to)\s+(?:the\s+)?(.+?)(?:\s+tab)?[.!?\s]*$""",
+        """^(?:open|go\s+to|switch\s+to|show|take\s+me\s+to|navigate\s+to""" +
+        """|abre|ve\s+a|vete\s+a|cambia\s+a|muestra|muéstrame|lleva\s*me\s+a|navega\s+a|ir\s+a)""" +
+        """\s+(?:the\s+|los\s+|las\s+|el\s+|la\s+)?(.+?)(?:\s+(?:tab|pestaña))?[.!?\s]*$""",
         RegexOption.IGNORE_CASE
     )
 
     private val TAB_ONLY = Regex(
-        """^(new|past|receipts|stats|stores|clients|settings|new\s+invoice|invoice)(?:\s+tab)?[.!?\s]*$""",
+        """^(new|past|receipts|stats|stores|clients|settings|new\s+invoice|invoice""" +
+        """|nueva|nueva\s+factura|factura|pasadas|historial|recibos|estadísticas|estadisticas""" +
+        """|proveedores|clientes|ajustes|configuración|configuracion)(?:\s+(?:tab|pestaña))?[.!?\s]*$""",
         RegexOption.IGNORE_CASE
     )
 
     /** Nav + real work in one utterance → Gemini handles it. */
     private val COMPOUND_WORK = Regex(
-        """\band\b\s+(?:bill|charge|find|search|create|save|send|text|email|invoice\s+\w|draft)""",
+        """\b(?:and|y)\b\s+(?:bill|charge|find|search|create|save|send|text|email|invoice\s+\w|draft""" +
+        """|factura|cobra|busca|crea|guarda|envía|envia)""",
         RegexOption.IGNORE_CASE
     )
 
     /** Starts as invoice/client work, not tab switch. */
     private val WORK_FIRST = Regex(
-        """^(?:find|search|bill|charge|create|save|send|text|email|invoice\s+(?!tab\b)[\w\s]+)""",
+        """^(?:find|search|bill|charge|create|save|send|text|email|invoice\s+(?!tab\b)[\w\s]+""" +
+        """|busca|cobra|crea|guarda|envía|envia|factura(?!\s+tab\b)[\wáéíóúñ\s]+)""",
         RegexOption.IGNORE_CASE
     )
 
@@ -84,43 +94,65 @@ object ForemanTabNavigation {
                 tokens.contains("editor") ||
                 tokens.contains("draft board") ||
                 tokens.contains("draft") ||
-                tokens == "new" -> AppTab.NewInvoice
+                tokens == "new" ||
+                tokens.contains("nueva factura") ||
+                tokens == "factura" ||
+                tokens.contains("borrador") ||
+                tokens == "nueva" -> AppTab.NewInvoice
             tokens.contains("past") ||
                 tokens.contains("history") ||
                 tokens.contains("previous") ||
                 tokens.contains("jobs") ||
-                tokens.contains("records") -> AppTab.History
+                tokens.contains("records") ||
+                tokens.contains("historial") ||
+                tokens.contains("pasadas") ||
+                tokens.contains("anteriores") -> AppTab.History
             tokens.contains("receipt") ||
                 tokens.contains("expense") ||
-                tokens.contains("camera") -> AppTab.Receipts
+                tokens.contains("camera") ||
+                tokens.contains("recibo") ||
+                tokens.contains("cámara") ||
+                tokens.contains("camara") -> AppTab.Receipts
             tokens.contains("stat") ||
                 tokens.contains("bento") ||
                 tokens.contains("dashboard") ||
                 tokens.contains("finance") ||
                 tokens.contains("revenue") ||
-                tokens.contains("analytics") -> AppTab.Stats
+                tokens.contains("analytics") ||
+                tokens.contains("estadistica") ||
+                tokens.contains("estadística") ||
+                tokens.contains("finanzas") ||
+                tokens.contains("ingresos") -> AppTab.Stats
             tokens.contains("store") ||
                 tokens.contains("supplier") ||
                 tokens.contains("material") ||
-                tokens.contains("shop") -> AppTab.Suppliers
+                tokens.contains("shop") ||
+                tokens.contains("proveedor") ||
+                tokens.contains("tienda") -> AppTab.Suppliers
             tokens.contains("client") ||
                 tokens.contains("customer") ||
-                tokens.contains("contact") -> AppTab.Clients
+                tokens.contains("contact") ||
+                tokens.contains("cliente") ||
+                tokens.contains("contacto") -> AppTab.Clients
             tokens.contains("setting") ||
                 tokens.contains("option") ||
-                tokens.contains("profile") -> AppTab.Settings
+                tokens.contains("profile") ||
+                tokens.contains("ajuste") ||
+                tokens.contains("configuracion") ||
+                tokens.contains("configuración") ||
+                tokens.contains("perfil") -> AppTab.Settings
             else -> AppTab.fromName(tokens)
         }
     }
 
     private fun tabFromToken(token: String): AppTab? = when (token.lowercase()) {
-        "new", "new invoice", "invoice" -> AppTab.NewInvoice
-        "past" -> AppTab.History
-        "receipts", "receipt" -> AppTab.Receipts
-        "stats", "stat" -> AppTab.Stats
-        "stores", "store" -> AppTab.Suppliers
-        "clients", "client" -> AppTab.Clients
-        "settings", "setting" -> AppTab.Settings
+        "new", "new invoice", "invoice", "nueva", "nueva factura", "factura" -> AppTab.NewInvoice
+        "past", "pasadas", "historial" -> AppTab.History
+        "receipts", "receipt", "recibos", "recibo" -> AppTab.Receipts
+        "stats", "stat", "estadísticas", "estadisticas" -> AppTab.Stats
+        "stores", "store", "proveedores" -> AppTab.Suppliers
+        "clients", "client", "clientes" -> AppTab.Clients
+        "settings", "setting", "ajustes", "configuración", "configuracion" -> AppTab.Settings
         else -> AppTab.fromName(token)
     }
 }

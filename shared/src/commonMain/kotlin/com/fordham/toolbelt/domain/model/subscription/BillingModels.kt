@@ -42,47 +42,47 @@ sealed interface PurchasableProduct {
 
     // Consumables (Hammer Credits)
     data object HammerCreditPack50 : PurchasableProduct {
-        override val productId = ProductId("hammer_credit_pack_50")
+        override val productId = ProductId("hammer-credit-pack-50")
         override val displayName = "50 Hammer Credits"
-        override val appleProductId = ProductId("hammer_credit_pack_50")
-        override val googlePlayProductId = ProductId("hammer_credit_pack_50")
+        override val appleProductId = ProductId("hammer-credit-pack-50")
+        override val googlePlayProductId = ProductId("hammer-credit-pack-50")
     }
 
     data object HammerCreditPack150 : PurchasableProduct {
-        override val productId = ProductId("hammer_credit_pack_150")
+        override val productId = ProductId("hammer-credit-pack-150")
         override val displayName = "150 Hammer Credits"
-        override val appleProductId = ProductId("hammer_credit_pack_150")
-        override val googlePlayProductId = ProductId("hammer_credit_pack_150")
+        override val appleProductId = ProductId("hammer-credit-pack-150")
+        override val googlePlayProductId = ProductId("hammer-credit-pack-150")
     }
 
     data object HammerCreditPack400 : PurchasableProduct {
-        override val productId = ProductId("hammer_credit_pack_400")
+        override val productId = ProductId("hammer-credit-pack-400")
         override val displayName = "400 Hammer Credits"
-        override val appleProductId = ProductId("hammer_credit_pack_400")
-        override val googlePlayProductId = ProductId("hammer_credit_pack_400")
+        override val appleProductId = ProductId("hammer-credit-pack-400")
+        override val googlePlayProductId = ProductId("hammer-credit-pack-400")
     }
 
 
     // Subscriptions
     data object ProMonthly : PurchasableProduct {
-        override val productId = ProductId("invoice_hammer_pro_monthly")
+        override val productId = ProductId("invoice-hammer-pro-monthly")
         override val displayName = "Pro Monthly"
-        override val appleProductId = ProductId("invoice_hammer_pro_monthly")
-        override val googlePlayProductId = ProductId("invoice_hammer_pro_monthly")
+        override val appleProductId = ProductId("invoice-hammer-pro-monthly")
+        override val googlePlayProductId = ProductId("invoice-hammer-pro-monthly")
     }
 
     data object ProYearly : PurchasableProduct {
-        override val productId = ProductId("invoice_hammer_pro_yearly")
+        override val productId = ProductId("invoice-hammer-pro-yearly")
         override val displayName = "Pro Yearly"
-        override val appleProductId = ProductId("invoice_hammer_pro_yearly")
-        override val googlePlayProductId = ProductId("invoice_hammer_pro_yearly")
+        override val appleProductId = ProductId("invoice-hammer-pro-yearly")
+        override val googlePlayProductId = ProductId("invoice-hammer-pro-yearly")
     }
 
     data object FounderLifetime : PurchasableProduct {
-        override val productId = ProductId("invoice_hammer_founder_lifetime")
+        override val productId = ProductId("invoice-hammer-founder-lifetime")
         override val displayName = "Founder's Lifetime Pass"
-        override val appleProductId = ProductId("invoice_hammer_founder_lifetime")
-        override val googlePlayProductId = ProductId("invoice_hammer_founder_lifetime")
+        override val appleProductId = ProductId("invoice-hammer-founder-lifetime")
+        override val googlePlayProductId = ProductId("invoice-hammer-founder-lifetime")
     }
 }
 

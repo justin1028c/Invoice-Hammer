@@ -8,6 +8,7 @@ import com.fordham.toolbelt.data.local.LocalLlmEngine
 import com.fordham.toolbelt.data.remote.ForemanGeminiConfig
 import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.SettingsRepository
+import com.fordham.toolbelt.util.NetworkObserver
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post
 import io.ktor.client.request.HttpRequestBuilder
@@ -16,6 +17,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+
+import kotlinx.coroutines.flow.flowOf
 
 class KtorGeminiRepositoryTest {
 
@@ -26,6 +29,7 @@ class KtorGeminiRepositoryTest {
     private val appDatabase: AppDatabase = mockk()
     private val settingsRepository: SettingsRepository = mockk()
     private val localLlmEngine = FakeLocalLlmEngine()
+    private val networkObserver: NetworkObserver = mockk()
     
     private lateinit var repository: KtorGeminiRepository
 
@@ -36,13 +40,15 @@ class KtorGeminiRepositoryTest {
         every { geminiConfig.taskModelName } returns "gemini-1.5-flash"
         coEvery { databaseProvider.getDatabase() } returns appDatabase
         every { appDatabase.jobNoteDao() } returns jobNoteDao
+        every { networkObserver.isOnline } returns flowOf(true)
 
         repository = KtorGeminiRepository(
             httpClient = httpClient,
             geminiConfig = geminiConfig,
             databaseProvider = databaseProvider,
             settingsRepository = settingsRepository,
-            localLlmEngine = localLlmEngine
+            localLlmEngine = localLlmEngine,
+            networkObserver = networkObserver
         )
     }
 
@@ -100,6 +106,104 @@ class KtorGeminiRepositoryTest {
 
         // Assert
         assertTrue(outcome is GeminiOutcome.Failure) // Fails due to unmocked HTTP responses, confirming it hit callGemini
+    }
+
+    @Test
+    fun `processTask returns Failure when offline and local LLM is supported but fails`() = runTest {
+        // Arrange
+        jobNoteDao.relevantContextResult = emptyList()
+        localLlmEngine.isSupportedResult = true
+        localLlmEngine.generateTextResult = GeminiOutcome.Failure(FailureMessage("NPU overload"))
+        every { networkObserver.isOnline } returns flowOf(false)
+
+        // Act
+        val outcome = repository.processTask(TaskType.SUMMARIZE, "test data")
+
+        // Assert
+        assertTrue(outcome is GeminiOutcome.Failure)
+        assertEquals("Local Gemma could not answer that offline. Try a shorter command.", (outcome as GeminiOutcome.Failure).error.value)
+        verify { httpClient wasNot Called }
+    }
+
+    @Test
+    fun `processTask returns Failure when offline and local LLM is not supported`() = runTest {
+        // Arrange
+        jobNoteDao.relevantContextResult = emptyList()
+        localLlmEngine.isSupportedResult = false
+        every { networkObserver.isOnline } returns flowOf(false)
+
+        // Act
+        val outcome = repository.processTask(TaskType.SUMMARIZE, "test data")
+
+        // Assert
+        assertTrue(outcome is GeminiOutcome.Failure)
+        assertEquals("You're offline and the local model is not ready.", (outcome as GeminiOutcome.Failure).error.value)
+        verify { httpClient wasNot Called }
+    }
+
+    @Test
+    fun `processTask succeeds when offline and local LLM is supported and succeeds`() = runTest {
+        // Arrange
+        jobNoteDao.relevantContextResult = emptyList()
+        localLlmEngine.isSupportedResult = true
+        localLlmEngine.generateTextResult = GeminiOutcome.Success("{\"summary\": \"local offline success summary\"}")
+        every { networkObserver.isOnline } returns flowOf(false)
+
+        // Act
+        val outcome = repository.processTask(TaskType.SUMMARIZE, "test data")
+
+        // Assert
+        assertTrue(outcome is GeminiOutcome.Success)
+        assertEquals("{\"summary\": \"local offline success summary\"}", (outcome as GeminiOutcome.Success).text)
+        verify { httpClient wasNot Called }
+    }
+
+    @Test
+    fun `processInvoiceText returns Failure when offline and local LLM is supported but fails`() = runTest {
+        // Arrange
+        localLlmEngine.isSupportedResult = true
+        localLlmEngine.generateTextResult = GeminiOutcome.Failure(FailureMessage("NPU overload"))
+        every { networkObserver.isOnline } returns flowOf(false)
+
+        // Act
+        val outcome = repository.processInvoiceText("invoice for drywall at $500", emptyList())
+
+        // Assert
+        assertTrue(outcome is InvoiceTextOutcome.Failure)
+        assertEquals("Local Gemma could not parse that offline. Try a shorter voice invoice.", (outcome as InvoiceTextOutcome.Failure).error.value)
+        verify { httpClient wasNot Called }
+    }
+
+    @Test
+    fun `processInvoiceText returns Failure when offline and local LLM is not supported`() = runTest {
+        // Arrange
+        localLlmEngine.isSupportedResult = false
+        every { networkObserver.isOnline } returns flowOf(false)
+
+        // Act
+        val outcome = repository.processInvoiceText("invoice for drywall at $500", emptyList())
+
+        // Assert
+        assertTrue(outcome is InvoiceTextOutcome.Failure)
+        assertEquals("You're offline and the local model is not ready.", (outcome as InvoiceTextOutcome.Failure).error.value)
+        verify { httpClient wasNot Called }
+    }
+
+    @Test
+    fun `processInvoiceText succeeds when offline and local LLM is supported and succeeds`() = runTest {
+        // Arrange
+        localLlmEngine.isSupportedResult = true
+        localLlmEngine.generateTextResult = GeminiOutcome.Success("{\"clientName\": \"Test Client\", \"confidenceScore\": 0.9}")
+        every { networkObserver.isOnline } returns flowOf(false)
+
+        // Act
+        val outcome = repository.processInvoiceText("invoice for drywall at $500", emptyList())
+
+        // Assert
+        assertTrue(outcome is InvoiceTextOutcome.Success)
+        assertEquals("Test Client", (outcome as InvoiceTextOutcome.Success).result.clientName)
+        assertEquals(0.9, (outcome as InvoiceTextOutcome.Success).result.confidenceScore, 0.001)
+        verify { httpClient wasNot Called }
     }
 }
 

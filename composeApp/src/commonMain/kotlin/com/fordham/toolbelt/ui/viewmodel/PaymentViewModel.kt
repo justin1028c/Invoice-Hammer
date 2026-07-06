@@ -126,4 +126,8 @@ class PaymentViewModel(
     fun generateAndLaunchStripeCheckout(invoice: Invoice, type: PaymentRequestType) {
         stripeConnectViewModel.generateAndLaunchStripeCheckout(invoice, type)
     }
+
+    fun selectPaymentRequest(request: InvoicePaymentRequest) {
+        stripeConnectViewModel.selectPaymentRequest(request)
+    }
 }

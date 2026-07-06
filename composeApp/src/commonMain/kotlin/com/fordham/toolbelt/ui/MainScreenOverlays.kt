@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import com.fordham.toolbelt.domain.model.Invoice
 import com.fordham.toolbelt.domain.model.PaymentProviderType
 import com.fordham.toolbelt.domain.model.PaymentRequestType
+import com.fordham.toolbelt.domain.model.InvoicePaymentRequest
 import com.fordham.toolbelt.domain.model.ClientId
 import com.fordham.toolbelt.domain.model.agent.AgentUiEffect
 import com.fordham.toolbelt.domain.model.agent.ForemanAppContextBundle
@@ -77,7 +78,11 @@ fun BoxScope.MainScreenOverlays(
         PaymentLedgerSheet(
             uiState = paymentState,
             onDismiss = onDismissPaymentLedger,
-            onOpenPaymentLink = { platformActions.openUrl(it) }
+            onOpenPaymentLink = { platformActions.openUrl(it) },
+            onSelectRequest = { request ->
+                onDismissPaymentLedger()
+                paymentViewModel.selectPaymentRequest(request)
+            }
         )
     }
 

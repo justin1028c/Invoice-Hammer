@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fordham.toolbelt.util.PlatformActions
+import com.fordham.toolbelt.util.DateTimeUtil
 import org.jetbrains.compose.resources.stringResource
 import invoicehammer.composeapp.generated.resources.*
 
@@ -54,7 +55,7 @@ fun SupplierTile(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(132.dp)
+                .heightIn(min = 132.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -180,26 +181,63 @@ fun SupplierTile(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = supplier.name.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 12.sp,
-                        lineHeight = 14.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = localizeSupplierCategory(supplier.category),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = supplier.name.uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = localizeSupplierCategory(supplier.category),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (supplier.analytics.totalSpendYtd > 0.0) {
+                            Spacer(Modifier.height(4.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                            ) {
+                                Text(
+                                    text = " ${DateTimeUtil.formatMoney(supplier.analytics.totalSpendYtd)} YTD ",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 8.sp,
+                                        lineHeight = 10.sp,
+                                        fontWeight = FontWeight.Black
+                                    ),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onLogExpense,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddCard,
+                            contentDescription = stringResource(Res.string.log_expense),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Simple Invoice Creation",
+    "transcript": "Invoice John Smith for standard drywall repair, 450 dollars.",
+    "currentInvoice": {},
+    "expected": {
+      "clientName": "John Smith",
+      "items": [
+        {
+          "description": "Standard drywall repair",
+          "amount": 450.0
+        }
+      ]
+    },
+    "shouldAskQuestion": false
+  },
+  {
+    "name": "Drywall and Painting with Tax and Deposit",
+    "transcript": "Create an invoice for Acme Corp at 123 Industrial Way. We did bedroom painting for 800 dollars and drywall patching for 300 dollars. Add a ten percent tax rate and we collected a 200 dollar deposit.",
+    "currentInvoice": {},
+    "expected": {
+      "clientName": "Acme Corp",
+      "clientAddress": "123 Industrial Way",
+      "taxRatePercent": 10.0,
+      "depositAmount": 200.0,
+      "items": [
+        {
+          "description": "Bedroom painting",
+          "amount": 800.0
+        },
+        {
+          "description": "Drywall patching",
+          "amount": 300.0
+        }
+      ]
+    },
+    "shouldAskQuestion": false
+  },
+  {
+    "name": "Spanish Toilet Repair",
+    "transcript": "Factura a John Doe 200 por reparar el inodoro y ponle tax de siete por ciento",
+    "currentInvoice": {},
+    "expected": {
+      "clientName": "John Doe",
+      "taxRatePercent": 7.0,
+      "items": [
+        {
+          "description": "Reparar el inodoro",
+          "amount": 200.0
+        }
+      ]
+    },
+    "shouldAskQuestion": false
+  },
+  {
+    "name": "Labor Plus Materials Spanglish",
+    "transcript": "Cobra 5 horas de labor a 45 y ponle 150 de la masilla y la tablaroca a Justin",
+    "currentInvoice": {},
+    "expected": {
+      "clientName": "Justin",
+      "laborHours": 5.0,
+      "laborRate": 45.0,
+      "items": [
+        {
+          "amount": 150.0
+        }
+      ]
+    },
+    "shouldAskQuestion": false
+  },
+  {
+    "name": "Simple Plumbing Service",
+    "transcript": "Invoice Maria Lopez for replacing a toilet, 325 dollars.",
+    "currentInvoice": {},
+    "expected": {
+      "clientName": "Maria Lopez",
+      "items": [
+        {
+          "description": "Replacing a toilet",
+          "amount": 325.0
+        }
+      ]
+    },
+    "shouldAskQuestion": false
+  },
+  {
+    "name": "Painting With Deposit Only",
+    "transcript": "Invoice Sarah Connor for interior painting, 1200 dollars. We collected a 300 dollar deposit.",
+    "currentInvoice": {},
+    "expected": {
+      "clientName": "Sarah Connor",
+      "depositAmount": 300.0,
+      "items": [
+        {
+          "description": "Interior painting",
+          "amount": 1200.0
+        }
+      ]
+    },
+    "shouldAskQuestion": false
+  }
+]

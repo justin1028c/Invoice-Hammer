@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.tabs.suppliers.*
 import com.fordham.toolbelt.ui.viewmodel.SuppliersData
@@ -59,6 +61,28 @@ fun SuppliersTab(
 ) {
     var showHiddenStores by remember { mutableStateOf(false) }
     var supplierToLog by remember { mutableStateOf<Supplier?>(null) }
+    var listSearchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<SupplierCategory?>(null) }
+
+    val filteredPinned = remember(uiState, listSearchQuery, selectedCategory) {
+        if (uiState is SuppliersOutcome.Success) {
+            uiState.data.pinnedSuppliers.filter { uiModel ->
+                val matchesQuery = uiModel.domain.name.contains(listSearchQuery, ignoreCase = true)
+                val matchesCategory = selectedCategory == null || uiModel.domain.category == selectedCategory
+                matchesQuery && matchesCategory
+            }
+        } else emptyList()
+    }
+
+    val filteredActive = remember(uiState, listSearchQuery, selectedCategory) {
+        if (uiState is SuppliersOutcome.Success) {
+            uiState.data.activeSuppliers.filter { uiModel ->
+                val matchesQuery = uiModel.domain.name.contains(listSearchQuery, ignoreCase = true)
+                val matchesCategory = selectedCategory == null || uiModel.domain.category == selectedCategory
+                matchesQuery && matchesCategory
+            }
+        } else emptyList()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -149,60 +173,145 @@ fun SuppliersTab(
                         }
                     }
                     is SuppliersOutcome.Success -> {
-                        val state = uiState.data
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(
-                                start = 16.dp, 
-                                top = 16.dp, 
-                                end = 16.dp, 
-                                bottom = 100.dp
-                            ),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            if (state.pinnedSuppliers.isNotEmpty()) {
-                                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-                                    SectionHeader(title = stringResource(Res.string.pinned_suppliers))
-                                }
-                                items(state.pinnedSuppliers) { uiModel ->
-                                    SupplierTile(
-                                        uiModel = uiModel,
-                                        onTogglePin = { onTogglePin(uiModel.domain) },
-                                        onHide = { onHideSupplier(uiModel.domain.id) },
-                                        onLogExpense = { supplierToLog = uiModel.domain },
-                                        platformActions = platformActions
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Sticky Search Bar
+                            OutlinedTextField(
+                                value = listSearchQuery,
+                                onValueChange = { listSearchQuery = it },
+                                placeholder = { Text(stringResource(Res.string.search_stores), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                                leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                trailingIcon = {
+                                    if (listSearchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { listSearchQuery = "" }) {
+                                            Icon(Icons.Default.Clear, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                ),
+                                singleLine = true
+                            )
+
+                            // Sticky Category Filter Chips
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                FilterChip(
+                                    selected = selectedCategory == null,
+                                    onClick = { selectedCategory = null },
+                                    label = { Text(stringResource(Res.string.filter_all)) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                                        selectedLabelColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                                SupplierCategory.entries.forEach { cat ->
+                                    val label = when (cat) {
+                                        SupplierCategory.LUMBER -> stringResource(Res.string.supplier_category_lumber)
+                                        SupplierCategory.ELECTRICAL -> stringResource(Res.string.supplier_category_electrical)
+                                        SupplierCategory.PLUMBING -> stringResource(Res.string.supplier_category_plumbing)
+                                        SupplierCategory.PAINT -> stringResource(Res.string.supplier_category_paint)
+                                        SupplierCategory.ROOFING -> stringResource(Res.string.supplier_category_roofing)
+                                        SupplierCategory.HVAC -> stringResource(Res.string.supplier_category_hvac)
+                                        SupplierCategory.HARDWARE -> stringResource(Res.string.supplier_category_hardware)
+                                        SupplierCategory.FASTENERS -> stringResource(Res.string.supplier_category_fasteners)
+                                        SupplierCategory.FLOORING -> stringResource(Res.string.supplier_category_flooring)
+                                        SupplierCategory.GENERAL_SUPPLY -> stringResource(Res.string.supplier_category_general_supply)
+                                        SupplierCategory.OTHER -> stringResource(Res.string.supplier_category_other)
+                                    }
+                                    FilterChip(
+                                        selected = selectedCategory == cat,
+                                        onClick = { selectedCategory = if (selectedCategory == cat) null else cat },
+                                        label = { Text(label) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                                            selectedLabelColor = MaterialTheme.colorScheme.primary
+                                        )
                                     )
                                 }
                             }
 
-                            if (state.activeSuppliers.isNotEmpty()) {
-                                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-                                    SectionHeader(title = stringResource(Res.string.active_suppliers))
+                            // Dynamic Filtered Grid
+                            if (filteredPinned.isEmpty() && filteredActive.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .weight(1f), 
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(stringResource(Res.string.no_stores_match), style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
                                 }
-                                items(state.activeSuppliers) { uiModel ->
-                                    SupplierTile(
-                                        uiModel = uiModel,
-                                        onTogglePin = { onTogglePin(uiModel.domain) },
-                                        onHide = { onHideSupplier(uiModel.domain.id) },
-                                        onLogExpense = { supplierToLog = uiModel.domain },
-                                        platformActions = platformActions
-                                    )
-                                }
-                            }
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    contentPadding = PaddingValues(
+                                        start = 16.dp, 
+                                        top = 16.dp, 
+                                        end = 16.dp, 
+                                        bottom = 100.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .weight(1f)
+                                ) {
+                                    if (filteredPinned.isNotEmpty()) {
+                                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                                            SectionHeader(title = stringResource(Res.string.pinned_suppliers))
+                                        }
+                                        items(filteredPinned) { uiModel ->
+                                            SupplierTile(
+                                                uiModel = uiModel,
+                                                onTogglePin = { onTogglePin(uiModel.domain) },
+                                                onHide = { onHideSupplier(uiModel.domain.id) },
+                                                onLogExpense = { supplierToLog = uiModel.domain },
+                                                platformActions = platformActions
+                                            )
+                                        }
+                                    }
 
-                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
-                                Spacer(modifier = Modifier.height(32.dp))
-                                if (hiddenSuppliers.isNotEmpty()) {
-                                    TextButton(
-                                        onClick = { showHiddenStores = true },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Icon(Icons.Default.VisibilityOff, null, Modifier.size(16.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(Res.string.manage_hidden_stores, hiddenSuppliers.size), fontWeight = FontWeight.Bold)
+                                    if (filteredActive.isNotEmpty()) {
+                                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                                            SectionHeader(title = stringResource(Res.string.active_suppliers))
+                                        }
+                                        items(filteredActive) { uiModel ->
+                                            SupplierTile(
+                                                uiModel = uiModel,
+                                                onTogglePin = { onTogglePin(uiModel.domain) },
+                                                onHide = { onHideSupplier(uiModel.domain.id) },
+                                                onLogExpense = { supplierToLog = uiModel.domain },
+                                                platformActions = platformActions
+                                            )
+                                        }
+                                    }
+
+                                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(2) }) {
+                                        Spacer(modifier = Modifier.height(32.dp))
+                                        if (hiddenSuppliers.isNotEmpty()) {
+                                            TextButton(
+                                                onClick = { showHiddenStores = true },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Icon(Icons.Default.VisibilityOff, null, Modifier.size(16.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(stringResource(Res.string.manage_hidden_stores, hiddenSuppliers.size), fontWeight = FontWeight.Bold)
+                                            }
+                                        }
                                     }
                                 }
                             }

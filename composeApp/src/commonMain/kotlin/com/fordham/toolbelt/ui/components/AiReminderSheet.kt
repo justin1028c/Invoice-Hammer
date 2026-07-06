@@ -206,7 +206,7 @@ fun AiReminderSheet(
                             OutlinedTextField(
                                 value = generatedSubject,
                                 onValueChange = { onUpdateGeneratedText(it, generatedBody) },
-                                label = { Text("Subject") },
+                                label = { Text(stringResource(Res.string.reminder_subject)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Medium),
@@ -220,7 +220,7 @@ fun AiReminderSheet(
                         OutlinedTextField(
                             value = generatedBody,
                             onValueChange = { onUpdateGeneratedText(generatedSubject, it) },
-                            label = { Text("Message Body") },
+                            label = { Text(stringResource(Res.string.reminder_body)) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                             shape = RoundedCornerShape(12.dp),
                             textStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Medium),

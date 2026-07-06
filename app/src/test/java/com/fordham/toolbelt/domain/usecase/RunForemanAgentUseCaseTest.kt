@@ -21,6 +21,7 @@ import com.fordham.toolbelt.domain.model.agent.ToolArguments
 import com.fordham.toolbelt.domain.model.agent.ToolCallId
 import com.fordham.toolbelt.domain.model.agent.ToolExecutionResult
 import com.fordham.toolbelt.domain.model.agent.ToolName
+import com.fordham.toolbelt.domain.model.agent.UpdateDraftInvoiceArgs
 import com.fordham.toolbelt.domain.model.subscription.PremiumFeature
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
 import com.fordham.toolbelt.domain.model.subscription.TokenConsumptionOutcome
@@ -30,6 +31,7 @@ import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.repository.SubscriptionRepository
 import com.fordham.toolbelt.domain.repository.BillingRepository
+import com.fordham.toolbelt.domain.repository.LocalAiCapabilityRepository
 import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.repository.ToolRegistry
 import com.fordham.toolbelt.domain.model.BusinessSettings
@@ -38,6 +40,9 @@ import kotlinx.coroutines.flow.flowOf
 import com.fordham.toolbelt.domain.usecase.subscription.ConsumeTokenUseCase
 import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
 import com.fordham.toolbelt.util.PlatformActions
+ import com.fordham.toolbelt.data.local.LocalLlmEngine
+import com.fordham.toolbelt.domain.model.GeminiOutcome
+import com.fordham.toolbelt.domain.model.LlmPrompt
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -51,6 +56,17 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** Test stub: local LLM always reports unsupported → polish step skipped, originals used. */
+private object NoOpLocalLlmEngine : LocalLlmEngine {
+    override suspend fun isSupported() = false
+    override suspend fun generateText(prompt: LlmPrompt) = GeminiOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage("no-op"))
+    override fun isModelDownloaded() = false
+    override fun getDownloadProgress() = 0f
+    override fun isDownloading() = false
+    override fun startDownload(onProgress: (Float) -> Unit, onComplete: (Boolean) -> Unit) { onComplete(false) }
+    override fun deleteModel() = false
+}
+
 class RunForemanAgentUseCaseTest {
     private val testDispatcher = StandardTestDispatcher()
     private val dispatchers = TestForemanAgentDispatchers(testDispatcher)
@@ -61,10 +77,12 @@ class RunForemanAgentUseCaseTest {
     private val consumeToken = ConsumeTokenUseCase(billingRepository)
     private val platformActions = mockk<PlatformActions>(relaxed = true)
     private val settingsRepository = mockk<SettingsRepository>(relaxed = true)
+    private val localAiCapabilityRepository = mockk<LocalAiCapabilityRepository>(relaxed = true)
 
     init {
         coEvery { draftRepository.getDraft() } returns flowOf(DraftInvoice())
         coEvery { settingsRepository.getBusinessSettings() } returns BusinessSettings()
+        coEvery { localAiCapabilityRepository.isOnDeviceAgentAvailable() } returns false
     }
 
     private fun foremanUseCase(
@@ -83,7 +101,11 @@ class RunForemanAgentUseCaseTest {
             hasSubscriptionFeature,
             consumeToken,
             platformActions,
-            settingsRepository
+            settingsRepository,
+            localAiCapabilityRepository,
+            ParseVoiceInvoiceDeterministicallyUseCase(),
+            ValidateVoiceInvoiceResultUseCase(),
+            PolishLineItemDescriptionsUseCase(NoOpLocalLlmEngine)
         )
     }
 
@@ -407,6 +429,44 @@ class RunForemanAgentUseCaseTest {
         assertEquals(2, llmGateway.promptCount)
         assertEquals("Try CREATE_CLIENT instead.", chain.finalMessage.value)
         assertEquals(1, registry.executeCount)
+    }
+
+    @Test
+    fun `contractor voice invoice is staged deterministically without LLM`() = runTest(testDispatcher) {
+        val llmGateway = FakeAgentLlmGateway(
+            AgentOutcome.TextResponse(NaturalLanguage("should not run"))
+        )
+        val registry = FakeToolRegistry(
+            result = ToolExecutionResult.DraftInvoiceUpdated(
+                lineItemCount = 5,
+                clientName = NaturalLanguage("Justin Fordham")
+            )
+        )
+        val useCase = foremanUseCase(llmGateway, registry)
+
+        val run = useCase(
+            command = NaturalLanguage(
+                "let's make an invoice for Justin Fordham at 1941 Norwalk Court Jonesboro Georgia 30236 " +
+                    "we did 15 ft of drywall we put mud on it we taped it and we skimmed it at $400 " +
+                    "we replace 3 light fixtures at $200 we also replace 3 receptacles at $200 " +
+                    "and did a general repair outside the house on vinyl siding for $200 " +
+                    "add 10 hours of labor at $50 an hour"
+            ),
+            session = ForemanSession.empty(SessionId("session-deterministic-invoice")),
+            systemPrompt = NaturalLanguage("ctx"),
+            timestamp = TimestampMillis(4L)
+        )
+
+        assertTrue(run.outcome is AgentOutcome.ToolChainExecuted)
+        assertEquals(0, llmGateway.promptCount)
+        assertEquals(1, registry.executeCount)
+        assertEquals(ToolName.UpdateDraftInvoice, registry.executedToolName)
+        val args = registry.executedArguments as UpdateDraftInvoiceArgs
+        assertEquals("Justin Fordham", args.clientName?.value)
+        assertEquals("1941 Norwalk Court Jonesboro GA 30236", args.clientAddress?.value)
+        assertEquals(5, args.lineItems.size)
+        assertEquals(1500.0, args.lineItems.sumOf { it.amount }, 0.01)
+        assertEquals(true, args.replaceLineItems)
     }
 
     @Test

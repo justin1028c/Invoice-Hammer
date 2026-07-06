@@ -58,6 +58,7 @@ fun NewInvoiceTab(
     onProcessInvoiceAi: (List<String>) -> Unit,
     onAddManualLineItem: () -> Unit,
     onRemoveLineItem: (LineItem) -> Unit,
+    onUpdateLineItem: (LineItem, LineItem) -> Unit,
     onTaxTextChange: (String) -> Unit,
     onDepositCollectedChange: (String) -> Unit,
     onSaveInvoice: (Boolean, BusinessSettings, (String) -> Unit) -> Unit,
@@ -150,16 +151,16 @@ fun NewInvoiceTab(
                         
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             uiState.laborHours?.let {
-                                Text("• Extracted Labor: $it hours", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(Res.string.extracted_labor, it.toString()), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                             }
                             uiState.laborRate?.let {
-                                Text("• Extracted Rate: $$it/hr", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(Res.string.extracted_rate, it.toString()), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                             }
                             if (uiState.discountPercent > 0.0) {
-                                Text("• Extracted Discount: ${uiState.discountPercent}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(Res.string.extracted_discount, uiState.discountPercent.toString()), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                             }
                             if (uiState.notes.isNotBlank()) {
-                                Text("• Extracted Notes: ${uiState.notes}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(Res.string.extracted_notes, uiState.notes), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -325,7 +326,8 @@ fun NewInvoiceTab(
             onItemAmtChange = onItemAmtChange,
             onProcessInvoiceAi = onProcessInvoiceAi,
             onAddManualLineItem = onAddManualLineItem,
-            onRemoveLineItem = onRemoveLineItem
+            onRemoveLineItem = onRemoveLineItem,
+            onUpdateLineItem = onUpdateLineItem
         )
 
         Spacer(Modifier.height(10.dp))

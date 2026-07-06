@@ -6,6 +6,7 @@ import android.net.Uri
 import com.fordham.toolbelt.domain.model.GeminiOutcome
 import com.fordham.toolbelt.domain.model.LlmPrompt
 import com.fordham.toolbelt.domain.model.FailureMessage
+import com.fordham.toolbelt.util.SecretProvider
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInference.LlmInferenceOptions
 import kotlinx.coroutines.CoroutineScope
@@ -13,15 +14,18 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 class AndroidLocalLlmEngine(
     private val context: Context,
     private val scope: CoroutineScope,
-    private val ioDispatcher: CoroutineDispatcher
+    private val ioDispatcher: CoroutineDispatcher,
+    private val secretProvider: SecretProvider
 ) : LocalLlmEngine {
 
-    private val modelFile = File(context.filesDir, "gemma-2b-it-cpu-int4.bin")
-    private val tempFile = File(context.getExternalFilesDir(null), "gemma-2b-it-cpu-int4.bin.tmp")
+    private val modelFile = File(context.filesDir, MODEL_FILE_NAME)
+    private val tempFile = File(context.getExternalFilesDir(null), "$MODEL_FILE_NAME.tmp")
     private val sharedPrefs = context.getSharedPreferences("llm_downloader_prefs", Context.MODE_PRIVATE)
     
     private var inference: LlmInference? = null
@@ -31,8 +35,7 @@ class AndroidLocalLlmEngine(
     private var activeProgressCallback: ((Float) -> Unit)? = null
     private var activeCompleteCallback: ((Boolean) -> Unit)? = null
 
-    // Remote endpoint hosting the compiled Gemma 2B INT4 file for MediaPipe Tasks GenAI
-    private val modelUrl = "https://huggingface.co/ASahu16/gemma/resolve/main/gemma-2b-it-cpu-int4.bin"
+    private val modelUrl = MODEL_URL
 
     init {
         // Safely purge legacy Llama 3.2 3B and 1B models to recover up to ~7.5GB of user device space
@@ -94,6 +97,15 @@ class AndroidLocalLlmEngine(
         }
     }
 
+    private fun resetInference() {
+        try {
+            inference?.close()
+        } catch (e: Exception) {
+            com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Failed to close LlmInference", e)
+        }
+        inference = null
+    }
+
     override suspend fun isSupported(): Boolean {
         if (inference != null) return true
         if (!isModelDownloaded()) return false
@@ -102,13 +114,35 @@ class AndroidLocalLlmEngine(
             try {
                 val options = LlmInferenceOptions.builder()
                     .setModelPath(modelFile.absolutePath)
-                    .setMaxTokens(2048)
+                    .setMaxTokens(512)
+                    .setMaxTopK(64)
+                    .setPreferredBackend(LlmInference.Backend.GPU)
                     .build()
                 inference = LlmInference.createFromOptions(context, options)
                 true
-            } catch (e: Exception) {
-                com.fordham.toolbelt.util.AppLogger.e("AndroidLocalLlmEngine", "Failed to initialize LlmInference", e)
-                false
+            } catch (gpuEx: Exception) {
+                com.fordham.toolbelt.util.AppLogger.e(
+                    "AndroidLocalLlmEngine",
+                    "GPU backend initialization failed. Retrying on CPU...",
+                    gpuEx
+                )
+                try {
+                    val cpuOptions = LlmInferenceOptions.builder()
+                        .setModelPath(modelFile.absolutePath)
+                        .setMaxTokens(512)
+                        .setMaxTopK(64)
+                        .setPreferredBackend(LlmInference.Backend.CPU)
+                        .build()
+                    inference = LlmInference.createFromOptions(context, cpuOptions)
+                    true
+                } catch (cpuEx: Exception) {
+                    com.fordham.toolbelt.util.AppLogger.e(
+                        "AndroidLocalLlmEngine",
+                        "CPU backend initialization failed as well.",
+                        cpuEx
+                    )
+                    false
+                }
             }
         }
     }
@@ -119,9 +153,32 @@ class AndroidLocalLlmEngine(
         }
         return withContext(ioDispatcher) {
             try {
-                val response = inference?.generateResponse(prompt.value) ?: ""
+                val future = inference?.generateResponseAsync(prompt.value)
+                    ?: return@withContext GeminiOutcome.Success("")
+                
+                val response = try {
+                    var elapsedMs = 0L
+                    while (!future.isDone) {
+                        kotlinx.coroutines.delay(50)
+                        elapsedMs += 50
+                        if (elapsedMs >= LOCAL_INFERENCE_TIMEOUT_MS) {
+                            throw TimeoutException("Local inference timed out")
+                        }
+                    }
+                    future.get()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    future.cancel(true)
+                    throw e
+                } catch (e: TimeoutException) {
+                    future.cancel(true)
+                    throw e
+                }
                 GeminiOutcome.Success(response)
+            } catch (e: TimeoutException) {
+                resetInference()
+                GeminiOutcome.Failure(FailureMessage("Local Gemma took too long. Try a shorter voice note or use cloud AI."))
             } catch (e: Exception) {
+                resetInference()
                 GeminiOutcome.Failure(FailureMessage(e.message ?: "Local Gemma inference failed"))
             }
         }
@@ -162,12 +219,18 @@ class AndroidLocalLlmEngine(
                 
                 val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 val request = DownloadManager.Request(Uri.parse(modelUrl))
-                    .setTitle("Gemma 2B Offline Model")
-                    .setDescription("Downloading Gemma 2B model for offline AI capabilities...")
+                    .setTitle(MODEL_DISPLAY_NAME)
+                    .setDescription("Downloading $MODEL_DISPLAY_NAME for offline AI capabilities...")
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setAllowedOverMetered(false)
                     .setAllowedOverRoaming(false)
                     .setDestinationUri(Uri.fromFile(tempFile))
+                    .apply {
+                        val token = secretProvider.getSecret("huggingface.token").trim()
+                        if (token.isNotBlank()) {
+                            addRequestHeader("Authorization", "Bearer $token")
+                        }
+                    }
 
                 val downloadId = downloadManager.enqueue(request)
                 sharedPrefs.edit().putLong("download_id", downloadId).apply()
@@ -229,7 +292,7 @@ class AndroidLocalLlmEngine(
                             sharedPrefs.edit().remove("download_id").apply()
 
                             withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                activeCompleteCallback?.invoke(success)
+                                    activeCompleteCallback?.invoke(success)
                             }
                         }
                         DownloadManager.STATUS_FAILED -> {
@@ -241,7 +304,7 @@ class AndroidLocalLlmEngine(
                             sharedPrefs.edit().remove("download_id").apply()
 
                             withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                activeCompleteCallback?.invoke(false)
+                                    activeCompleteCallback?.invoke(false)
                             }
                         }
                     }
@@ -284,5 +347,12 @@ class AndroidLocalLlmEngine(
             return modelFile.delete()
         }
         return false
+    }
+
+    private companion object {
+        const val MODEL_FILE_NAME = "gemma-3n-E2B-it-int4.litertlm"
+        const val MODEL_DISPLAY_NAME = "Gemma 3n E2B Offline Model"
+        const val MODEL_URL = "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm"
+        const val LOCAL_INFERENCE_TIMEOUT_MS = 360_000L
     }
 }

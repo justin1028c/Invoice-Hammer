@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
@@ -31,6 +32,7 @@ fun HistoryItemCard(
     onDelete: (Invoice) -> Unit,
     onTogglePaid: (Invoice) -> Unit,
     onView: (Invoice) -> Unit,
+    onEditAsDraft: (Invoice) -> Unit,
     onShare: (Invoice) -> Unit,
     onRequestDeposit: (Invoice) -> Unit,
     onRequestFullPayment: (Invoice) -> Unit,
@@ -201,6 +203,9 @@ fun HistoryItemCard(
                 Row {
                     IconButton(onClick = { onView(invoice) }) { 
                         Icon(Icons.Default.Visibility, viewCd, tint = MaterialTheme.colorScheme.onSurface) 
+                    }
+                    IconButton(onClick = { onEditAsDraft(invoice) }) {
+                        Icon(Icons.Default.Edit, "Edit as draft", tint = MaterialTheme.colorScheme.secondary)
                     }
                     IconButton(onClick = { onShare(invoice) }) { 
                         Icon(Icons.Default.Share, shareCd, tint = MaterialTheme.colorScheme.primary) 

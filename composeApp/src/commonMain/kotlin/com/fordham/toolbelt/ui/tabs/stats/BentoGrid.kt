@@ -98,7 +98,7 @@ fun BentoGrid(stats: BusinessStats) {
         }
         
         // Third Row: Total Expenses & Tax Projection
-        Row(modifier = Modifier.fillMaxWidth().height(140.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().height(175.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BentoCard(
                 modifier = Modifier.weight(1f),
                 title = stringResource(Res.string.total_business_expenses_label),

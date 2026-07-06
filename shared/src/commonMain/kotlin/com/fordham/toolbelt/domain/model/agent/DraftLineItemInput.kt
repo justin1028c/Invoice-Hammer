@@ -12,7 +12,7 @@ data class DraftLineItemInput(
     fun toLineItem(): LineItem = LineItem(
         description = com.fordham.toolbelt.domain.model.ItemsSummary(description.value),
         amount = com.fordham.toolbelt.domain.model.MoneyAmount(amount),
-        category = category.value.ifBlank { "Service" },
+        category = ForemanInvoiceCategory.normalizeOrInfer(category.value, description.value),
         quantity = quantity,
         unitPrice = unitPrice?.let { com.fordham.toolbelt.domain.model.MoneyAmount(it) }
     )

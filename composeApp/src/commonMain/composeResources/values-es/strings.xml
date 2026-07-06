@@ -224,8 +224,8 @@
     <string name="tax_bundle">PAQUETE DE IMPUESTOS</string>
     <string name="pro_label">PRO</string>
     <string name="lock_label">BLOQUEADO</string>
-    <string name="system_diagnostics_stress">DIAGNÓSTICOS DEL SISTEMA Y PRUEBAS DE ESTRÉS</string>
-    <string name="simulate_1000">SIMULAR 1000</string>
+    <string name="system_diagnostics_stress">DATOS DE DEMOSTRACIÓN REALISTAS</string>
+    <string name="simulate_1000">CREAR 5 FACTURAS REALISTAS</string>
     <string name="purge_vault">BORRAR BÓVEDA</string>
     <string name="net_profit_ytd">BENEFICIO NETO YTD</string>
     <string name="margin_label">MARGEN</string>
@@ -346,7 +346,17 @@
     <string name="unlimited_ai_desc">ILIMITADO + 500 IA / mes</string>
     <string name="price_pro_monthly">$19.99 / mes</string>
     <string name="pro_yearly_comparison">O Pro Anual: $13.33 / mes ($159.99 / año)</string>
-    <string name="save_with_pro_yearly">🎉 AHORRE HASTA UN 77% AL MES CON PRO ANUAL</string>
+    <!-- Subscription Tiers -->
+    <string name="tier_free_title">Gratis</string>
+    <string name="tier_free_desc">Herramientas básicas de facturación.</string>
+    <string name="tier_pro_monthly_title">Pro Mensual</string>
+    <string name="tier_pro_monthly_desc">IA, escaneo OCR, reportes Bento y exportación de impuestos.</string>
+    <string name="tier_pro_yearly_title">Pro Anual</string>
+    <string name="tier_pro_yearly_desc">Todas las funciones Pro • Ahorre $79.89 frente al pago mensual</string>
+    <string name="tier_founder_lifetime_title">Pase de Fundador de Por Vida</string>
+    <string name="tier_founder_lifetime_desc">Compra única • Todas las funciones Pro para siempre</string>
+
+    <string name="save_with_pro_yearly">🎉 AHORRE HASTA UN %d%% AL MES CON PRO ANUAL</string>
     <string name="pro_tip_deductible">💡 Consejo Pro: Todos los planes de suscripción y paquetes de créditos son gastos comerciales 100% deducibles de impuestos.</string>
     
     <!-- Card Terminal Sheet -->
@@ -541,4 +551,47 @@
     <string name="join_beta_title">Acceso para probadores Beta</string>
     <string name="join_beta_desc">¿Eres probador beta? Haz clic aquí para desbloquear todas las funciones gratis.</string>
     <string name="join_beta_btn">DESBLOQUEO BETA GRATIS</string>
+
+    <!-- Edit Client Dialog -->
+    <string name="edit_client_profile">EDITAR PERFIL DE CLIENTE</string>
+    <string name="phone_number">Número de teléfono</string>
+    <string name="email_address">Correo electrónico</string>
+
+    <!-- Suppliers Tab -->
+    <string name="search_stores">Buscar tiendas...</string>
+    <string name="filter_all">TODAS</string>
+    <string name="no_stores_match">Ninguna tienda coincide con los filtros.</string>
+
+    <!-- Client Invoices -->
+    <string name="no_invoices_yet">Sin facturas aún</string>
+
+    <!-- Line Items & Dialogs -->
+    <string name="edit_line_item">Editar concepto</string>
+    
+    <!-- AI Reminder -->
+    <string name="reminder_subject">Asunto</string>
+    <string name="reminder_body">Cuerpo del mensaje</string>
+
+    <!-- Extracted AI Fields -->
+    <string name="extracted_labor">⛏️ Mano de obra extraída: %1$s horas</string>
+    <string name="extracted_rate">⛏️ Tarifa extraída: $%1$s/hora</string>
+    <string name="extracted_discount">⛏️ Descuento extraído: %1$s%%</string>
+    <string name="extracted_notes">⛏️ Notas extraídas: %1$s</string>
+
+    <!-- Clients Tab Stats & Info -->
+    <string name="no_address_on_file">Sin dirección registrada</string>
+    <string name="stat_invoices">FACTURAS</string>
+    <string name="stat_unpaid">SIN PAGAR</string>
+    <string name="stat_net_profit">GANANCIA NETA</string>
+    <string name="last_job_prefix">ÚLTIMO TRABAJO: %1$s</string>
+    <string name="none_label">NINGUNO</string>
+
+    <!-- Clients Tab Quick Actions -->
+    <string name="action_new_invoice">NUEVA FACTURA</string>
+    <string name="action_edit_info">EDITAR INFO</string>
+    <string name="action_add_note">AÑADIR NOTA</string>
+    <string name="action_duplicate_last">DUPLICAR ÚLTIMA</string>
+    <string name="action_view_last_pdf">VER ÚLTIMO PDF</string>
+    <string name="action_call_client">LLAMAR CLIENTE</string>
+    <string name="action_email_client">ENVIAR CORREO</string>
 </resources>

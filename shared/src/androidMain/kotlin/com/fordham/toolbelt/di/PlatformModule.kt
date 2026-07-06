@@ -63,7 +63,7 @@ actual fun platformModule(): Module = module {
     single<SecurityGateway> { get<SecurityManager>() }
     single { PlatformContext(get<Context>()) }
     single<SecureVaultGateway> { createSecureVault(get(), get()) }
-    single { NetworkObserver(get()) }
+    single { NetworkObserver() }
     single { createDataStore { get<Context>().filesDir.resolve(DATASTORE_FILE_NAME).absolutePath } }
     single<SettingsRepository> { DataStoreSettingsRepository(get()) }
     single<com.fordham.toolbelt.domain.repository.StorageRepository> { AndroidStorageRepository(get(), get()) }
@@ -82,7 +82,8 @@ actual fun platformModule(): Module = module {
         com.fordham.toolbelt.data.local.AndroidLocalLlmEngine(
             context = get(),
             scope = get(),
-            ioDispatcher = get()
+            ioDispatcher = get(),
+            secretProvider = get()
         )
     }
 }
@@ -116,4 +117,3 @@ actual fun platformHttpClient(): HttpClient {
     }
     return client
 }
-

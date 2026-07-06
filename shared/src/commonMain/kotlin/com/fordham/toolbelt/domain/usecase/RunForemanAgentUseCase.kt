@@ -2,6 +2,7 @@ package com.fordham.toolbelt.domain.usecase
 
 import com.fordham.toolbelt.domain.model.ClientId
 import com.fordham.toolbelt.domain.model.FailureMessage
+import com.fordham.toolbelt.domain.model.InvoiceTextOutcome
 import com.fordham.toolbelt.domain.model.agent.AgentOutcome
 import com.fordham.toolbelt.domain.model.agent.AgentRole
 import com.fordham.toolbelt.domain.model.agent.ChainedToolStep
@@ -17,6 +18,7 @@ import com.fordham.toolbelt.domain.model.agent.ForemanToolPolicy
 import com.fordham.toolbelt.domain.model.agent.ForemanToolResultSummarizer
 import com.fordham.toolbelt.domain.model.agent.OpenTabArgs
 import com.fordham.toolbelt.domain.model.agent.ForemanTurn
+import com.fordham.toolbelt.domain.model.agent.DraftLineItemInput
 import com.fordham.toolbelt.domain.model.agent.InvoiceSavePreview
 import com.fordham.toolbelt.domain.model.agent.NaturalLanguage
 import com.fordham.toolbelt.domain.model.agent.SaveInvoiceFromDraftArgs
@@ -30,6 +32,8 @@ import com.fordham.toolbelt.domain.model.agent.ToolExecutionResult
 import com.fordham.toolbelt.domain.model.agent.ToolCallId
 import com.fordham.toolbelt.domain.model.agent.ToolName
 import com.fordham.toolbelt.domain.model.agent.ToolSafety
+import com.fordham.toolbelt.domain.model.agent.UpdateDraftInvoiceArgs
+import com.fordham.toolbelt.util.AppLogger
 import com.fordham.toolbelt.util.randomUUID
 import com.fordham.toolbelt.domain.model.subscription.PremiumFeature
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
@@ -37,6 +41,7 @@ import com.fordham.toolbelt.domain.model.subscription.TokenConsumptionOutcome
 import com.fordham.toolbelt.domain.repository.AgentLlmGateway
 import com.fordham.toolbelt.domain.repository.DraftRepository
 import com.fordham.toolbelt.domain.repository.ForemanAgentDispatchers
+import com.fordham.toolbelt.domain.repository.LocalAiCapabilityRepository
 import com.fordham.toolbelt.domain.repository.ToolRegistry
 import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.usecase.subscription.ConsumeTokenUseCase
@@ -56,7 +61,12 @@ class RunForemanAgentUseCase(
     private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase,
     private val consumeToken: ConsumeTokenUseCase,
     private val platformActions: PlatformActions,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val localAiCapabilityRepository: LocalAiCapabilityRepository,
+    private val parseVoiceInvoiceDeterministically: ParseVoiceInvoiceDeterministicallyUseCase,
+    private val validateVoiceInvoiceResult: ValidateVoiceInvoiceResultUseCase,
+    private val polishLineItemDescriptions: PolishLineItemDescriptionsUseCase,
+    private val processInvoiceAi: ProcessInvoiceAiUseCase? = null
 ) {
     suspend operator fun invoke(
         command: NaturalLanguage,
@@ -77,21 +87,233 @@ class RunForemanAgentUseCase(
             ForemanTurn(role = AgentRole.User, content = command, timestamp = timestamp)
         )
         val autoSaveEnabled = settingsRepository.getBusinessSettings().autoSaveVoiceInvoices
+        val runtime = com.fordham.toolbelt.domain.model.agent.ForemanRuntimeBinding.current()
+        AppLogger.e(
+            "VoiceInvoicePipeline",
+            "FOREMAN_START command='${command.value}' activeTab=${runtime.activeTab} " +
+                "selectedClient='${runtime.selectedClientName.orEmpty()}' autoSave=$autoSaveEnabled"
+        )
         when (val route = ForemanCommandRouter.route(command.value, autoSaveEnabled)) {
             is ForemanRoute.LocalTab -> return@withContext runNavigationFastPath(
                 workingSession,
                 route.tab,
                 timestamp
             )
-            is ForemanRoute.LocalMacro -> return@withContext runMacroFastPath(
-                workingSession,
-                route.toolName,
-                route.arguments,
-                timestamp
-            )
+            is ForemanRoute.LocalMacro -> {
+                buildDeterministicInvoiceDraftArgs(command.value)?.let { args ->
+                    return@withContext runMacroFastPath(
+                        workingSession,
+                        ToolName.UpdateDraftInvoice,
+                        args,
+                        timestamp
+                    )
+                }
+                return@withContext runMacroFastPath(
+                    workingSession,
+                    route.toolName,
+                    route.arguments,
+                    timestamp
+                )
+            }
             is ForemanRoute.LlmChain -> Unit
         }
+        buildDeterministicInvoiceDraftArgs(command.value)?.let { args ->
+            return@withContext runMacroFastPath(
+                workingSession,
+                ToolName.UpdateDraftInvoice,
+                args,
+                timestamp
+            )
+        }
+        buildCompactGemmaInvoiceDraftArgs(command.value)?.let { args ->
+            return@withContext runMacroFastPath(
+                workingSession,
+                ToolName.UpdateDraftInvoice,
+                args,
+                timestamp
+            )
+        }
         runLoop(workingSession, systemPrompt, timestamp, mutableListOf())
+    }
+
+    private suspend fun buildCompactGemmaInvoiceDraftArgs(command: String): UpdateDraftInvoiceArgs? {
+        val processor = processInvoiceAi ?: return null
+        AppLogger.d("VoiceInvoicePipeline", "FOREMAN_COMPACT_GEMMA_START")
+        return when (val outcome = processor(command, emptyList())) {
+            is InvoiceTextOutcome.Success -> {
+                val parsed = outcome.result
+                val rejectionReasons = voiceInvoiceDraftRejectionReasons(parsed)
+                if (rejectionReasons.isNotEmpty()) {
+                    AppLogger.d(
+                        "VoiceInvoicePipeline",
+                        "FOREMAN_COMPACT_GEMMA_REJECTED reasons=${rejectionReasons.joinToString()} " +
+                            "client='${parsed.clientName}' address='${parsed.clientAddress}' items=${parsed.items.size} " +
+                            "issues=${parsed.validationIssues} lines=${parsed.items.joinToString(" | ") { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}"
+                    )
+                    null
+                } else {
+                    AppLogger.d(
+                        "VoiceInvoicePipeline",
+                        "FOREMAN_COMPACT_GEMMA_SUCCESS client='${parsed.clientName}' address='${parsed.clientAddress}' " +
+                            "items=${parsed.items.size} confidence=${parsed.confidenceScore} issues=${parsed.validationIssues} " +
+                            "lines=${parsed.items.joinToString(" | ") { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}"
+                    )
+                    UpdateDraftInvoiceArgs(
+                        clientName = NaturalLanguage(parsed.clientName),
+                        clientAddress = parsed.clientAddress.takeIf { it.isNotBlank() }?.let(::NaturalLanguage),
+                        taxRate = parsed.taxRatePercent,
+                        deposit = parsed.depositAmount,
+                        lineItems = parsed.items.map { item ->
+                            DraftLineItemInput(
+                                description = NaturalLanguage(item.description.value),
+                                amount = item.amount.value,
+                                category = NaturalLanguage(item.category),
+                                quantity = item.quantity,
+                                unitPrice = item.unitPrice?.value
+                            )
+                        },
+                        replaceLineItems = true
+                    )
+                }
+            }
+            is InvoiceTextOutcome.Failure -> {
+                AppLogger.d("VoiceInvoicePipeline", "FOREMAN_COMPACT_GEMMA_FAILURE '${outcome.error.value}'")
+                null
+            }
+        }
+    }
+
+    private suspend fun buildDeterministicInvoiceDraftArgs(command: String): UpdateDraftInvoiceArgs? {
+        val rawParsed = parseVoiceInvoiceDeterministically(command)
+        if (rawParsed == null) {
+            AppLogger.d("VoiceInvoicePipeline", "FOREMAN_DETERMINISTIC_SKIPPED no parse for '$command'")
+            return null
+        }
+        val parsed = validateVoiceInvoiceResult(rawParsed)
+        AppLogger.d(
+            "VoiceInvoicePipeline",
+            "FOREMAN_DETERMINISTIC_PARSED client='${parsed.clientName}' address='${parsed.clientAddress}' " +
+                "items=${parsed.items.size} confidence=${parsed.confidenceScore} issues=${parsed.validationIssues} " +
+                "lines=${parsed.items.joinToString(" | ") { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}"
+        )
+        if (parsed.clientName.isBlank() || parsed.items.isEmpty()) {
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "FOREMAN_DETERMINISTIC_REJECTED client='${parsed.clientName}' items=${parsed.items.size} " +
+                    "issues=${parsed.validationIssues}"
+            )
+            return null
+        }
+        val rejectionReasons = voiceInvoiceDraftRejectionReasons(parsed)
+        if (rejectionReasons.isNotEmpty()) {
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "FOREMAN_DETERMINISTIC_REJECTED guardrails=${rejectionReasons.joinToString()} " +
+                    "client='${parsed.clientName}' address='${parsed.clientAddress}' items=${parsed.items.size} " +
+                    "issues=${parsed.validationIssues}"
+            )
+            return null
+        }
+        if (parsed.confidenceScore < 0.90) {
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "FOREMAN_DETERMINISTIC_REJECTED confidence=${parsed.confidenceScore} client='${parsed.clientName}' " +
+                    "items=${parsed.items.size} issues=${parsed.validationIssues}"
+            )
+            return null
+        }
+        if (parsed.validationIssues.any { it == "MISSING_CLIENT_NAME" || it == "NO_LINE_ITEMS" }) {
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "FOREMAN_DETERMINISTIC_REJECTED blocking issues=${parsed.validationIssues} client='${parsed.clientName}'"
+            )
+            return null
+        }
+        val riskyDescriptions = parsed.items
+            .map { it.description.value.trim() }
+            .filter(::isRiskyDeterministicDescription)
+        if (riskyDescriptions.isNotEmpty()) {
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "FOREMAN_DETERMINISTIC_REJECTED riskyDescriptions=${riskyDescriptions.joinToString(" | ")}"
+            )
+            return null
+        }
+        AppLogger.d(
+            "VoiceInvoicePipeline",
+            "FOREMAN_DRAFT_ARGS client=${parsed.clientName}, address=${parsed.clientAddress}, " +
+                "items=${parsed.items.joinToString { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}, " +
+                "subtotal=${parsed.items.sumOf { it.amount.value }}"
+        )
+        // Polish descriptions via local LLM — amounts/quantities are never passed to the model.
+        // Falls back silently to original descriptions on any failure.
+        val rawDescriptions = parsed.items.map { it.description.value }
+        val polishedDescriptions = polishLineItemDescriptions(rawDescriptions)
+        return UpdateDraftInvoiceArgs(
+            clientName = NaturalLanguage(parsed.clientName),
+            clientAddress = parsed.clientAddress.takeIf { it.isNotBlank() }?.let(::NaturalLanguage),
+            taxRate = parsed.taxRatePercent,
+            deposit = parsed.depositAmount,
+            lineItems = parsed.items.mapIndexed { index, item ->
+                DraftLineItemInput(
+                    description = NaturalLanguage(
+                        polishedDescriptions.getOrElse(index) { item.description.value }
+                    ),
+                    amount = item.amount.value,
+                    category = NaturalLanguage(item.category),
+                    quantity = item.quantity,
+                    unitPrice = item.unitPrice?.value
+                )
+            },
+            replaceLineItems = true
+        )
+    }
+
+    private fun isRiskyDeterministicDescription(description: String): Boolean {
+        val normalized = description.lowercase()
+        if (description.length <= 3) return true
+        return RiskyDeterministicDescriptionPattern.containsMatchIn(normalized)
+    }
+
+    private fun voiceInvoiceDraftRejectionReasons(
+        parsed: com.fordham.toolbelt.domain.model.AiInvoiceResult
+    ): List<String> = buildList {
+        if (parsed.clientName.isBlank()) add("MISSING_CLIENT_NAME")
+        if (parsed.items.isEmpty()) add("NO_LINE_ITEMS")
+        if (containsAddressMarker(parsed.clientName)) add("CLIENT_NAME_LOOKS_LIKE_ADDRESS")
+        if (hasRepeatedTokenLoop(parsed.clientName) || hasRepeatedTokenLoop(parsed.clientAddress)) {
+            add("REPEATED_TEXT_LOOP")
+        }
+        parsed.items.forEachIndexed { index, item ->
+            val description = item.description.value.trim()
+            val quantity = item.quantity ?: 1.0
+            val amount = item.amount.value
+            val unitPrice = item.unitPrice?.value
+            if (description.length < 8) add("ITEM_${index}_DESCRIPTION_TOO_SHORT")
+            if (isRiskyDeterministicDescription(description)) add("ITEM_${index}_RISKY_DESCRIPTION")
+            if (containsAddressMarker(description)) add("ITEM_${index}_DESCRIPTION_LOOKS_LIKE_ADDRESS")
+            if (hasRepeatedTokenLoop(description)) add("ITEM_${index}_REPEATED_TEXT_LOOP")
+            if (quantity <= 0.0 || quantity > MAX_REASONABLE_VOICE_QUANTITY) {
+                add("ITEM_${index}_ABSURD_QUANTITY:$quantity")
+            }
+            if (amount <= 0.0 || amount > MAX_REASONABLE_VOICE_LINE_AMOUNT) {
+                add("ITEM_${index}_ABSURD_AMOUNT:$amount")
+            }
+            if (unitPrice != null && (unitPrice <= 0.0 || unitPrice > MAX_REASONABLE_VOICE_LINE_AMOUNT)) {
+                add("ITEM_${index}_ABSURD_UNIT_PRICE:$unitPrice")
+            }
+        }
+    }
+
+    private fun containsAddressMarker(value: String): Boolean =
+        AddressMarkerPattern.containsMatchIn(value)
+
+    private fun hasRepeatedTokenLoop(value: String): Boolean {
+        val words = value.lowercase()
+            .split(Regex("""\s+"""))
+            .filter { it.length >= 3 }
+        if (words.size < 8) return false
+        return words.windowed(8).any { window -> window.distinct().size <= 2 }
     }
 
     private suspend fun runNavigationFastPath(
@@ -176,7 +398,16 @@ class RunForemanAgentUseCase(
             toolName = toolName,
             arguments = arguments
         )
+        AppLogger.d(
+            "VoiceInvoiceTrace",
+            "Macro executing tool=$toolName args=${arguments::class.simpleName}"
+        )
         val result = executeTool(toolName, arguments)
+        AppLogger.d(
+            "VoiceInvoiceTrace",
+            "Macro result tool=$toolName result=${result::class.simpleName}" +
+                if (result is ToolExecutionResult.Failure) " error='${result.error.value}'" else ""
+        )
         if (result is ToolExecutionResult.Failure) {
             val sessionAfter = recordToolStep(session, request, result, timestamp)
             return ForemanAgentRun(
@@ -708,6 +939,8 @@ class RunForemanAgentUseCase(
     }
 
     private suspend fun foremanAccessFailure(): AgentOutcome.Failure? {
+        // If the local on-device model is available, skip token consumption entirely
+        if (localAiCapabilityRepository.isOnDeviceAgentAvailable()) return null
         return when (val outcome = consumeToken(PremiumFeature.FOREMAN_AGENT)) {
             is TokenConsumptionOutcome.Success -> null
             is TokenConsumptionOutcome.InsufficientTokens ->
@@ -716,5 +949,16 @@ class RunForemanAgentUseCase(
                 )
             is TokenConsumptionOutcome.Failure -> AgentOutcome.Failure(outcome.error)
         }
+    }
+
+    private companion object {
+        const val MAX_REASONABLE_VOICE_QUANTITY = 250.0
+        const val MAX_REASONABLE_VOICE_LINE_AMOUNT = 25_000.0
+        val AddressMarkerPattern = Regex(
+            """(?i)\b(?:street|st|road|rd|drive|dr|court|ct|lane|ln|avenue|ave|boulevard|blvd|way|place|pl|circle|cir|trail|terrace|ter|georgia|ga|alabama|florida|atlanta|jonesboro|macon|rex|zip)\b|\b\d{5}(?:-\d{4})?\b"""
+        )
+        val RiskyDeterministicDescriptionPattern = Regex(
+            """(?i)(?:\bfixer\b|\bhard it off\b|\bla\b|\bdeer\b|\bbreak dollar\b|\bdollar deposit\b|\b(?:and|for|at|a)$|^(?:and|for|at)\b)"""
+        )
     }
 }

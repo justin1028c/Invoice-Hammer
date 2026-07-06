@@ -96,21 +96,22 @@ fun StatsTab(
 
         // Actions
         Row(
-            modifier = Modifier.fillMaxWidth(), 
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), 
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TacticalButton(
                 onClick = { if (settings.isPremium) onExportCsv() else showLockDialog = true },
                 text = stringResource(Res.string.bento_report), 
-                modifier = Modifier.weight(1f), 
+                modifier = Modifier.weight(1f).fillMaxHeight(), 
                 containerColor = if (settings.isPremium) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
                 icon = { Icon(Icons.Default.TableChart, null) }
             )
             
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally, 
-                modifier = Modifier.clickable { onNavigateToSettings() }
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.clickable { onNavigateToSettings() }.fillMaxHeight()
             ) {
                 Icon(
                     if (settings.isPremium) Icons.Default.LockOpen else Icons.Default.Lock, 
@@ -129,7 +130,7 @@ fun StatsTab(
             TacticalButton(
                 onClick = { if (settings.isPremium) onExportZip() else showLockDialog = true },
                 text = stringResource(Res.string.tax_bundle), 
-                modifier = Modifier.weight(1f), 
+                modifier = Modifier.weight(1f).fillMaxHeight(), 
                 containerColor = if (settings.isPremium) MaterialTheme.colorScheme.secondary else Color.Gray.copy(alpha = 0.5f), 
                 icon = { Icon(Icons.Default.Archive, null) }
             )

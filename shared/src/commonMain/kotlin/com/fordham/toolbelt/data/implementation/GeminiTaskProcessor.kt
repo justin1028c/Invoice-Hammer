@@ -147,54 +147,10 @@ class GeminiTaskProcessor(
     suspend fun processInvoiceText(text: String, categories: List<String>): InvoiceTextOutcome {
         return try {
             val currentDate = DateTimeUtil.getNowFormatted()
-            val prompt = LlmLocalePolicy.wrapPrompt(
-                """
-                Extract structured invoice data from the following text and return a single flat JSON object matching the requested schema.
-                
-                ### 📅 Current Context (Use for Relative Dates)
-                - Current Date Reference: $currentDate (Use this to resolve phrases like "yesterday," "last week," or "due in 15 days").
-    
-                ### 🛡️ Domain Constraints (Never Violate)
-                - Monetary amounts must be non-negative (>= 0.0)
-                - Client name cannot be blank
-                - Tax rate: 0.0–100.0 (default 7.0 if unspecified)
-                - Math Verification: For every item, "amount" MUST exactly equal "quantity * unitPrice".
-    
-                ### Schema Requirements
-                Your output must be a valid JSON object matching this schema exactly:
-                {
-                  "clientName": "string (name of the client, cannot be blank)",
-                  "clientAddress": "string (client billing address)",
-                  "items": [
-                    {
-                      "description": "string (robust, professional description; capitalize properly, expand abbreviations/shorthand like 'rep' to 'Repair/Replacement of', do not output cryptic codes or single words without context)",
-                      "quantity": number (default 1.0),
-                      "unitPrice": number (default to amount if quantity is 1.0),
-                      "amount": number (total item cost, MUST equal quantity * unitPrice),
-                      "category": "string (either 'Labor', 'Materials', or 'Service')"
-                    }
-                  ],
-                  "laborHours": number (optional),
-                  "laborRate": number (optional),
-                  "depositAmount": number (default 0.0),
-                  "taxRatePercent": number (default 7.0),
-                  "discountPercent": number (default 0.0),
-                  "notes": "string (optional)",
-                  "confidenceScore": number (0.0 to 1.0),
-                  "userSummary": "string (friendly verbal summary of parsed items and totals)",
-                  "validationIssues": ["string (validation warnings/codes if applicable, e.g. 'MISSING_CLIENT_NAME', 'MISSING_CLIENT_ADDRESS', 'ZERO_AMOUNT', 'MATH_MISMATCH')"]
-                }
-    
-                [INPUT TEXT OR TRANSCRIPT]
-                $text
-    
-                CRITICAL: Return ONLY raw JSON. No explanation. No markdown formatting. No code fences.
-                """.trimIndent(),
-                LlmLocalePolicy.OutputMode.StructuredJson
-            )
     
             if (localLlmEngine.isSupported()) {
-                val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(prompt))
+                val localPrompt = LocalPromptProvider.getVoiceInvoicePrompt(text, currentDate)
+                val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(localPrompt))
                 if (localOutcome is GeminiOutcome.Success) {
                     AppLogger.d("KtorGeminiRepository", "Using local LLM for processInvoiceText successfully.")
                     val cleaned = AiUtil.cleanJson(localOutcome.text)
@@ -208,9 +164,14 @@ class GeminiTaskProcessor(
                     AppLogger.d("KtorGeminiRepository", "Local LLM returned failure in processInvoiceText. Falling back to cloud.")
                 }
             }
+
+            val cloudPrompt = LlmLocalePolicy.wrapPrompt(
+                VoiceInvoicePromptBuilder.buildCloudPrompt(text, currentDate),
+                LlmLocalePolicy.OutputMode.StructuredJson
+            )
     
             val response = repository.callGemini(
-                prompt = prompt,
+                prompt = cloudPrompt,
                 model = repository.agentModelName,
                 responseMimeType = "application/json",
                 temperature = 0.0f,

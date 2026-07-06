@@ -224,8 +224,8 @@
     <string name="tax_bundle">TAX BUNDLE</string>
     <string name="pro_label">PRO</string>
     <string name="lock_label">LOCK</string>
-    <string name="system_diagnostics_stress">SYSTEM DIAGNOSTICS &amp; STRESS TESTING</string>
-    <string name="simulate_1000">SIMULATE 1000</string>
+    <string name="system_diagnostics_stress">REALISTIC DEMO DATA</string>
+    <string name="simulate_1000">CREATE 5 REALISTIC INVOICES</string>
     <string name="purge_vault">PURGE VAULT</string>
     <string name="net_profit_ytd">NET PROFIT YTD</string>
     <string name="margin_label">MARGIN</string>
@@ -346,7 +346,17 @@
     <string name="unlimited_ai_desc">UNLIMITED + 500 AI / mo</string>
     <string name="price_pro_monthly">$19.99 / mo</string>
     <string name="pro_yearly_comparison">Or Pro Yearly: $13.33 / mo ($159.99 / yr)</string>
-    <string name="save_with_pro_yearly">🎉 SAVE UP TO 77% MONTHLY WITH PRO YEARLY</string>
+    <!-- Subscription Tiers -->
+    <string name="tier_free_title">Free</string>
+    <string name="tier_free_desc">Core invoicing tools.</string>
+    <string name="tier_pro_monthly_title">Pro Monthly</string>
+    <string name="tier_pro_monthly_desc">AI, OCR, Bento reports, and tax export.</string>
+    <string name="tier_pro_yearly_title">Pro Yearly</string>
+    <string name="tier_pro_yearly_desc">All Pro features • Save $79.89 vs monthly</string>
+    <string name="tier_founder_lifetime_title">Founder\'s Lifetime Pass</string>
+    <string name="tier_founder_lifetime_desc">One-time purchase • All Pro features forever</string>
+
+    <string name="save_with_pro_yearly">🎉 SAVE UP TO %d%% MONTHLY WITH PRO YEARLY</string>
     <string name="pro_tip_deductible">💡 Pro Tip: All subscription plans and credit packs are 100% tax-deductible business expenses.</string>
     
     <!-- Card Terminal Sheet -->
@@ -541,4 +551,47 @@
     <string name="join_beta_title">Beta Tester Access</string>
     <string name="join_beta_desc">Are you a beta tester? Click here to unlock all features for free.</string>
     <string name="join_beta_btn">FREE BETA UNLOCK</string>
+
+    <!-- Edit Client Dialog -->
+    <string name="edit_client_profile">EDIT CLIENT PROFILE</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="email_address">Email Address</string>
+
+    <!-- Suppliers Tab -->
+    <string name="search_stores">Search stores...</string>
+    <string name="filter_all">ALL</string>
+    <string name="no_stores_match">No stores match filters.</string>
+
+    <!-- Client Invoices -->
+    <string name="no_invoices_yet">No invoices yet</string>
+
+    <!-- Line Items & Dialogs -->
+    <string name="edit_line_item">Edit line item</string>
+    
+    <!-- AI Reminder -->
+    <string name="reminder_subject">Subject</string>
+    <string name="reminder_body">Message Body</string>
+
+    <!-- Extracted AI Fields -->
+    <string name="extracted_labor">⛏️ Extracted Labor: %1$s hours</string>
+    <string name="extracted_rate">⛏️ Extracted Rate: $%1$s/hr</string>
+    <string name="extracted_discount">⛏️ Extracted Discount: %1$s%%</string>
+    <string name="extracted_notes">⛏️ Extracted Notes: %1$s</string>
+
+    <!-- Clients Tab Stats & Info -->
+    <string name="no_address_on_file">No address on file</string>
+    <string name="stat_invoices">INVOICES</string>
+    <string name="stat_unpaid">UNPAID</string>
+    <string name="stat_net_profit">NET PROFIT</string>
+    <string name="last_job_prefix">LAST JOB: %1$s</string>
+    <string name="none_label">NONE</string>
+
+    <!-- Clients Tab Quick Actions -->
+    <string name="action_new_invoice">NEW INVOICE</string>
+    <string name="action_edit_info">EDIT INFO</string>
+    <string name="action_add_note">ADD NOTE</string>
+    <string name="action_duplicate_last">DUPLICATE LAST</string>
+    <string name="action_view_last_pdf">VIEW LAST PDF</string>
+    <string name="action_call_client">CALL CLIENT</string>
+    <string name="action_email_client">EMAIL CLIENT</string>
 </resources>

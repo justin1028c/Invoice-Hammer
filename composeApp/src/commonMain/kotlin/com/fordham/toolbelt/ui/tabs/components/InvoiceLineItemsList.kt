@@ -7,7 +7,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,7 +16,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.fordham.toolbelt.ui.viewmodel.NewInvoiceUiState
 import com.fordham.toolbelt.domain.model.BusinessSettings
+import com.fordham.toolbelt.domain.model.ItemsSummary
 import com.fordham.toolbelt.domain.model.LineItem
+import com.fordham.toolbelt.domain.model.MoneyAmount
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.localizeInvoiceCategory
 import com.fordham.toolbelt.util.DateTimeUtil
@@ -35,7 +37,8 @@ fun InvoiceLineItemsList(
     onItemAmtChange: (String) -> Unit,
     onProcessInvoiceAi: (List<String>) -> Unit,
     onAddManualLineItem: () -> Unit,
-    onRemoveLineItem: (LineItem) -> Unit
+    onRemoveLineItem: (LineItem) -> Unit,
+    onUpdateLineItem: (LineItem, LineItem) -> Unit
 ) {
     val lineItemsTitle = stringResource(Res.string.line_items)
     val linkUnbilledText = stringResource(Res.string.link_unbilled)
@@ -44,6 +47,9 @@ fun InvoiceLineItemsList(
     val aiFillText = stringResource(Res.string.ai_fill)
     val addItemText = stringResource(Res.string.add_item)
     val lineItemsEmptyText = stringResource(Res.string.line_items_empty)
+    var editingItem by remember { mutableStateOf<LineItem?>(null) }
+    var editDescription by remember { mutableStateOf("") }
+    var editAmount by remember { mutableStateOf("") }
 
     Column {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -129,7 +135,22 @@ fun InvoiceLineItemsList(
             ListItem(
                 headlineContent = { Text(item.category + ": $" + DateTimeUtil.formatDecimal(item.amount.value, 2), fontWeight = FontWeight.Bold) },
                 supportingContent = { Text(item.description.value) },
-                trailingContent = { IconButton(onClick = { onRemoveLineItem(item) }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)) } },
+                trailingContent = {
+                    Row {
+                        IconButton(
+                            onClick = {
+                                editingItem = item
+                                editDescription = item.description.value
+                                editAmount = DateTimeUtil.formatDecimal(item.amount.value, 2)
+                            }
+                        ) {
+                            Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                        IconButton(onClick = { onRemoveLineItem(item) }) {
+                            Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+                        }
+                    }
+                },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent)
             )
         }
@@ -138,5 +159,52 @@ fun InvoiceLineItemsList(
                 Text(lineItemsEmptyText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f), fontWeight = FontWeight.Bold)
             }
         }
+    }
+
+    editingItem?.let { item ->
+        val amount = editAmount.toDoubleOrNull()
+        AlertDialog(
+            onDismissRequest = { editingItem = null },
+            title = { Text(stringResource(Res.string.edit_line_item), fontWeight = FontWeight.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = editDescription,
+                        onValueChange = { editDescription = it },
+                        label = { Text(descriptionLabel, fontWeight = FontWeight.Black) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    OutlinedTextField(
+                        value = editAmount,
+                        onValueChange = { editAmount = it },
+                        label = { Text(priceLabel, fontWeight = FontWeight.Black) },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TacticalButton(
+                    onClick = {
+                        val updated = item.copy(
+                            description = ItemsSummary(editDescription.trim()),
+                            amount = MoneyAmount(amount ?: item.amount.value)
+                        )
+                        onUpdateLineItem(item, updated)
+                        editingItem = null
+                    },
+                    text = stringResource(Res.string.save),
+                    enabled = editDescription.isNotBlank() && amount != null && amount >= 0.0,
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { editingItem = null }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
     }
 }

@@ -1,6 +1,7 @@
 package com.fordham.toolbelt.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -303,10 +304,14 @@ internal fun LedgerMetric(label: String, value: String, modifier: Modifier = Mod
 @Composable
 internal fun PaymentLedgerRow(
     request: InvoicePaymentRequest,
-    onOpenPaymentLink: (String) -> Unit
+    onOpenPaymentLink: (String) -> Unit,
+    onSelectRequest: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp)
+            .clickable(onClick = onSelectRequest),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {

@@ -255,11 +255,11 @@ fun SettingsTab(
         if (com.fordham.toolbelt.util.currentPlatformTarget() == com.fordham.toolbelt.util.PlatformTarget.Android) {
             Spacer(Modifier.height(16.dp))
 
-            // OFFLINE AI (GEMMA 2B) SECTION
-            SettingsSection(title = "Offline AI (Gemma 2B)") {
+            // OFFLINE AI SECTION
+            SettingsSection(title = "Offline AI") {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Download the Gemma 2B model (approx. 1.3GB) to enable fully offline local invoice parsing and voice assistant capabilities.",
+                        text = "Download the Gemma 3n E2B model to enable fully local invoice parsing and voice assistant capabilities.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -292,7 +292,7 @@ fun SettingsTab(
                             ) {
                                 Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                                Text(stringResource(Res.string.delete), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else if (isLlamaDownloading) {

@@ -6,6 +6,7 @@ import com.fordham.toolbelt.domain.model.*
 import com.fordham.toolbelt.domain.repository.ReceiptRepository
 import com.fordham.toolbelt.domain.repository.SettingsRepository
 import com.fordham.toolbelt.domain.usecase.BillLaborUseCase
+import com.fordham.toolbelt.domain.usecase.BuildVoiceInvoiceApplicationPlanUseCase
 import com.fordham.toolbelt.domain.usecase.GenerateAndSaveInvoiceUseCase
 import com.fordham.toolbelt.domain.usecase.ProcessInvoiceAiUseCase
 import com.fordham.toolbelt.domain.usecase.SaveBusinessLogoUseCase
@@ -54,7 +55,8 @@ class NewInvoiceViewModelTest {
 
         viewModel = NewInvoiceViewModel(
             receiptRepository, processInvoiceAiUseCase, billLaborUseCase,
-            generateAndSaveInvoiceUseCase, draftRepository, settingsRepository, saveBusinessLogoUseCase
+            generateAndSaveInvoiceUseCase, draftRepository, settingsRepository, saveBusinessLogoUseCase,
+            BuildVoiceInvoiceApplicationPlanUseCase()
         )
     }
 
@@ -187,6 +189,43 @@ class NewInvoiceViewModelTest {
     }
 
     @Test
+    fun `processInvoiceAi low confidence does not mutate draft fields`() = runTest {
+        draftStateFlow.value = DraftInvoice(
+            clientName = "Existing Client",
+            clientAddress = "Existing Address",
+            taxRate = 7.0,
+            deposit = 0.0,
+            hourlyRate = 50.0,
+            itemDesc = "unclear voice command"
+        )
+        val aiResult = AiInvoiceResult(
+            clientName = "Wrong Client",
+            clientAddress = "Wrong Address",
+            items = listOf(LineItem(ItemsSummary("Wrong Item"), MoneyAmount(300.0), "Service")),
+            depositAmount = 100.0,
+            taxRatePercent = 10.0,
+            laborRate = 90.0,
+            confidenceScore = 0.4,
+            validationIssues = listOf("LOW_AUDIO_CONFIDENCE")
+        )
+        coEvery { processInvoiceAiUseCase(any(), any()) } returns InvoiceTextOutcome.Success(aiResult)
+
+        viewModel.onIntent(NewInvoiceIntent.ProcessInvoiceAi(listOf("Drywall")))
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals("Existing Client", state.clientName)
+            assertEquals("Existing Address", state.clientAddress)
+            assertEquals("7.0", state.taxText)
+            assertEquals("", state.depositCollected)
+            assertEquals("50.0", state.hourlyRate)
+            assertTrue(state.pendingAi.isEmpty())
+            assertFalse(state.showAiConf)
+            assertTrue(state.validationIssues.contains("LOW_AUDIO_CONFIDENCE"))
+        }
+    }
+
+    @Test
     fun `processInvoiceAi error sets error message`() = runTest {
         coEvery { processInvoiceAiUseCase(any(), any()) } returns InvoiceTextOutcome.Failure(
             FailureMessage("Failed to process AI")
@@ -205,7 +244,7 @@ class NewInvoiceViewModelTest {
     @Test
     fun `acceptAiItems moves pending to line items`() = runTest {
         val aiResult = AiInvoiceResult(
-            clientName = "", clientAddress = "",
+            clientName = "John Doe", clientAddress = "",
             items = listOf(LineItem(ItemsSummary("AI Item"), MoneyAmount(100.0)))
         )
         coEvery { processInvoiceAiUseCase(any(), any()) } returns InvoiceTextOutcome.Success(aiResult)
@@ -235,4 +274,18 @@ class NewInvoiceViewModelTest {
             assertNull(awaitItem().errorMessage)
         }
     }
+
+    @Test
+    fun `stale draft emission does not overwrite transient state`() = runTest {
+        draftStateFlow.value = DraftInvoice(clientName = "")
+        coEvery { draftRepository.saveDraft(any()) } coAnswers {
+            // Simulate delayed write
+        }
+        viewModel.onIntent(NewInvoiceIntent.OnClientNameChange("J"))
+        draftStateFlow.value = DraftInvoice(clientName = "")
+        viewModel.uiState.test {
+            assertEquals("J", awaitItem().clientName)
+        }
+    }
 }
+

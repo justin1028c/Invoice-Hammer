@@ -20,9 +20,17 @@ import com.fordham.toolbelt.domain.usecase.FinancialSummary
 import com.fordham.toolbelt.ui.components.TacticalButton
 import com.fordham.toolbelt.ui.tabs.clients.*
 import com.fordham.toolbelt.ui.viewmodel.ClientsUiState
+import com.fordham.toolbelt.util.DateTimeUtil
 import com.fordham.toolbelt.util.PlatformActions
 import org.jetbrains.compose.resources.stringResource
 import invoicehammer.composeapp.generated.resources.*
+
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.TrendingUp
 
 /**
  * Responsibility: Main orchestration for the Client Directory & Profiles.
@@ -50,9 +58,14 @@ fun ClientsTab(
     onSetAddNoteVisible: (Boolean) -> Unit,
     onSetReceiptPickerVisible: (Boolean) -> Unit,
     onClearAiSummary: () -> Unit,
+    onNewInvoiceForClient: (Client) -> Unit,
+    onEditInvoiceAsDraft: (Invoice) -> Unit,
     onCallClient: (String) -> Unit,
     onEmailClient: (String) -> Unit,
     onPhotoCaptured: (String, String, JobPhotoPhase) -> Unit,
+    onSetEditProfileVisible: (Boolean, Client?) -> Unit,
+    onEditFieldsChange: (String, String, String, String) -> Unit,
+    onSaveProfile: (Client) -> Unit,
     platformActions: PlatformActions,
     isPremium: Boolean = false
 ) {
@@ -122,6 +135,64 @@ fun ClientsTab(
         )
     }
 
+    if (uiState.showEditProfile && selectedClient != null) {
+        AlertDialog(
+            onDismissRequest = { onSetEditProfileVisible(false, null) },
+            title = { Text(stringResource(Res.string.edit_client_profile), fontWeight = FontWeight.Black) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = uiState.editName,
+                        onValueChange = { onEditFieldsChange(it, uiState.editAddress, uiState.editPhone, uiState.editEmail) },
+                        label = { Text(stringResource(Res.string.client_name), fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.editAddress,
+                        onValueChange = { onEditFieldsChange(uiState.editName, it, uiState.editPhone, uiState.editEmail) },
+                        label = { Text(stringResource(Res.string.client_address), fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.editPhone,
+                        onValueChange = { onEditFieldsChange(uiState.editName, uiState.editAddress, it, uiState.editEmail) },
+                        label = { Text(stringResource(Res.string.phone_number), fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.editEmail,
+                        onValueChange = { onEditFieldsChange(uiState.editName, uiState.editAddress, uiState.editPhone, it) },
+                        label = { Text(stringResource(Res.string.email_address), fontWeight = FontWeight.Bold) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TacticalButton(
+                    onClick = { onSaveProfile(selectedClient) },
+                    text = stringResource(Res.string.save),
+                    enabled = uiState.editName.isNotBlank()
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { onSetEditProfileVisible(false, null) }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
     // --- MAIN CONTENT ---
     if (selectedClient == null) {
         LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -149,9 +220,32 @@ fun ClientsTab(
                 onCallClick = onCallClient,
                 onEmailClick = onEmailClient
             )
-            
-            Text(selectedClient.name.value, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, modifier = Modifier.padding(vertical = 8.dp))
-            
+
+            ClientProfileDashboard(
+                client = selectedClient,
+                invoices = clientInvoices,
+                summary = summary
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            ClientQuickActions(
+                client = selectedClient,
+                hasInvoices = clientInvoices.isNotEmpty(),
+                hasLastPdf = clientInvoices.any { it.pdfPath.value.isNotEmpty() },
+                onNewInvoiceClick = { onNewInvoiceForClient(selectedClient) },
+                onDuplicateLastClick = {
+                    clientInvoices.firstOrNull()?.let(onEditInvoiceAsDraft)
+                },
+                onLastInvoiceClick = {
+                    clientInvoices.firstOrNull { it.pdfPath.value.isNotEmpty() }?.let { onViewPdf(it.pdfPath.value) }
+                },
+                onAddNoteClick = { onSetAddNoteVisible(true) },
+                onEditProfileClick = { onSetEditProfileVisible(true, selectedClient) },
+                onCallClick = onCallClient,
+                onEmailClick = onEmailClient
+            )
+
             summary?.let {
                 ClientFinancialSummaryCard(
                     summary = it,
@@ -160,7 +254,7 @@ fun ClientsTab(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
             
             ClientNotesSection(
                 jobNotes = jobNotes,
@@ -190,16 +284,181 @@ fun ClientsTab(
             ClientInvoicesSection(
                 invoices = clientInvoices,
                 onInvoiceClick = { if (it.pdfPath.value.isNotEmpty()) onViewPdf(it.pdfPath.value) },
+                onEditAsDraftClick = onEditInvoiceAsDraft,
                 onAddPhotoClick = { inv, phase ->
                     platformActions.capturePhoto { uri ->
                         uri?.let { onPhotoCaptured(it, inv.id.value, phase) }
                     }
                 }
             )
-            
+
             Spacer(Modifier.height(100.dp))
         }
     }
 }
 
 private fun Modifier.fillContentSize() = this.fillMaxWidth()
+
+private fun getClientInitials(name: String): String {
+    val parts = name.trim().split(Regex("\\s+"))
+    if (parts.isEmpty()) return "?"
+    val first = parts.first().firstOrNull()?.uppercaseChar() ?: '?'
+    val last = if (parts.size > 1) parts.last().firstOrNull()?.uppercaseChar() else null
+    return if (last != null) "$first$last" else "$first"
+}
+
+@Composable
+private fun ClientProfileDashboard(
+    client: Client,
+    invoices: List<Invoice>,
+    summary: FinancialSummary?,
+    modifier: Modifier = Modifier
+) {
+    val unpaid = invoices.filterNot { it.isPaid || it.isEstimate }.map { it.totalAmount.value }.sum()
+    val lastInvoice = invoices.maxByOrNull { it.lastUpdated }
+    val initials = getClientInitials(client.name.value)
+    
+    Card(
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.width(12.dp))
+                
+                Column {
+                    Text(
+                        text = client.name.value,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = client.address.value.ifBlank { stringResource(Res.string.no_address_on_file) },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ClientMetric(
+                    label = stringResource(Res.string.stat_invoices),
+                    value = invoices.size.toString(),
+                    icon = Icons.Default.Receipt,
+                    modifier = Modifier.weight(1f)
+                )
+                ClientMetric(
+                    label = stringResource(Res.string.stat_unpaid),
+                    value = DateTimeUtil.formatMoney(unpaid),
+                    icon = Icons.Default.PendingActions,
+                    valueColor = if (unpaid > 0.0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                ClientMetric(
+                    label = stringResource(Res.string.stat_net_profit),
+                    value = summary?.formattedProfit ?: "$0.00",
+                    icon = Icons.Default.TrendingUp,
+                    valueColor = if ((summary?.profit ?: 0.0) >= 0.0) com.fordham.toolbelt.ui.theme.StatsGreen else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            Spacer(Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(
+                        Res.string.last_job_prefix,
+                        lastInvoice?.let { DateTimeUtil.formatDateForDisplay(it.date) } ?: stringResource(Res.string.none_label)
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                if (lastInvoice != null) {
+                    Text(
+                        text = lastInvoice.formattedTotal,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClientMetric(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.background,
+        shape = RoundedCornerShape(10.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Black),
+                color = valueColor
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 10.sp),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+

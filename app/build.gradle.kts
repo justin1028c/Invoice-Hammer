@@ -51,6 +51,7 @@ android {
         buildConfigField("String", "FOREMAN_BACKEND_API_KEY", quotedProperty("foreman.backend.api.key"))
         buildConfigField("String", "GEMINI_AGENT_MODEL_NAME", quotedProperty("gemini.agent.model.name", geminiModelOverride))
         buildConfigField("String", "GEMINI_TASK_MODEL_NAME", quotedProperty("gemini.task.model.name", "gemini-3.1-flash-lite"))
+        buildConfigField("String", "HUGGINGFACE_TOKEN", quotedProperty("huggingface.token"))
     }
 
     signingConfigs {
@@ -96,6 +97,12 @@ android {
             excludes += "META-INF/DEPENDENCIES"
         }
     }
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDirs("../ai")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21

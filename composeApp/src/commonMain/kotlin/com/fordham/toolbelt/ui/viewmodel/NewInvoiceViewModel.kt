@@ -7,6 +7,7 @@ import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.*
 import com.fordham.toolbelt.domain.model.SaveBusinessLogoOutcome
 import com.fordham.toolbelt.ui.InvoiceCategories
+import com.fordham.toolbelt.util.AppLogger
 import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,7 +20,8 @@ class NewInvoiceViewModel(
     private val generateAndSaveInvoiceUseCase: GenerateAndSaveInvoiceUseCase,
     private val draftRepository: DraftRepository,
     private val settingsRepository: SettingsRepository,
-    private val saveBusinessLogoUseCase: SaveBusinessLogoUseCase
+    private val saveBusinessLogoUseCase: SaveBusinessLogoUseCase,
+    private val buildVoiceInvoiceApplicationPlan: BuildVoiceInvoiceApplicationPlanUseCase
 ) : ViewModel() {
 
     private val _transientState = MutableStateFlow(NewInvoiceTransientState())
@@ -98,34 +100,52 @@ class NewInvoiceViewModel(
                 }
             }
             
+            var lastDraft: DraftInvoice? = null
             draftEditor.draft.collect { draft ->
                 _transientState.update { state ->
-                    val nextTaxText = if ((state.taxText?.toDoubleOrNull() ?: 0.0) != draft.taxRate) {
+                    val prev = lastDraft
+                    
+                    val clientNameChangedInDb = prev != null && prev.clientName != draft.clientName
+                    val clientAddressChangedInDb = prev != null && prev.clientAddress != draft.clientAddress
+                    val taxRateChangedInDb = prev != null && prev.taxRate != draft.taxRate
+                    val depositChangedInDb = prev != null && prev.deposit != draft.deposit
+                    val hourlyRateChangedInDb = prev != null && prev.hourlyRate != draft.hourlyRate
+                    val itemDescChangedInDb = prev != null && prev.itemDesc != draft.itemDesc
+                    val itemAmtChangedInDb = prev != null && prev.itemAmt != draft.itemAmt
+
+                    val nextClientName = if (clientNameChangedInDb) draft.clientName else (state.clientName ?: draft.clientName)
+                    val nextClientAddress = if (clientAddressChangedInDb) draft.clientAddress else (state.clientAddress ?: draft.clientAddress)
+
+                    val nextTaxText = if (taxRateChangedInDb) {
                         if (draft.taxRate == 0.0) "" else draft.taxRate.toString()
                     } else {
-                        state.taxText
+                        state.taxText ?: if (draft.taxRate == 0.0) "" else draft.taxRate.toString()
                     }
-                    val nextDepositCollected = if ((state.depositCollected?.toDoubleOrNull() ?: 0.0) != draft.deposit) {
+                    val nextDepositCollected = if (depositChangedInDb) {
                         if (draft.deposit == 0.0) "" else draft.deposit.toString()
                     } else {
-                        state.depositCollected
+                        state.depositCollected ?: if (draft.deposit == 0.0) "" else draft.deposit.toString()
                     }
-                    val nextHourlyRate = if ((state.hourlyRate?.toDoubleOrNull() ?: 0.0) != draft.hourlyRate) {
+                    val nextHourlyRate = if (hourlyRateChangedInDb) {
                         if (draft.hourlyRate == 0.0) "" else draft.hourlyRate.toString()
                     } else {
-                        state.hourlyRate
+                        state.hourlyRate ?: if (draft.hourlyRate == 0.0) "" else draft.hourlyRate.toString()
                     }
 
+                    val nextItemDesc = if (itemDescChangedInDb) draft.itemDesc else (state.itemDesc ?: draft.itemDesc)
+                    val nextItemAmt = if (itemAmtChangedInDb) draft.itemAmt else (state.itemAmt ?: draft.itemAmt)
+
                     state.copy(
-                        clientName = if (state.clientName != draft.clientName) draft.clientName else state.clientName,
-                        clientAddress = if (state.clientAddress != draft.clientAddress) draft.clientAddress else state.clientAddress,
+                        clientName = nextClientName,
+                        clientAddress = nextClientAddress,
                         taxText = nextTaxText,
                         depositCollected = nextDepositCollected,
                         hourlyRate = nextHourlyRate,
-                        itemDesc = if (state.itemDesc != draft.itemDesc) draft.itemDesc else state.itemDesc,
-                        itemAmt = if (state.itemAmt != draft.itemAmt) draft.itemAmt else state.itemAmt
+                        itemDesc = nextItemDesc,
+                        itemAmt = nextItemAmt
                     )
                 }
+                lastDraft = draft
             }
         }
     }
@@ -177,10 +197,81 @@ class NewInvoiceViewModel(
             is NewInvoiceIntent.AddManualLineItem -> executeAddManualItem()
             is NewInvoiceIntent.BillLabor -> executeBillLabor()
             is NewInvoiceIntent.RemoveLineItem -> executeRemoveLineItem(intent.item)
+            is NewInvoiceIntent.UpdateLineItem -> executeUpdateLineItem(intent.original, intent.updated)
             is NewInvoiceIntent.AcceptAiItems -> executeAcceptAiItems()
             is NewInvoiceIntent.ProcessInvoiceAi -> executeProcessAi(intent.categories)
             is NewInvoiceIntent.LinkReceipt -> executeLinkReceipt(intent.receipt, intent.markupPercent)
             is NewInvoiceIntent.SaveInvoice -> executeSaveInvoice(intent.isEstimate, intent.settings, intent.onGenerated)
+        }
+    }
+
+    fun loadInvoiceForEditing(invoice: Invoice) {
+        viewModelScope.launch {
+            val settings = settingsRepository.getBusinessSettings()
+            val draft = DraftInvoice(
+                clientName = invoice.clientName.value,
+                clientAddress = invoice.clientAddress.value,
+                taxRate = settings.taxRate,
+                deposit = invoice.depositAmount.value,
+                hourlyRate = 50.0,
+                logoUri = settings.logoUri,
+                selectedCategory = "General Repair",
+                saveToClientDirectory = true,
+                lineItems = listOf(
+                    LineItem(
+                        description = invoice.itemsSummary,
+                        amount = invoice.totalAmount,
+                        category = "General Repair",
+                        quantity = 1.0,
+                        unitPrice = invoice.totalAmount
+                    )
+                )
+            )
+            draftRepository.saveDraft(draft)
+            _transientState.update {
+                it.copy(
+                    clientName = invoice.clientName.value,
+                    clientAddress = invoice.clientAddress.value,
+                    taxText = settings.taxRate.toString(),
+                    depositCollected = if (invoice.depositAmount.value == 0.0) "" else invoice.depositAmount.value.toString(),
+                    hourlyRate = "50.0",
+                    itemDesc = "",
+                    itemAmt = "",
+                    pendingAi = emptyList(),
+                    showAiConf = false,
+                    errorMessage = null
+                )
+            }
+        }
+    }
+
+    fun startInvoiceForClient(client: Client) {
+        viewModelScope.launch {
+            val settings = settingsRepository.getBusinessSettings()
+            draftRepository.saveDraft(
+                DraftInvoice(
+                    clientName = client.name.value,
+                    clientAddress = client.address.value,
+                    taxRate = settings.taxRate,
+                    hourlyRate = 50.0,
+                    logoUri = settings.logoUri,
+                    saveToClientDirectory = true
+                )
+            )
+            _transientState.update {
+                it.copy(
+                    clientName = client.name.value,
+                    clientAddress = client.address.value,
+                    taxText = settings.taxRate.toString(),
+                    depositCollected = "",
+                    hourlyRate = "50.0",
+                    itemDesc = "",
+                    itemAmt = "",
+                    pendingAi = emptyList(),
+                    showAiConf = false,
+                    errorMessage = null
+                )
+            }
         }
     }
 
@@ -232,9 +323,22 @@ class NewInvoiceViewModel(
         it.copy(lineItems = it.lineItems - item)
     }
 
+    private fun executeUpdateLineItem(original: LineItem, updated: LineItem) = updateDraft { draft ->
+        draft.copy(
+            lineItems = draft.lineItems.map { item ->
+                if (item == original) updated else item
+            }
+        )
+    }
+
     private fun executeAcceptAiItems() {
         viewModelScope.launch {
-            draftEditor.acceptAiItems(_transientState.value.pendingAi)
+            val pending = _transientState.value.pendingAi
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "UI_ACCEPT pendingItems=${pending.size} lines=${pending.joinToString(" | ") { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}"
+            )
+            draftEditor.acceptAiItems(pending)
             _transientState.update { it.copy(showAiConf = false, pendingAi = emptyList(), itemDesc = "") }
         }
     }
@@ -243,37 +347,54 @@ class NewInvoiceViewModel(
         viewModelScope.launch {
             val draft = draftEditor.currentDraft()
             _transientState.update { it.copy(isProcessingAi = true, errorMessage = null) }
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "UI_START text='${draft.itemDesc}' draftClient='${draft.clientName}' " +
+                    "draftAddress='${draft.clientAddress}' categories=${categories.size}"
+            )
             val result = processInvoiceAiUseCase(draft.itemDesc, categories)
             if (result is InvoiceTextOutcome.Success) {
                 val ai = result.result
+                val plan = buildVoiceInvoiceApplicationPlan(draft, ai)
+                AppLogger.d(
+                    "VoiceInvoicePipeline",
+                    "UI_SUCCESS aiClient='${ai.clientName}' aiAddress='${ai.clientAddress}' " +
+                        "planClient='${plan.clientName.orEmpty()}' planAddress='${plan.clientAddress.orEmpty()}' " +
+                        "items=${plan.pendingLineItems.size} confidence=${plan.confidenceScore} issues=${plan.validationIssues} " +
+                        "lines=${plan.pendingLineItems.joinToString(" | ") { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}"
+                )
                 draftEditor.updateDraft { current -> current.copy(
-                    clientName = if (ai.clientName.isNotBlank()) ai.clientName else draft.clientName,
-                    clientAddress = if (ai.clientAddress.isNotBlank()) ai.clientAddress else draft.clientAddress,
-                    taxRate = if (ai.taxRatePercent > 0.0) ai.taxRatePercent else current.taxRate,
-                    deposit = if (ai.depositAmount > 0.0) ai.depositAmount else current.deposit,
-                    hourlyRate = ai.laborRate ?: current.hourlyRate
+                    clientName = plan.clientName ?: current.clientName,
+                    clientAddress = plan.clientAddress ?: current.clientAddress,
+                    taxRate = plan.taxRatePercent ?: current.taxRate,
+                    deposit = plan.depositAmount ?: current.deposit,
+                    hourlyRate = plan.hourlyRate ?: current.hourlyRate
                 ) }
                 _transientState.update { state ->
                     state.copy(
-                        pendingAi = ai.items,
-                        showAiConf = ai.items.isNotEmpty(),
-                        clientName = if (ai.clientName.isNotBlank()) ai.clientName else state.clientName,
-                        clientAddress = if (ai.clientAddress.isNotBlank()) ai.clientAddress else state.clientAddress,
-                        taxText = if (ai.taxRatePercent > 0.0) ai.taxRatePercent.toString() else state.taxText,
-                        depositCollected = if (ai.depositAmount > 0.0) ai.depositAmount.toString() else state.depositCollected,
-                        hourlyRate = (ai.laborRate ?: state.hourlyRate?.toDoubleOrNull())?.toString() ?: state.hourlyRate,
-                        laborHours = ai.laborHours,
-                        laborRate = ai.laborRate,
-                        depositAmount = ai.depositAmount,
-                        taxRatePercent = ai.taxRatePercent,
-                        discountPercent = ai.discountPercent,
-                        notes = ai.notes,
-                        confidenceScore = ai.confidenceScore,
-                        userSummary = ai.userSummary,
-                        validationIssues = ai.validationIssues
+                        pendingAi = plan.pendingLineItems,
+                        showAiConf = plan.pendingLineItems.isNotEmpty(),
+                        clientName = plan.clientName ?: state.clientName,
+                        clientAddress = plan.clientAddress ?: state.clientAddress,
+                        taxText = plan.taxRatePercent?.toString() ?: state.taxText,
+                        depositCollected = plan.depositAmount?.toString() ?: state.depositCollected,
+                        hourlyRate = (plan.hourlyRate ?: state.hourlyRate?.toDoubleOrNull())?.toString() ?: state.hourlyRate,
+                        laborHours = plan.laborHours,
+                        laborRate = plan.laborRate,
+                        depositAmount = plan.depositAmount ?: 0.0,
+                        taxRatePercent = plan.taxRatePercent ?: state.taxRatePercent,
+                        discountPercent = plan.discountPercent,
+                        notes = plan.notes,
+                        confidenceScore = plan.confidenceScore,
+                        userSummary = plan.userSummary,
+                        validationIssues = plan.validationIssues
                     )
                 }
             } else if (result is InvoiceTextOutcome.Failure) {
+                AppLogger.d(
+                    "VoiceInvoicePipeline",
+                    "UI_FAILURE error='${result.error.value}' text='${draft.itemDesc}'"
+                )
                 _transientState.update { it.copy(errorMessage = UiMessageKeys.aiError(result.error.value)) }
             }
             _transientState.update { it.copy(isProcessingAi = false) }

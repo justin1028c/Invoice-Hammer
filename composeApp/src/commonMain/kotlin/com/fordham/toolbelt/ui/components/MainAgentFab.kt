@@ -62,7 +62,7 @@ fun MainAgentFab(
 
     Column(
         horizontalAlignment = Alignment.End,
-        modifier = modifier.padding(bottom = 22.dp, end = 2.dp)
+        modifier = modifier.padding(bottom = 84.dp, end = 10.dp)
     ) {
         Surface(
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),

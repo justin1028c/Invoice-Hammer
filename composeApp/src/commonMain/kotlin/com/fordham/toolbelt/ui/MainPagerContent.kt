@@ -10,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +42,7 @@ import com.fordham.toolbelt.ui.localizeUiMessage
 import com.fordham.toolbelt.util.PlatformActions
 import org.jetbrains.compose.resources.stringResource
 import invoicehammer.composeapp.generated.resources.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -69,6 +71,15 @@ fun MainPagerContent(
     val taxShareTitle = stringResource(Res.string.tax_bundle)
     var pendingToastKey by remember { mutableStateOf<String?>(null) }
     val localizedToast = pendingToastKey?.let { localizeUiMessage(it) }
+    val coroutineScope = rememberCoroutineScope()
+    val editInvoiceAsDraft: (Invoice) -> Unit = { invoice ->
+        newInvoiceViewModel.loadInvoiceForEditing(invoice)
+        coroutineScope.launch { pagerState.animateScrollToPage(0) }
+    }
+    val startInvoiceForClient: (com.fordham.toolbelt.domain.model.Client) -> Unit = { client ->
+        newInvoiceViewModel.startInvoiceForClient(client)
+        coroutineScope.launch { pagerState.animateScrollToPage(0) }
+    }
 
     LaunchedEffect(localizedToast) {
         localizedToast?.let {
@@ -109,6 +120,7 @@ fun MainPagerContent(
                 onProcessInvoiceAi = { newInvoiceViewModel.onIntent(NewInvoiceIntent.ProcessInvoiceAi(it)) },
                 onAddManualLineItem = { newInvoiceViewModel.onIntent(NewInvoiceIntent.AddManualLineItem) },
                 onRemoveLineItem = { newInvoiceViewModel.onIntent(NewInvoiceIntent.RemoveLineItem(it)) },
+                onUpdateLineItem = { original, updated -> newInvoiceViewModel.onIntent(NewInvoiceIntent.UpdateLineItem(original, updated)) },
                 onTaxTextChange = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnTaxTextChange(it)) },
                 onDepositCollectedChange = { newInvoiceViewModel.onIntent(NewInvoiceIntent.OnDepositCollectedChange(it)) },
                 onSaveInvoice = { isEst, set, comp -> newInvoiceViewModel.onIntent(NewInvoiceIntent.SaveInvoice(isEst, set, comp)) },
@@ -122,6 +134,7 @@ fun MainPagerContent(
                 filteredHistory = historyViewModel.filteredInvoices.collectAsStateWithLifecycle(initialValue = emptyList()).value,
                 paymentRequests = paymentRequests,
                 onViewPdf = { platformActions.openPdf(it) },
+                onEditAsDraft = editInvoiceAsDraft,
                 onSharePdf = { f, t -> platformActions.shareFile(f, t) },
                 onRequestDeposit = { onChoosePaymentMethod(it, PaymentRequestType.Deposit) },
                 onRequestFullPayment = { onChoosePaymentMethod(it, PaymentRequestType.FullBalance) },
@@ -228,10 +241,21 @@ fun MainPagerContent(
                     onSetAddNoteVisible = { clientsViewModel.onIntent(ClientsIntent.SetAddNoteVisible(it)) },
                     onSetReceiptPickerVisible = { clientsViewModel.onIntent(ClientsIntent.SetReceiptPickerVisible(it)) },
                     onClearAiSummary = { clientsViewModel.onIntent(ClientsIntent.ClearAiSummary) },
+                    onNewInvoiceForClient = startInvoiceForClient,
+                    onEditInvoiceAsDraft = editInvoiceAsDraft,
                     onCallClient = { platformActions.callPhone(it) },
                     onEmailClient = { platformActions.sendEmail(it) },
                     onPhotoCaptured = { uri, invId, phase ->
                         clientsViewModel.onIntent(ClientsIntent.OnPhotoCaptured(uri, invId, phase))
+                    },
+                    onSetEditProfileVisible = { visible, client ->
+                        clientsViewModel.onIntent(ClientsIntent.SetEditProfileVisible(visible, client))
+                    },
+                    onEditFieldsChange = { n, a, p, e ->
+                        clientsViewModel.onIntent(ClientsIntent.OnEditFieldsChange(n, a, p, e))
+                    },
+                    onSaveProfile = { c ->
+                        clientsViewModel.onIntent(ClientsIntent.SaveClientProfile(c))
                     },
                     isPremium = businessSettings.isPremium,
                     platformActions = platformActions

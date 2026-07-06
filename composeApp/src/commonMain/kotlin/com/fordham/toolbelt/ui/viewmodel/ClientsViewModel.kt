@@ -3,6 +3,10 @@ package com.fordham.toolbelt.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fordham.toolbelt.domain.model.*
+import com.fordham.toolbelt.domain.model.EmailAddress
+import com.fordham.toolbelt.domain.model.PhoneNumber
+import com.fordham.toolbelt.domain.model.ClientName
+import com.fordham.toolbelt.domain.model.ClientAddress
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.*
 import kotlinx.coroutines.flow.*
@@ -19,7 +23,12 @@ data class ClientsUiState(
     val aiSummary: String? = null,
     val isSummarizing: Boolean = false,
     val availableReceipts: List<ReceiptItem> = emptyList(),
-    val showReceiptPicker: Boolean = false
+    val showReceiptPicker: Boolean = false,
+    val showEditProfile: Boolean = false,
+    val editName: String = "",
+    val editAddress: String = "",
+    val editPhone: String = "",
+    val editEmail: String = ""
 )
 
 sealed interface ClientsIntent {
@@ -38,6 +47,14 @@ sealed interface ClientsIntent {
         val invoiceId: String,
         val phase: JobPhotoPhase
     ) : ClientsIntent
+    data class SetEditProfileVisible(val visible: Boolean, val client: Client? = null) : ClientsIntent
+    data class OnEditFieldsChange(
+        val name: String,
+        val address: String,
+        val phone: String,
+        val email: String
+    ) : ClientsIntent
+    data class SaveClientProfile(val client: Client) : ClientsIntent
 }
 
 class ClientsViewModel(
@@ -48,7 +65,8 @@ class ClientsViewModel(
     private val deleteClientUseCase: DeleteClientUseCase,
     private val linkReceiptToClientUseCase: LinkReceiptToClientUseCase,
     private val saveJobPhotoUseCase: SaveJobPhotoUseCase,
-    private val generateSummaryUseCase: GenerateSummaryUseCase
+    private val generateSummaryUseCase: GenerateSummaryUseCase,
+    private val updateClientUseCase: UpdateClientUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ClientsUiState())
@@ -80,6 +98,28 @@ class ClientsViewModel(
             is ClientsIntent.SetReceiptPickerVisible -> _uiState.update { it.copy(showReceiptPicker = intent.visible) }
             is ClientsIntent.LinkReceipt -> executeLinkReceipt(intent.receipt, intent.clientName)
             is ClientsIntent.OnPhotoCaptured -> executeSavePhoto(intent.uriString, intent.invoiceId, intent.phase)
+            is ClientsIntent.SetEditProfileVisible -> {
+                _uiState.update {
+                    it.copy(
+                        showEditProfile = intent.visible,
+                        editName = intent.client?.name?.value ?: "",
+                        editAddress = intent.client?.address?.value ?: "",
+                        editPhone = intent.client?.phone?.value ?: "",
+                        editEmail = intent.client?.email?.value ?: ""
+                    )
+                }
+            }
+            is ClientsIntent.OnEditFieldsChange -> {
+                _uiState.update {
+                    it.copy(
+                        editName = intent.name,
+                        editAddress = intent.address,
+                        editPhone = intent.phone,
+                        editEmail = intent.email
+                    )
+                }
+            }
+            is ClientsIntent.SaveClientProfile -> executeSaveClientProfile(intent.client)
         }
     }
 
@@ -130,6 +170,19 @@ class ClientsViewModel(
     private fun executeSavePhoto(uri: String, invId: String, phase: JobPhotoPhase) {
         viewModelScope.launch {
             saveJobPhotoUseCase(uri, invId, phase)
+        }
+    }
+
+    private fun executeSaveClientProfile(client: Client) {
+        viewModelScope.launch {
+            val updatedClient = client.copy(
+                name = ClientName(_uiState.value.editName),
+                address = ClientAddress(_uiState.value.editAddress),
+                phone = PhoneNumber(_uiState.value.editPhone),
+                email = EmailAddress(_uiState.value.editEmail)
+            )
+            updateClientUseCase(updatedClient)
+            _uiState.update { it.copy(showEditProfile = false) }
         }
     }
 }

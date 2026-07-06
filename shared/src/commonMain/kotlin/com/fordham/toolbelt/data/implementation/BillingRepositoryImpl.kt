@@ -171,8 +171,8 @@ class BillingRepositoryImpl(
                     productId,
                     platformTarget == PlatformTarget.Android
                 ) ?: when (productId) {
-                    "invoice_hammer_founder_lifetime" -> SubscriptionTierMapper.founderLifetimeFallback()
-                    "invoice_hammer_pro_yearly" -> SubscriptionTierMapper.proYearlyFallback()
+                    "invoice-hammer-founder-lifetime" -> SubscriptionTierMapper.founderLifetimeFallback()
+                    "invoice-hammer-pro-yearly" -> SubscriptionTierMapper.proYearlyFallback()
                     else -> SubscriptionTierMapper.proTierFallback()
                 }
                 val entitlement = UserEntitlement(
@@ -350,9 +350,9 @@ class BillingRepositoryImpl(
         // If Supabase is unconfigured (development or local test mode), we fall back gracefully.
         if (!supabaseConfig.isConfigured) {
             val amount = when (productId) {
-                "hammer_credit_pack_50" -> 50
-                "hammer_credit_pack_150" -> 150
-                "hammer_credit_pack_400" -> 400
+                "hammer-credit-pack-50" -> 50
+                "hammer-credit-pack-150" -> 150
+                "hammer-credit-pack-400" -> 400
                 else -> 0
             }
             return ServerVerificationResult.Success(amount)

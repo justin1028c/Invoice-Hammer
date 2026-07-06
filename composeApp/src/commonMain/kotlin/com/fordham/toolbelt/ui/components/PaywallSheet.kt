@@ -237,6 +237,22 @@ private fun PaywallTierCard(
         tier.id.value == "founder_lifetime" -> "$79.99"
         else -> tier.priceLabel
     }
+
+    val localizedDisplayName = when (tier.id.value) {
+        "free" -> stringResource(Res.string.tier_free_title)
+        "pro_monthly" -> stringResource(Res.string.tier_pro_monthly_title)
+        "pro_yearly" -> stringResource(Res.string.tier_pro_yearly_title)
+        "founder_lifetime" -> stringResource(Res.string.tier_founder_lifetime_title)
+        else -> tier.displayName
+    }
+    
+    val localizedDescription = when (tier.id.value) {
+        "free" -> stringResource(Res.string.tier_free_desc)
+        "pro_monthly" -> stringResource(Res.string.tier_pro_monthly_desc)
+        "pro_yearly" -> stringResource(Res.string.tier_pro_yearly_desc)
+        "founder_lifetime" -> stringResource(Res.string.tier_founder_lifetime_desc)
+        else -> tier.description
+    }
  
     Surface(
         modifier = Modifier
@@ -259,7 +275,7 @@ private fun PaywallTierCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    tier.displayName.uppercase(),
+                    localizedDisplayName.uppercase(),
                     fontWeight = FontWeight.Black,
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.fillMaxWidth()
@@ -273,7 +289,7 @@ private fun PaywallTierCard(
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    tier.description,
+                    localizedDescription,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -374,13 +390,19 @@ private fun SubscriptionValueComparisonCard() {
             }
  
             Spacer(Modifier.height(12.dp))
+            
+            // Dynamically calculate savings: Pro Yearly equivalent ($13.33/mo) vs Pay-As-You-Go ($59.96/mo)
+            val payAsYouGoCost = 59.96
+            val proYearlyMonthlyCost = 159.99 / 12.0
+            val savingsPercent = ((payAsYouGoCost - proYearlyMonthlyCost) / payAsYouGoCost * 100).toInt()
+            
             Surface(
                 color = MaterialTheme.colorScheme.primary,
                 shape = RoundedCornerShape(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    stringResource(Res.string.save_with_pro_yearly),
+                    stringResource(Res.string.save_with_pro_yearly, savingsPercent),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onPrimary,

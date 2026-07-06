@@ -58,7 +58,7 @@ object GeminiPromptSchemas {
         properties = mapOf(
             "description" to GeminiSchema(type = "STRING", description = "Robust, professional description of the service or product. Capitalize first letter, expand abbreviations e.g., 'rep sink' -> 'Repair/replace leaking sink', 'inst panel' -> 'Installation of new electrical panel', do not output generic single words without context"),
             "amount" to GeminiSchema(type = "NUMBER", description = "the cost/amount of this line item"),
-            "category" to GeminiSchema(type = "STRING", description = "either 'Labor', 'Materials', or 'Service'")
+            "category" to GeminiSchema(type = "STRING", description = "select from: 'Drywall', 'Flooring', 'Roofing', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'General Repair', 'Labor', or 'Materials'")
         ),
         required = listOf("description", "amount", "category")
     )

@@ -18,6 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 class StatsViewModel(
     private val getBusinessStatsUseCase: GetBusinessStatsUseCase,
@@ -87,185 +90,150 @@ class StatsViewModel(
 
     fun createStressTestInvoices() {
         viewModelScope.launch(ioDispatcher) {
-            val list = mutableListOf<Invoice>()
             val now = DateTimeUtil.nowEpochMillis()
-            val dateStr = "2026-05-17"
-            val clients = listOf("Alpha Builders", "Omega Plumbing", "Ironwood Carpentry", "Summit HVAC", "Evergreen Landscapes")
-            val items = listOf("Foundations Construction", "Pipe Repairs", "Frame Carpentry", "System Installation", "Sod Layout")
-            
-            // Seed standard clients
-            clients.forEach { name ->
+            val fixtures = listOf(
+                DemoInvoiceFixture(
+                    clientName = "Eleanor Brooks",
+                    address = "1189 West Briar Court, Macon, GA 31210",
+                    phone = "478-555-0142",
+                    email = "eleanor.brooks@example.com",
+                    daysAgo = 1,
+                    total = 548.75,
+                    deposit = 50.0,
+                    summary = "Installed 42 linear feet of baseboard, painted hallway trim, repaired 2 nail pops",
+                    isPaid = false,
+                    isEstimate = false,
+                    durationSeconds = 4_800L,
+                    materialCost = 146.32,
+                    note = "Customer asked for satin white trim finish. Hallway nail pops were repaired before paint touch-up."
+                ),
+                DemoInvoiceFixture(
+                    clientName = "Nadia Coleman",
+                    address = "506 Lakeview Drive, Augusta, GA 30907",
+                    phone = "706-555-0188",
+                    email = "nadia.coleman@example.com",
+                    daysAgo = 4,
+                    total = 410.40,
+                    deposit = 0.0,
+                    summary = "Replaced garbage disposal, installed shut off valve, hauled away old unit",
+                    isPaid = true,
+                    isEstimate = false,
+                    durationSeconds = 3_300L,
+                    materialCost = 188.64,
+                    note = "Kitchen sink tested with no leaks after disposal replacement and valve install."
+                ),
+                DemoInvoiceFixture(
+                    clientName = "Marcus Hill",
+                    address = "742 Pine Ridge Lane, Rex, GA 30273",
+                    phone = "770-555-0164",
+                    email = "marcus.hill@example.com",
+                    daysAgo = 9,
+                    total = 1_286.00,
+                    deposit = 250.0,
+                    summary = "Replaced damaged deck boards, reset handrail posts, pressure washed landing",
+                    isPaid = false,
+                    isEstimate = false,
+                    durationSeconds = 9_900L,
+                    materialCost = 462.18,
+                    note = "Two extra boards near the stairs were soft and should be monitored after the next rain."
+                ),
+                DemoInvoiceFixture(
+                    clientName = "Scott Fordham",
+                    address = "3132 Brookhollow Drive, Rex, GA 30238",
+                    phone = "678-555-0129",
+                    email = "scott.fordham@example.com",
+                    daysAgo = 14,
+                    total = 875.00,
+                    deposit = 0.0,
+                    summary = "Patched drywall opening, skim coated wall, sanded and primed repair area",
+                    isPaid = false,
+                    isEstimate = true,
+                    durationSeconds = 0L,
+                    materialCost = 96.41,
+                    note = "Estimate includes drywall repair and primer only. Paint match may be billed separately."
+                ),
+                DemoInvoiceFixture(
+                    clientName = "Angela Ramirez",
+                    address = "2298 Oak Terrace, Jonesboro, GA 30236",
+                    phone = "404-555-0193",
+                    email = "angela.ramirez@example.com",
+                    daysAgo = 22,
+                    total = 735.80,
+                    deposit = 100.0,
+                    summary = "Installed 3 GFCI outlets, replaced porch light fixture, labeled breaker panel",
+                    isPaid = true,
+                    isEstimate = false,
+                    durationSeconds = 5_700L,
+                    materialCost = 214.08,
+                    note = "Exterior fixture was replaced with weather-rated unit. GFCI outlets passed test/reset check."
+                )
+            )
+
+            val invoices = fixtures.mapIndexed { index, fixture ->
+                val invoiceId = InvoiceId(randomUUID())
                 clientRepository.insertClient(
                     Client(
                         id = ClientId(randomUUID()),
-                        name = ClientName(name),
-                        email = EmailAddress("contact@${name.lowercase().replace(" ", "")}.com"),
-                        phone = PhoneNumber("555-0100"),
-                        address = ClientAddress("Industrial Park Rd")
+                        name = ClientName(fixture.clientName),
+                        email = EmailAddress(fixture.email),
+                        phone = PhoneNumber(fixture.phone),
+                        address = ClientAddress(fixture.address)
                     )
                 )
+                receiptRepository.insertItem(
+                    ReceiptItem(
+                        id = ReceiptId(randomUUID()),
+                        description = "${fixture.summary.substringBefore(",")} materials",
+                        quantity = 1.0,
+                        unitPrice = fixture.materialCost,
+                        totalPrice = fixture.materialCost,
+                        clientName = fixture.clientName,
+                        isBilled = true,
+                        linkedInvoiceId = invoiceId,
+                        lastUpdated = now - fixture.daysAgo.daysToMillis() + 2_000L
+                    )
+                )
+                jobNoteRepository.insertNote(
+                    JobNote(
+                        id = NoteId(randomUUID()),
+                        clientName = fixture.clientName,
+                        text = fixture.note,
+                        timestamp = now - fixture.daysAgo.daysToMillis() + 3_000L,
+                        invoiceId = invoiceId
+                    )
+                )
+                val budgetedMaterials = fixture.total * 0.35
+                jobNoteRepository.insertNote(
+                    JobNote(
+                        id = NoteId(randomUUID()),
+                        clientName = fixture.clientName,
+                        text = SystemBudgetSerializer.serialize(
+                            fixture.total,
+                            budgetedMaterials,
+                            listOf(LineItem(ItemsSummary("Budgeted materials"), MoneyAmount(budgetedMaterials), "Materials"))
+                        ),
+                        timestamp = now - fixture.daysAgo.daysToMillis() + 1_000L,
+                        invoiceId = invoiceId
+                    )
+                )
+                Invoice(
+                    id = invoiceId,
+                    clientName = ClientName(fixture.clientName),
+                    clientAddress = ClientAddress(fixture.address),
+                    clientPhone = PhoneNumber(fixture.phone),
+                    clientEmail = EmailAddress(fixture.email),
+                    date = dateDaysAgo(fixture.daysAgo),
+                    totalAmount = MoneyAmount(fixture.total),
+                    depositAmount = MoneyAmount(fixture.deposit),
+                    itemsSummary = ItemsSummary(fixture.summary),
+                    pdfPath = PdfFilePath(""),
+                    isPaid = fixture.isPaid,
+                    isEstimate = fixture.isEstimate,
+                    lastUpdated = now - fixture.daysAgo.daysToMillis() + index,
+                    durationSeconds = DurationSeconds(fixture.durationSeconds)
+                )
             }
-            
-            for (i in 1..1000) {
-                val amt = (100..2000).random().toDouble()
-                val desc = items[i % items.size]
-                
-                if (i % 10 == 0) {
-                    // Profile/Matched Case for Jobsite Intelligence testing
-                    val estimateId = InvoiceId(randomUUID())
-                    val clientName = "Client IQ $i"
-                    
-                    // Seed scenario client
-                    clientRepository.insertClient(
-                        Client(
-                            id = ClientId(randomUUID()),
-                            name = ClientName(clientName),
-                            email = EmailAddress("stress@test.com"),
-                            phone = PhoneNumber("555-0199"),
-                            address = ClientAddress("123 Construction Rd")
-                        )
-                    )
-                    
-                    list.add(
-                        Invoice(
-                            id = estimateId,
-                            clientName = ClientName(clientName),
-                            clientAddress = ClientAddress("123 Construction Rd"),
-                            clientPhone = PhoneNumber("555-0199"),
-                            clientEmail = EmailAddress("stress@test.com"),
-                            date = dateStr,
-                            totalAmount = MoneyAmount(amt),
-                            depositAmount = MoneyAmount(0.0),
-                            itemsSummary = ItemsSummary(desc),
-                            pdfPath = PdfFilePath(""),
-                            isPaid = false,
-                            isEstimate = true,
-                            lastUpdated = now - (i * 10000),
-                            durationSeconds = DurationSeconds((1800..28800).random().toLong())
-                        )
-                    )
-                    
-                    // Create [SYSTEM_BUDGET] note (30% of total invoice amount allocated as materials)
-                    val budgetedMaterials = amt * 0.3
-                    val lineItems = listOf(
-                        LineItem(ItemsSummary("Materials Package"), MoneyAmount(budgetedMaterials), "Materials")
-                    )
-                    val budgetNoteText = SystemBudgetSerializer.serialize(amt, budgetedMaterials, lineItems)
-                    jobNoteRepository.insertNote(
-                        JobNote(
-                            id = NoteId(randomUUID()),
-                            clientName = clientName,
-                            text = budgetNoteText,
-                            timestamp = now - (i * 10000) + 1000,
-                            invoiceId = estimateId
-                        )
-                    )
-                    
-                    when {
-                        i % 20 == 0 -> {
-                            // Scenario Profile B: Material Overrun (25% overrun)
-                            val actualMaterials = budgetedMaterials * 1.25
-                            receiptRepository.insertItem(
-                                ReceiptItem(
-                                    id = ReceiptId(randomUUID()),
-                                    description = "Lumber & Hardware Overrun",
-                                    quantity = 1.0,
-                                    unitPrice = actualMaterials,
-                                    totalPrice = actualMaterials,
-                                    clientName = clientName,
-                                    isBilled = true,
-                                    linkedInvoiceId = estimateId,
-                                    lastUpdated = now - (i * 10000) + 2000
-                                )
-                            )
-                            jobNoteRepository.insertNote(
-                                JobNote(
-                                    id = NoteId(randomUUID()),
-                                    clientName = clientName,
-                                    text = "Progress update: Material expenses monitored. No scope creep.",
-                                    timestamp = now - (i * 10000) + 3000,
-                                    invoiceId = estimateId
-                                )
-                            )
-                        }
-                        i % 30 == 0 -> {
-                            // Scenario Profile C: Scope Creep / Change Order Opportunity
-                            receiptRepository.insertItem(
-                                ReceiptItem(
-                                    id = ReceiptId(randomUUID()),
-                                    description = "Lumber & Hardware",
-                                    quantity = 1.0,
-                                    unitPrice = budgetedMaterials,
-                                    totalPrice = budgetedMaterials,
-                                    clientName = clientName,
-                                    isBilled = true,
-                                    linkedInvoiceId = estimateId,
-                                    lastUpdated = now - (i * 10000) + 2000
-                                )
-                            )
-                            jobNoteRepository.insertNote(
-                                JobNote(
-                                    id = NoteId(randomUUID()),
-                                    clientName = clientName,
-                                    text = "Owner asked to patch two extra walls in the hallway. Also added a custom dimmer switch.",
-                                    timestamp = now - (i * 10000) + 3000,
-                                    invoiceId = estimateId
-                                )
-                            )
-                        }
-                        else -> {
-                            // Scenario Profile A: Perfect Profit / Budget Match
-                            receiptRepository.insertItem(
-                                ReceiptItem(
-                                    id = ReceiptId(randomUUID()),
-                                    description = "Lumber & Hardware",
-                                    quantity = 1.0,
-                                    unitPrice = budgetedMaterials,
-                                    totalPrice = budgetedMaterials,
-                                    clientName = clientName,
-                                    isBilled = true,
-                                    linkedInvoiceId = estimateId,
-                                    lastUpdated = now - (i * 10000) + 2000
-                                )
-                            )
-                            jobNoteRepository.insertNote(
-                                JobNote(
-                                    id = NoteId(randomUUID()),
-                                    clientName = clientName,
-                                    text = "Standard install completed. No unexpected work requested.",
-                                    timestamp = now - (i * 10000) + 3000,
-                                    invoiceId = estimateId
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    // Standard Invoice simulation
-                    val client = clients[i % clients.size]
-                    val isPaid = i % 2 == 0
-                    val isEstimate = i % 5 != 0
-                    
-                    list.add(
-                        Invoice(
-                            id = InvoiceId(randomUUID()),
-                            clientName = ClientName(client),
-                            clientAddress = ClientAddress("123 Construction Rd"),
-                            clientPhone = PhoneNumber("555-0199"),
-                            clientEmail = EmailAddress("stress@test.com"),
-                            date = dateStr,
-                            totalAmount = MoneyAmount(amt),
-                            depositAmount = MoneyAmount(if (isPaid) amt * 0.1 else 0.0),
-                            itemsSummary = ItemsSummary(desc),
-                            pdfPath = PdfFilePath(""),
-                            isPaid = isPaid,
-                            isEstimate = isEstimate,
-                            lastUpdated = now - (i * 10000),
-                            durationSeconds = DurationSeconds((1800..28800).random().toLong())
-                        )
-                    )
-                }
-            }
-            invoiceRepository.insertInvoices(list)
+            invoiceRepository.insertInvoices(invoices)
         }
     }
  
@@ -281,4 +249,30 @@ class StatsViewModel(
     fun clearError() {
         _errorMessage.value = null
     }
+
+    private fun dateDaysAgo(daysAgo: Int): String {
+        val millis = DateTimeUtil.nowEpochMillis() - daysAgo.daysToMillis()
+        val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+        val month = dt.monthNumber.toString().padStart(2, '0')
+        val day = dt.dayOfMonth.toString().padStart(2, '0')
+        return "${dt.year}-$month-$day"
+    }
+
+    private fun Int.daysToMillis(): Long = this * 24L * 60L * 60L * 1000L
+
+    private data class DemoInvoiceFixture(
+        val clientName: String,
+        val address: String,
+        val phone: String,
+        val email: String,
+        val daysAgo: Int,
+        val total: Double,
+        val deposit: Double,
+        val summary: String,
+        val isPaid: Boolean,
+        val isEstimate: Boolean,
+        val durationSeconds: Long,
+        val materialCost: Double,
+        val note: String
+    )
 }

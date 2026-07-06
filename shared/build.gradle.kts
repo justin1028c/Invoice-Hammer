@@ -64,7 +64,7 @@ kotlin {
             implementation("com.google.firebase:firebase-auth:23.1.0")
             implementation("com.google.android.gms:play-services-auth:21.3.0")
             implementation(libs.mlkit.text.recognition)
-            implementation("com.google.mediapipe:tasks-genai:0.10.27")
+            implementation("com.google.mediapipe:tasks-genai:0.10.35")
             implementation("com.google.android.gms:play-services-location:21.2.0")
         }
         

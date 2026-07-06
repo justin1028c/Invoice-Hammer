@@ -1,6 +1,5 @@
 package com.fordham.toolbelt.util
 
-import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -10,9 +9,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-actual class NetworkObserver(private val context: Context) {
+actual class NetworkObserver {
     actual val isOnline: Flow<Boolean> = callbackFlow {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val context = AndroidAppContext.application ?: throw IllegalStateException("Application context not initialized")
+        val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {

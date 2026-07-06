@@ -18,6 +18,7 @@ import com.fordham.toolbelt.domain.usecase.stripe.GetStripePaymentModeUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.ResolveStripeCheckoutLinkUseCase
 import com.fordham.toolbelt.domain.usecase.stripe.ResolveStripeCheckoutLinkOutcome
 import com.fordham.toolbelt.domain.payment.stripe.StripeCheckoutUrlParser
+import com.fordham.toolbelt.util.AppLogger
 import com.fordham.toolbelt.util.PlatformActions
 import com.fordham.toolbelt.util.UiMessageKeys
 import kotlinx.coroutines.flow.first
@@ -63,38 +64,56 @@ class StripeConnectViewModel(
         onFinished: () -> Unit = {}
     ) {
         viewModelScope.launch {
+            AppLogger.d("PaymentFlow", "createRequest: invoice=${invoice.id.value} total=${invoice.totalAmount.value} type=$type provider=$provider")
             invoicePaymentViewModel.updateTransient(
                 isCreatingPaymentRequest = true,
                 clearErrorMessage = true,
                 clearOpenUrlOnce = true
             )
-            when (val outcome = createPaymentRequestUseCase(invoice, type, provider)) {
-                is PaymentRequestOutcome.Success -> {
-                    invoicePaymentViewModel.rememberPendingStripeCheckout(outcome.request)
-                    invoicePaymentViewModel.updateTransient(
-                        latestRequest = outcome.request,
-                        clearErrorMessage = true,
-                        clearOpenUrlOnce = true,
-                        isCreatingPaymentRequest = false
-                    )
-                    resolveActiveCheckoutLink(outcome.request)
+            try {
+                val outcome = createPaymentRequestUseCase(invoice, type, provider)
+                AppLogger.d("PaymentFlow", "createRequest outcome=$outcome")
+                when (outcome) {
+                    is PaymentRequestOutcome.Success -> {
+                        invoicePaymentViewModel.rememberPendingStripeCheckout(outcome.request)
+                        invoicePaymentViewModel.updateTransient(
+                            latestRequest = outcome.request,
+                            clearActiveCheckoutUrl = true,
+                            checkoutLinkCanPay = true,
+                            clearErrorMessage = true,
+                            clearOpenUrlOnce = true,
+                            isCreatingPaymentRequest = false
+                        )
+                        resolveActiveCheckoutLink(outcome.request)
+                    }
+                    is PaymentRequestOutcome.Failure -> {
+                        AppLogger.d("PaymentFlow", "createRequest Failure error=${outcome.error.value}")
+                        invoicePaymentViewModel.updateTransient(
+                            errorMessage = outcome.error.value,
+                            openUrlOnce = outcome.actionUrl,
+                            isCreatingPaymentRequest = false
+                        )
+                    }
                 }
-                is PaymentRequestOutcome.Failure -> {
-                    invoicePaymentViewModel.updateTransient(
-                        errorMessage = outcome.error.value,
-                        openUrlOnce = outcome.actionUrl,
-                        isCreatingPaymentRequest = false
-                    )
-                }
+            } catch (e: Exception) {
+                AppLogger.e("PaymentFlow", "createRequest crashed", e)
+                invoicePaymentViewModel.updateTransient(
+                    errorMessage = e.message ?: "Unknown error occurred during payment request creation",
+                    isCreatingPaymentRequest = false
+                )
+            } finally {
+                AppLogger.d("PaymentFlow", "createRequest finally: calling onFinished")
+                onFinished()
             }
-            onFinished()
         }
     }
 
     fun resolveActiveCheckoutLink(request: InvoicePaymentRequest) {
+        AppLogger.d("PaymentFlow", "resolveActiveCheckoutLink: id=${request.id.value} provider=${request.provider} link=${request.paymentLink.value}")
         if (!request.provider.usesStripeRail ||
             !StripeCheckoutUrlParser.isHostedCheckoutUrl(request.paymentLink.value)
         ) {
+            AppLogger.d("PaymentFlow", "resolveActiveCheckoutLink: fallback/demo URL")
             invoicePaymentViewModel.updateTransient(
                 activeCheckoutUrl = request.paymentLink.value,
                 checkoutLinkCanPay = true,
@@ -105,6 +124,7 @@ class StripeConnectViewModel(
         }
 
         val sessionId = StripeCheckoutUrlParser.extractSessionId(request.paymentLink.value)
+        AppLogger.d("PaymentFlow", "resolveActiveCheckoutLink: extracted sessionId=$sessionId")
         if (sessionId.isNullOrBlank()) {
             invoicePaymentViewModel.updateTransient(
                 activeCheckoutUrl = request.paymentLink.value,
@@ -116,47 +136,61 @@ class StripeConnectViewModel(
         }
 
         viewModelScope.launch {
+            AppLogger.d("PaymentFlow", "resolveActiveCheckoutLink: launching resolve coroutine")
             invoicePaymentViewModel.updateTransient(
                 isResolvingCheckoutLink = true,
                 clearCheckoutLinkMessage = true
             )
-            when (val outcome = resolveStripeCheckoutLinkUseCase(sessionId)) {
-                is ResolveStripeCheckoutLinkOutcome.Resolved -> {
-                    when {
-                        outcome.canPay && !outcome.checkoutUrl.isNullOrBlank() -> {
-                            invoicePaymentViewModel.updateTransient(
-                                activeCheckoutUrl = outcome.checkoutUrl,
-                                checkoutLinkCanPay = true,
-                                clearCheckoutLinkMessage = true,
-                                isResolvingCheckoutLink = false
-                            )
-                        }
-                        outcome.paid -> {
-                            invoicePaymentViewModel.updateTransient(
-                                clearActiveCheckoutUrl = true,
-                                checkoutLinkCanPay = false,
-                                checkoutLinkMessage = UiMessageKeys.CHECKOUT_LINK_ALREADY_PAID,
-                                isResolvingCheckoutLink = false
-                            )
-                        }
-                        else -> {
-                            invoicePaymentViewModel.updateTransient(
-                                clearActiveCheckoutUrl = true,
-                                checkoutLinkCanPay = false,
-                                checkoutLinkMessage = UiMessageKeys.CHECKOUT_LINK_EXPIRED,
-                                isResolvingCheckoutLink = false
-                            )
+            try {
+                when (val outcome = resolveStripeCheckoutLinkUseCase(sessionId)) {
+                    is ResolveStripeCheckoutLinkOutcome.Resolved -> {
+                        AppLogger.d("PaymentFlow", "resolveStripeCheckoutLink Resolved: canPay=${outcome.canPay} paid=${outcome.paid} url=${outcome.checkoutUrl}")
+                        when {
+                            outcome.canPay -> {
+                                val resolvedUrl = outcome.checkoutUrl ?: request.paymentLink.value
+                                invoicePaymentViewModel.updateTransient(
+                                    activeCheckoutUrl = resolvedUrl,
+                                    checkoutLinkCanPay = true,
+                                    clearCheckoutLinkMessage = true,
+                                    isResolvingCheckoutLink = false
+                                )
+                            }
+                            outcome.paid -> {
+                                invoicePaymentViewModel.updateTransient(
+                                    clearActiveCheckoutUrl = true,
+                                    checkoutLinkCanPay = false,
+                                    checkoutLinkMessage = UiMessageKeys.CHECKOUT_LINK_ALREADY_PAID,
+                                    isResolvingCheckoutLink = false
+                                )
+                            }
+                            else -> {
+                                invoicePaymentViewModel.updateTransient(
+                                    clearActiveCheckoutUrl = true,
+                                    checkoutLinkCanPay = false,
+                                    checkoutLinkMessage = UiMessageKeys.CHECKOUT_LINK_EXPIRED,
+                                    isResolvingCheckoutLink = false
+                                )
+                            }
                         }
                     }
+                    is ResolveStripeCheckoutLinkOutcome.Failure -> {
+                        AppLogger.d("PaymentFlow", "resolveStripeCheckoutLink Failure: ${outcome.error.value}")
+                        invoicePaymentViewModel.updateTransient(
+                            activeCheckoutUrl = request.paymentLink.value,
+                            checkoutLinkCanPay = true,
+                            checkoutLinkMessage = outcome.error.value,
+                            isResolvingCheckoutLink = false
+                        )
+                    }
                 }
-                is ResolveStripeCheckoutLinkOutcome.Failure -> {
-                    invoicePaymentViewModel.updateTransient(
-                        activeCheckoutUrl = request.paymentLink.value,
-                        checkoutLinkCanPay = true,
-                        checkoutLinkMessage = outcome.error.value,
-                        isResolvingCheckoutLink = false
-                    )
-                }
+            } catch (e: Exception) {
+                AppLogger.e("PaymentFlow", "resolveActiveCheckoutLink crashed during API call", e)
+                invoicePaymentViewModel.updateTransient(
+                    activeCheckoutUrl = request.paymentLink.value,
+                    checkoutLinkCanPay = true,
+                    checkoutLinkMessage = e.message ?: "Failed to resolve payment link.",
+                    isResolvingCheckoutLink = false
+                )
             }
         }
     }
@@ -195,5 +229,17 @@ class StripeConnectViewModel(
                 }
             }
         }
+    }
+
+    fun selectPaymentRequest(request: InvoicePaymentRequest) {
+        invoicePaymentViewModel.updateTransient(
+            latestRequest = request,
+            clearActiveCheckoutUrl = true,
+            checkoutLinkCanPay = true,
+            clearErrorMessage = true,
+            clearOpenUrlOnce = true,
+            isCreatingPaymentRequest = false
+        )
+        resolveActiveCheckoutLink(request)
     }
 }

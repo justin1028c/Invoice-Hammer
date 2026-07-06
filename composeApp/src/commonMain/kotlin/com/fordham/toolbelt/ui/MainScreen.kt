@@ -157,6 +157,7 @@ fun MainScreen(
     val subscriptionUiState by subscriptionViewModel.uiState.collectAsStateWithLifecycle()
     val receiptsUiState by receiptsViewModel.uiState.collectAsStateWithLifecycle()
     val canUseForeman = subscriptionUiState.canUseForemanAgent
+    val isLocalLlmReady by settingsViewModel.isLlamaDownloaded.collectAsStateWithLifecycle()
     var showPaymentLedger by remember { mutableStateOf(false) }
     var pendingPaymentInvoice by remember { mutableStateOf<Invoice?>(null) }
     var pendingPaymentType by remember { mutableStateOf<PaymentRequestType?>(null) }
@@ -298,6 +299,12 @@ fun MainScreen(
             voiceAssistant.startListeningWithMeta(
                 onResult = { meta ->
                     agentViewModel.setListening(false)
+                    AppLogger.e(
+                        "VoiceInvoiceHandoff",
+                        "FINAL_TO_FOREMAN text='${meta.text}' confidence=${meta.confidence} " +
+                            "activeTab=${ForemanRuntimeBinding.current().activeTab} " +
+                            "canUseForeman=$canUseForeman localLlmReady=$isLocalLlmReady"
+                    )
                     scope.launch {
                         agentViewModel.executeAgentCommand(
                             meta.text,
@@ -309,6 +316,7 @@ fun MainScreen(
                 },
                 onEnd = { agentViewModel.setListening(false) },
                 onPartialResult = { partial ->
+                    AppLogger.e("VoiceInvoiceHandoff", "PARTIAL text='$partial'")
                     agentViewModel.updateTranscript(partial)
                 }
             )
@@ -356,7 +364,7 @@ fun MainScreen(
             floatingActionButton = {
                 MainAgentFab(
                     isListening = agentState.isListening,
-                    isPremium = canUseForeman,
+                    isPremium = canUseForeman || isLocalLlmReady,
                     onStartListening = {
                         startAgentListening()
                     },

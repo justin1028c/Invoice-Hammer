@@ -42,8 +42,8 @@ internal object SubscriptionTierMapper {
         displayName = "Pro Monthly",
         description = "AI, OCR, Bento reports, and tax export.",
         sortOrder = 1,
-        googlePlayProductId = "invoice_hammer_pro_monthly",
-        appleProductId = "invoice_hammer_pro_monthly",
+        googlePlayProductId = "invoice-hammer-pro-monthly",
+        appleProductId = "invoice-hammer-pro-monthly",
         billingPeriod = SubscriptionBillingPeriod.Monthly,
         priceLabel = "$19.99 / mo",
         enabledFeatures = setOf(
@@ -64,8 +64,8 @@ internal object SubscriptionTierMapper {
         // $19.99/mo × 12 = $239.88; yearly saves $79.89
         description = "All Pro features · Save \$79.89 vs monthly",
         sortOrder = 2,
-        googlePlayProductId = "invoice_hammer_pro_yearly",
-        appleProductId = "invoice_hammer_pro_yearly",
+        googlePlayProductId = "invoice-hammer-pro-yearly",
+        appleProductId = "invoice-hammer-pro-yearly",
         billingPeriod = SubscriptionBillingPeriod.Yearly,
         priceLabel = "$159.99 / yr",
         enabledFeatures = setOf(
@@ -85,8 +85,8 @@ internal object SubscriptionTierMapper {
         displayName = "Founder's Lifetime Pass",
         description = "One-time purchase · All Pro features forever",
         sortOrder = 3,
-        googlePlayProductId = "invoice_hammer_founder_lifetime",
-        appleProductId = "invoice_hammer_founder_lifetime",
+        googlePlayProductId = "invoice-hammer-founder-lifetime",
+        appleProductId = "invoice-hammer-founder-lifetime",
         billingPeriod = SubscriptionBillingPeriod.None,
         priceLabel = "$79.99",
         enabledFeatures = setOf(

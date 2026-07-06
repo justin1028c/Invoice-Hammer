@@ -26,7 +26,8 @@ class KtorGeminiRepository(
     private val geminiConfig: ForemanGeminiConfig,
     private val databaseProvider: DatabaseProvider,
     private val settingsRepository: com.fordham.toolbelt.domain.repository.SettingsRepository,
-    private val localLlmEngine: com.fordham.toolbelt.data.local.LocalLlmEngine
+    private val localLlmEngine: com.fordham.toolbelt.data.local.LocalLlmEngine,
+    private val networkObserver: NetworkObserver
 ) : GeminiRepository {
 
     private suspend fun jobNoteDao() = databaseProvider.getDatabase().jobNoteDao()
@@ -87,7 +88,7 @@ class KtorGeminiRepository(
         properties = mapOf(
             "description" to GeminiSchema(type = "STRING", description = "the service or product description"),
             "amount" to GeminiSchema(type = "NUMBER", description = "the cost/amount of this line item"),
-            "category" to GeminiSchema(type = "STRING", description = "either 'Labor', 'Materials', or 'Service'")
+            "category" to GeminiSchema(type = "STRING", description = "select from: 'Drywall', 'Flooring', 'Roofing', 'Plumbing', 'Electrical', 'Painting', 'Carpentry', 'General Repair', 'Labor', or 'Materials'")
         ),
         required = listOf("description", "amount", "category")
     )
@@ -228,14 +229,27 @@ class KtorGeminiRepository(
                 """.trimIndent()
             }
 
-            if (localLlmEngine.isSupported()) {
+            val localSupported = localLlmEngine.isSupported()
+            if (localSupported) {
                 val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(prompt))
                 if (localOutcome is GeminiOutcome.Success) {
                     AppLogger.d("KtorGeminiRepository", "Using local LLM outcome successfully.")
-                    return GeminiOutcome.Success(AiUtil.cleanJson(localOutcome.text))
+                    val cleanedLocal = AiUtil.cleanJson(localOutcome.text)
+                    if (cleanedLocal.isNotBlank()) {
+                        return GeminiOutcome.Success(cleanedLocal)
+                    }
+                    AppLogger.d("KtorGeminiRepository", "Local LLM returned blank task response.")
                 } else {
                     AppLogger.d("KtorGeminiRepository", "Local LLM returned failure: ${(localOutcome as GeminiOutcome.Failure).error.value}. Falling back to cloud.")
                 }
+            }
+            if (!canUseCloud()) {
+                val message = if (localSupported) {
+                    "Local Gemma could not answer that offline. Try a shorter command."
+                } else {
+                    "You're offline and the local model is not ready."
+                }
+                return GeminiOutcome.Failure(FailureMessage(message))
             }
 
             val response = callGemini(
@@ -348,11 +362,23 @@ class KtorGeminiRepository(
                     FailureMessage("Foreman requires native function calling; no tools were registered.")
                 )
             } else {
-                if (localLlmEngine.isSupported()) {
+                val localSupported = localLlmEngine.isSupported()
+                if (localSupported) {
                     val localResult = runLocalToolCall(input, context, session, functions, systemInstruction)
                     if (localResult != null) {
                         return localResult
                     }
+                }
+                if (!canUseCloud()) {
+                    return ToolCallOutcome.Failure(
+                        FailureMessage(
+                            if (localSupported) {
+                                "Local Gemma could not understand that offline. Try saying it shorter, like: invoice John Smith for drywall repair, 200 dollars."
+                            } else {
+                                "You're offline and the local model is not ready."
+                            }
+                        )
+                    )
                 }
 
                 generateToolCallWithFunctions(
@@ -395,105 +421,69 @@ class KtorGeminiRepository(
 
     override suspend fun processInvoiceText(text: String, categories: List<String>): InvoiceTextOutcome {
         return try {
-        val currentDate = DateTimeUtil.getNowFormatted()
-        val prompt = LlmLocalePolicy.wrapPrompt(
-            """
-            You are Foreman, the voice-first AI assistant inside Invoice Hammer for handymen and contractors (Bilingual English + Spanish).
+            val currentDate = DateTimeUtil.getNowFormatted()
+            AppLogger.d("InvoiceAiLogging", "Voice Transcript: \"$text\"")
 
-            Goal: Turn spoken commands or noisy transcriptions into accurate, structured invoice drafts. Always prioritize user control and data integrity.
+            val localSupported = localLlmEngine.isSupported()
+            if (localSupported) {
+                val localPrompt = LocalPromptProvider.getVoiceInvoicePrompt(text, currentDate)
+                AppLogger.d("InvoiceAiLogging", "Selected prompt: LOCAL")
+                AppLogger.d("InvoiceAiLogging", "Prompt sent to local Gemma model:\n$localPrompt")
 
-            ### 📅 Current Context (Use for Relative Dates)
-            - Current Date Reference: $currentDate (Use this to resolve phrases like "yesterday," "last week," or "due in 15 days").
-
-            ### 🛡️ Domain Constraints (Never Violate)
-            - Monetary amounts must be non-negative (>= 0.0)
-            - Client name cannot be blank
-            - Tax rate: 0.0–100.0 (default 7.0 if unspecified)
-            - Math Verification: For every item, "amount" MUST exactly equal "quantity * unitPrice". Double-check your math.
-
-            ### 📤 Required Output Schema Description
-            Extract and return the details from the text below as a single flat JSON object with the following schema:
-            - clientName: string, name of the client. Cannot be blank.
-            - clientAddress: string, client billing address.
-            - items: array of objects representing line items. Each object MUST contain:
-                * description: string, the service or product summary.
-                * quantity: number, quantity of units (default 1.0 if not specified).
-                * unitPrice: number, cost per unit (default to amount if quantity is 1.0).
-                * amount: number, total item cost (MUST equal quantity * unitPrice).
-                * category: string, select from 'Labor', 'Materials', or 'Service'.
-            - laborHours: number, hourly labor hours if stated.
-            - laborRate: number, hourly labor rate in dollars if stated.
-            - depositAmount: number, deposit amount in dollars (default 0.0).
-            - taxRatePercent: number, tax percentage rate (0.0 to 100.0, default 7.0).
-            - discountPercent: number, discount percentage (default 0.0).
-            - notes: string, any additional terms or notes.
-            - confidenceScore: number, overall parsing confidence score (0.0 to 1.0).
-            - userSummary: string, friendly verbal summary of parsed items and totals.
-            - validationIssues: array of strings. Fill with these codes if applicable: "MISSING_CLIENT_NAME", "MISSING_CLIENT_ADDRESS", "ZERO_AMOUNT", "LOW_AUDIO_CONFIDENCE", "MATH_MISMATCH".
-
-            ### 🔨 Contractor Domain Knowledge & Lingo
-            * Drywall: "15 ft of drywall mudded taped and skimmed at $500" -> Qty: 15, Price: 500, Category: "Materials"
-            * Plumbing: "Replaced toilet at $200" -> Qty: 1, Price: 200, Category: "Service"
-            * Labor: "Add 10 hours at $50/hour" -> Qty: 10, Price: 50, Category: "Labor"
-            * Bilingual matching: Map Spanish terms to standardized descriptions (e.g., "tablaroca" to "Sheetrock/Drywall", "masilla" to "Drywall Mud", "inodoro" to "Toilet replacement").
-
-            #### 🌐 Few-Shot Bilingual / Spanglish Examples:
-            * Input: "Cobra 5 horas de labor a $45 y ponle $150 de la masilla y la tablaroca a Justin"
-                - clientName: "Justin"
-                - laborHours: 5.0, laborRate: 45.0
-                - items: [{"description": "Drywall mud and sheetrock (Masilla y tablaroca)", "quantity": 1.0, "unitPrice": 150.0, "amount": 150.0, "category": "Materials"}]
-            * Input: "Factura a John Doe $200 por reparar el inodoro y ponle tax de siete por ciento"
-                - clientName: "John Doe"
-                - items: [{"description": "Toilet repair (Reparación de inodoro)", "quantity": 1.0, "unitPrice": 200.0, "amount": 200.0, "category": "Service"}]
-                - taxRatePercent: 7.0
-
-            ### 🎤 Handling Noisy Job-Site Inputs
-            * Noisy Audio/Uncertainty: If input is noisy or unclear, drop confidenceScore < 0.6, output empty fields, append "LOW_AUDIO_CONFIDENCE" to validationIssues, and ask for clarification in userSummary.
-            * Incremental Additions: If user says "Add 2 hours to that", append it as a new line item.
-
-            [INVOICE TEXT OR TRANSCRIPT]
-            $text
-
-            CRITICAL: Return ONLY raw JSON matching this schema. No explanation or markdown code fences.
-            """.trimIndent(),
-            LlmLocalePolicy.OutputMode.StructuredJson
-        )
-        if (localLlmEngine.isSupported()) {
-            val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(prompt))
-            if (localOutcome is GeminiOutcome.Success) {
-                AppLogger.d("KtorGeminiRepository", "Using local LLM for processInvoiceText successfully.")
-                val cleaned = AiUtil.cleanJson(localOutcome.text)
-                try {
-                    val result = json.decodeFromString<AiInvoiceResultDto>(cleaned).toDomain()
-                    return InvoiceTextOutcome.Success(result)
-                } catch (e: Exception) {
-                    AppLogger.e("KtorGeminiRepository", "Failed to parse local LLM invoice JSON. Raw: ${localOutcome.text}", e)
+                val localOutcome = localLlmEngine.generateText(com.fordham.toolbelt.domain.model.LlmPrompt(localPrompt))
+                if (localOutcome is GeminiOutcome.Success) {
+                    AppLogger.d("InvoiceAiLogging", "Local model raw response:\n${localOutcome.text}")
+                    val cleaned = AiUtil.cleanJson(localOutcome.text)
+                    try {
+                        val result = json.decodeFromString<AiInvoiceResultDto>(cleaned).toDomain()
+                        AppLogger.d("InvoiceAiLogging", "Parsed local invoice state after processing:\n$result")
+                        return InvoiceTextOutcome.Success(result)
+                    } catch (e: Exception) {
+                        AppLogger.e("InvoiceAiLogging", "Failed to parse local LLM invoice JSON. Raw: ${localOutcome.text}", e)
+                    }
+                } else {
+                    val errMsg = (localOutcome as? GeminiOutcome.Failure)?.error?.value ?: "unknown"
+                    AppLogger.d("InvoiceAiLogging", "Local Gemma model returned failure: $errMsg. Falling back to cloud.")
                 }
-            } else {
-                AppLogger.d("KtorGeminiRepository", "Local LLM returned failure in processInvoiceText. Falling back to cloud.")
             }
-        }
+            if (!canUseCloud()) {
+                val message = if (localSupported) {
+                    "Local Gemma could not parse that offline. Try a shorter voice invoice."
+                } else {
+                    "You're offline and the local model is not ready."
+                }
+                return InvoiceTextOutcome.Failure(FailureMessage(message))
+            }
 
-        val response = callGemini(
-            prompt = prompt,
-            model = agentModelName,
-            responseMimeType = "application/json",
-            temperature = 0.0f,
-            responseSchema = invoiceResponseSchema
-        )
-        val resText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
-        val cleaned = AiUtil.cleanJson(resText)
-        try {
-            val result = json.decodeFromString<AiInvoiceResultDto>(cleaned).toDomain()
-            InvoiceTextOutcome.Success(result)
+            AppLogger.d("InvoiceAiLogging", "Selected prompt: CLOUD")
+            val cloudPrompt = LlmLocalePolicy.wrapPrompt(
+                VoiceInvoicePromptBuilder.buildCloudPrompt(text, currentDate),
+                LlmLocalePolicy.OutputMode.StructuredJson
+            )
+            AppLogger.d("InvoiceAiLogging", "Prompt sent to cloud Gemini model:\n$cloudPrompt")
+
+            val response = callGemini(
+                prompt = cloudPrompt,
+                model = agentModelName,
+                responseMimeType = "application/json",
+                temperature = 0.0f,
+                responseSchema = invoiceResponseSchema
+            )
+            val resText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
+            AppLogger.d("InvoiceAiLogging", "Cloud model raw response:\n$resText")
+            val cleaned = AiUtil.cleanJson(resText)
+            try {
+                val result = json.decodeFromString<AiInvoiceResultDto>(cleaned).toDomain()
+                AppLogger.d("InvoiceAiLogging", "Parsed cloud invoice state after processing:\n$result")
+                InvoiceTextOutcome.Success(result)
+            } catch (e: Exception) {
+                AppLogger.e("InvoiceAiLogging", "Failed to parse cloud Gemini invoice JSON. Raw: $resText, Cleaned: $cleaned", e)
+                throw e
+            }
         } catch (e: Exception) {
-            AppLogger.e("KtorGeminiRepository", "Failed to parse invoice text JSON. Raw: $resText, Cleaned: $cleaned", e)
-            throw e
+            InvoiceTextOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process invoice text"))
         }
-    } catch (e: Exception) {
-        InvoiceTextOutcome.Failure(com.fordham.toolbelt.domain.model.FailureMessage(e.message ?: "Failed to process invoice text"))
     }
-}
 
     override suspend fun processReceiptImage(imageBytes: ByteArray): ReceiptImageOutcome = try {
         val prompt = LlmLocalePolicy.wrapPrompt(
@@ -763,6 +753,10 @@ class KtorGeminiRepository(
             }
         }
         throw lastException ?: Exception("Foreman Gemini request failed after retries.")
+    }
+
+    private suspend fun canUseCloud(): Boolean {
+        return networkObserver.isOnline.first()
     }
 
     override suspend fun transcribeAudio(audioBytes: ByteArray, mimeType: String): GeminiOutcome = try {

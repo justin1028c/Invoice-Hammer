@@ -5,6 +5,7 @@ import com.fordham.toolbelt.domain.model.agent.*
 import com.fordham.toolbelt.domain.repository.*
 import com.fordham.toolbelt.domain.usecase.GenerateAndSaveInvoiceUseCase
 import com.fordham.toolbelt.domain.usecase.GenerateInvoiceRequest
+import com.fordham.toolbelt.util.AppLogger
 import com.fordham.toolbelt.util.randomUUID
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToLong
@@ -41,19 +42,37 @@ class InvoiceToolExecutions(
 
     suspend fun executeUpdateDraftInvoice(arguments: UpdateDraftInvoiceArgs): ToolExecutionResult {
         val current = draftRepository.getDraft().first()
+        val runtime = ForemanRuntimeBinding.current()
+        val requestedClientName = arguments.clientName?.value?.trim().orEmpty()
+        val requestedClientAddress = arguments.clientAddress?.value?.trim().orEmpty()
+        val fallbackClientName = requestedClientName
+            .ifBlank { current.clientName.trim() }
+            .ifBlank { runtime.selectedClientName?.trim().orEmpty() }
         val mergedItems = when {
             arguments.replaceLineItems -> arguments.lineItems.map { it.toLineItem() }
             arguments.lineItems.isNotEmpty() -> current.lineItems + arguments.lineItems.map { it.toLineItem() }
             else -> current.lineItems
         }
         val updated = current.copy(
-            clientName = arguments.clientName?.value?.takeIf { it.isNotBlank() } ?: current.clientName,
-            clientAddress = arguments.clientAddress?.value?.takeIf { it.isNotBlank() } ?: current.clientAddress,
+            clientName = fallbackClientName,
+            clientAddress = requestedClientAddress.ifBlank { current.clientAddress },
             taxRate = arguments.taxRate ?: current.taxRate,
             deposit = arguments.deposit ?: current.deposit,
             lineItems = mergedItems
         )
+        AppLogger.d(
+            "VoiceInvoiceTrace",
+            "UpdateDraftInvoice argsClient='$requestedClientName' currentClient='${current.clientName}' " +
+                "selectedClient='${runtime.selectedClientName.orEmpty()}' finalClient='${updated.clientName}' " +
+                "argsAddress='$requestedClientAddress' currentAddress='${current.clientAddress}' " +
+                "lineItems=${arguments.lineItems.size} replace=${arguments.replaceLineItems}"
+        )
         if (updated.clientName.isBlank()) {
+            AppLogger.d(
+                "VoiceInvoiceTrace",
+                "UpdateDraftInvoice rejected: missing client. Current itemDesc='${current.itemDesc}' " +
+                    "draftItems=${current.lineItems.size}"
+            )
             return ToolExecutionResult.Failure(
                 ToolName.UpdateDraftInvoice,
                 FailureMessage("Draft needs a client name before line items can be added.")
