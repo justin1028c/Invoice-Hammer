@@ -2,6 +2,7 @@ package com.fordham.toolbelt.domain.model
 
 data class VoiceInvoiceEvidence(
     val normalizedTranscript: String,
+    val clientNameCandidate: String = "",
     val moneyAmounts: List<Double> = emptyList(),
     val percentages: List<Double> = emptyList(),
     val phoneNumbers: List<String> = emptyList(),

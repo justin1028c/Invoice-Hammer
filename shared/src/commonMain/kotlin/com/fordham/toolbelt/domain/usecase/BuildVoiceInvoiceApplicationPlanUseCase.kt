@@ -3,6 +3,7 @@ package com.fordham.toolbelt.domain.usecase
 import com.fordham.toolbelt.domain.model.AiInvoiceResult
 import com.fordham.toolbelt.domain.model.DraftInvoice
 import com.fordham.toolbelt.domain.model.VoiceInvoiceApplicationPlan
+import com.fordham.toolbelt.domain.model.VoiceInvoiceIssueCatalog
 import com.fordham.toolbelt.util.AppLogger
 
 class BuildVoiceInvoiceApplicationPlanUseCase {
@@ -11,6 +12,7 @@ class BuildVoiceInvoiceApplicationPlanUseCase {
         ai: AiInvoiceResult
     ): VoiceInvoiceApplicationPlan {
         val issues = ai.validationIssues.distinct()
+        val classifiedIssues = VoiceInvoiceIssueCatalog.classifyAll(issues)
         val lowConfidence = ai.confidenceScore < MIN_AUTO_APPLY_CONFIDENCE ||
             "LOW_AUDIO_CONFIDENCE" in issues
         val blockedForFollowUp = lowConfidence ||
@@ -33,6 +35,7 @@ class BuildVoiceInvoiceApplicationPlanUseCase {
                 confidenceScore = ai.confidenceScore,
                 userSummary = ai.userSummary,
                 validationIssues = issues,
+                classifiedIssues = classifiedIssues,
                 requiresFollowUp = true
             )
         }
@@ -51,6 +54,7 @@ class BuildVoiceInvoiceApplicationPlanUseCase {
             confidenceScore = ai.confidenceScore,
             userSummary = ai.userSummary,
             validationIssues = issues,
+            classifiedIssues = classifiedIssues,
             requiresFollowUp = issues.isNotEmpty() && ai.items.isEmpty()
         )
             .also {

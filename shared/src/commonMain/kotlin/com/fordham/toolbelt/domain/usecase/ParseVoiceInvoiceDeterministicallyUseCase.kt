@@ -474,6 +474,7 @@ class ParseVoiceInvoiceDeterministicallyUseCase {
 
     private fun String.normalizeVoiceInvoiceTranscript(): String {
         return lowercaseNumberWords()
+            .repairCollapsedMoneyBeforeQuantity()
             .replace(Regex("""(?i)\bjust\s+in\b"""), "Justin")
             .replace(Regex("""(?i)\bstart\s+(1|one)\s+dedicated\s+la\b"""), "installed 1 dedicated outlet")
             .replace(Regex("""(?i)\bat\s+(\d{2})\s+50\s+cents?\s+per\b""")) { match ->
@@ -491,6 +492,11 @@ class ParseVoiceInvoiceDeterministicallyUseCase {
             // STT mishears "caulked" as "caught" in trade/construction context
             .replace(Regex("""(?i)\bcaught\s+(?=the\s+|a\s+|\w)"""), "caulked ")
     }
+
+    private fun String.repairCollapsedMoneyBeforeQuantity(): String =
+        replace(Regex("""(?i)\$(\d{2})(10|11|12)\s+(hours?|hrs?|h)\b""")) { match ->
+            "$${match.groupValues[1]} ${match.groupValues[2]} ${match.groupValues[3]}"
+        }
 
     private fun String.lowercaseNumberWords(): String {
         val replacements = mapOf(

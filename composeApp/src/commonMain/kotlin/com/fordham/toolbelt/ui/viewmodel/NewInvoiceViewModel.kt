@@ -9,6 +9,7 @@ import com.fordham.toolbelt.domain.model.SaveBusinessLogoOutcome
 import com.fordham.toolbelt.ui.InvoiceCategories
 import com.fordham.toolbelt.util.AppLogger
 import com.fordham.toolbelt.util.UiMessageKeys
+import com.fordham.toolbelt.util.VoiceInvoiceLogRedactor
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -349,7 +350,7 @@ class NewInvoiceViewModel(
             _transientState.update { it.copy(isProcessingAi = true, errorMessage = null) }
             AppLogger.d(
                 "VoiceInvoicePipeline",
-                "UI_START text='${draft.itemDesc}' draftClient='${draft.clientName}' " +
+                "UI_START text=${VoiceInvoiceLogRedactor.transcriptMeta(draft.itemDesc)} draftClient='${draft.clientName}' " +
                     "draftAddress='${draft.clientAddress}' categories=${categories.size}"
             )
             val result = processInvoiceAiUseCase(draft.itemDesc, categories)
@@ -393,7 +394,7 @@ class NewInvoiceViewModel(
             } else if (result is InvoiceTextOutcome.Failure) {
                 AppLogger.d(
                     "VoiceInvoicePipeline",
-                    "UI_FAILURE error='${result.error.value}' text='${draft.itemDesc}'"
+                    "UI_FAILURE error='${result.error.value}' text=${VoiceInvoiceLogRedactor.transcriptMeta(draft.itemDesc)}"
                 )
                 _transientState.update { it.copy(errorMessage = UiMessageKeys.aiError(result.error.value)) }
             }

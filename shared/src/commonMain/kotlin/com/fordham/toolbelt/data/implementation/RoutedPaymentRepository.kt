@@ -95,8 +95,7 @@ class RoutedPaymentRepository(
                         contractorUserId = contractorUserId,
                         clientName = invoice.clientName.value,
                         requestType = type.wireName,
-                        paymentProvider = provider.stripeWireName,
-                        applicationFeeBps = stripeConfig.applicationFeeBps
+                        paymentProvider = provider.stripeWireName
                     )
                 )
             ) {

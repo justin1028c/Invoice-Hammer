@@ -41,6 +41,7 @@ internal object VoiceInvoicePromptBuilder {
             - Repair obvious STT only when context is clear: "light fixer" = "light fixture", "GSCI" = "GFCI", "to nail pops at ${'$'}30 each" = "2 nail pops".
             - Do not blindly convert "to" to 2 or "for" to 4.
             - Spanish: tablaroca/sheetrock=drywall, masilla=drywall mud, inodoro=toilet, enchufe=outlet.
+            - Omit any optional keys (like laborHours, laborRate, depositAmount, taxRatePercent, discountPercent, notes, or clientAddress) if they are zero, empty, or unmentioned in the transcript.
 
             Category hints:
             Drywall: drywall, sheetrock, mud, tape, skim, patch wall.
@@ -50,6 +51,48 @@ internal object VoiceInvoicePromptBuilder {
             Carpentry: deck, board, handrail, baseboard, stair, door, framing, fence, cabinet.
             Flooring: floor, tile, carpet, laminate, vinyl plank.
             Roofing: roof, shingle, flashing, gutter.
+
+            Examples:
+
+            Example 1:
+            Transcript: "Invoice John Doe at 123 Main St. Installed a ceiling fan for 150 dollars."
+            Output:
+            {
+              "clientName": "John Doe",
+              "clientAddress": "123 Main St",
+              "items": [
+                {
+                  "description": "Installed ceiling fan",
+                  "quantity": 1.0,
+                  "unitPrice": 150.0,
+                  "amount": 150.0,
+                  "category": "Electrical"
+                }
+              ],
+              "confidenceScore": 0.98,
+              "validationIssues": []
+            }
+
+            Example 2:
+            Transcript: "charge Acme Corp 200 dollars deposit for carpentry work, and we spent 3 hours hanging drywall at 50 an hour"
+            Output:
+            {
+              "clientName": "Acme Corp",
+              "items": [
+                {
+                  "description": "Drywall installation labor",
+                  "quantity": 3.0,
+                  "unitPrice": 50.0,
+                  "amount": 150.0,
+                  "category": "Drywall"
+                }
+              ],
+              "laborHours": 3.0,
+              "laborRate": 50.0,
+              "depositAmount": 200.0,
+              "confidenceScore": 0.95,
+              "validationIssues": ["MISSING_CLIENT_ADDRESS"]
+            }
 
             Transcript:
             $text

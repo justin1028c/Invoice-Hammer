@@ -69,6 +69,9 @@ class FirebaseAuthRepository(
         )
     }
 
+    override suspend fun getBackendIdToken(): IdToken? =
+        auth.currentUser?.getIdToken(false)?.await()?.token?.let(::IdToken)
+
     override suspend fun signOut(): AuthOutcome {
         return try {
             auth.signOut()

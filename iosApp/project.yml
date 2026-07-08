@@ -102,8 +102,6 @@ targets:
         STRIPE_PUBLISHABLE_KEY: ""
         STRIPE_PAYMENT_BACKEND_URL: ""
         STRIPE_CONNECT_ONBOARDING_URL: ""
-        STRIPE_BACKEND_API_KEY: ""
-        STRIPE_APPLICATION_FEE_BPS: "100"
         # The Run Script build phase below invokes the Gradle task
         # `embedAndSignAppleFrameworkForXcode`, which writes ComposeApp.framework
         # to `$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)`

@@ -4,6 +4,11 @@ import FirebaseAuth
 import GoogleSignIn
 
 class FirebaseAuthBridge: IosAuthBridge {
+    func getIdToken() async throws -> String? {
+        guard let user = Auth.auth().currentUser else { return nil }
+        return try await user.getIDToken()
+    }
+
 
     func signInWithGoogle(idToken: String) async throws -> IosUserBridgeDto {
         let credential = GoogleAuthProvider.credential(

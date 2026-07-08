@@ -8,8 +8,14 @@ import {
   upsertPendingCheckout,
 } from "./invoicePayments.ts";
 import { lookupStripeAccountId } from "./db.ts";
+import {
+  beginPaymentAttempt,
+  completePaymentAttempt,
+  freezeInvoiceSnapshot,
+} from "./paymentAttempts.ts";
 
 export type PaymentIntentRequest = {
+  operationId: string;
   amountCents: number;
   currency: string;
   invoiceId: string;
@@ -17,7 +23,6 @@ export type PaymentIntentRequest = {
   clientName: string;
   requestType: string;
   paymentProvider: string;
-  applicationFeeBps: number;
 };
 
 export type PaymentIntentResponse = {
@@ -89,11 +94,17 @@ export async function createPaymentIntent(
   if (req.amountCents < 50) {
     throw new PaymentError("amountCents must be at least 50.", 400);
   }
+  if (!Number.isSafeInteger(req.amountCents) || req.amountCents > 100_000_000) {
+    throw new PaymentError("amountCents is outside the supported range.", 400);
+  }
   if (!req.contractorUserId?.trim()) {
     throw new PaymentError("contractorUserId is required.", 400);
   }
   if (!req.invoiceId?.trim()) {
     throw new PaymentError("invoiceId is required.", 400);
+  }
+  if (req.invoiceId.trim().length > 128 || req.contractorUserId.trim().length > 128) {
+    throw new PaymentError("Identifier is too long.", 400);
   }
 
   const provider = req.paymentProvider?.trim() || "card_link";
@@ -118,14 +129,51 @@ export async function createPaymentIntent(
   }
 
   const currency = (req.currency || "usd").toLowerCase();
-  const fee = applicationFeeAmount(req.amountCents, req.applicationFeeBps);
+  const allowedCurrencies = new Set(["usd", "cad", "eur", "gbp", "aud"]);
+  if (!allowedCurrencies.has(currency)) {
+    throw new PaymentError("Unsupported currency.", 400);
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.operationId)) {
+    throw new PaymentError("operationId must be a UUID.", 400);
+  }
+  await freezeInvoiceSnapshot(
+    supabase,
+    req.contractorUserId.trim(),
+    req.invoiceId.trim(),
+    req.amountCents,
+    currency,
+  );
+  const configuredFeeBps = Number.parseInt(
+    Deno.env.get("STRIPE_APPLICATION_FEE_BPS") ?? "100",
+    10,
+  );
+  const fee = applicationFeeAmount(
+    req.amountCents,
+    Number.isFinite(configuredFeeBps) ? configuredFeeBps : 100,
+  );
   const connectOpts: Stripe.RequestOptions = { stripeAccount: stripeAccountId };
   const metadata = {
+    operation_id: req.operationId,
     invoice_id: req.invoiceId,
     contractor_user_id: req.contractorUserId,
     request_type: req.requestType,
     payment_provider: provider,
   };
+  const existingAttempt = await beginPaymentAttempt(supabase, {
+    operation_id: req.operationId,
+    contractor_user_id: req.contractorUserId.trim(),
+    invoice_id: req.invoiceId.trim(),
+    amount_cents: req.amountCents,
+    currency,
+    stripe_account_id: stripeAccountId,
+    payment_provider: provider,
+  });
+  if (existingAttempt.payment_intent_id || existingAttempt.checkout_session_id) {
+    throw new PaymentError("This payment operation has already been created.", 409, {
+      paymentIntentId: existingAttempt.payment_intent_id,
+      checkoutSessionId: existingAttempt.checkout_session_id,
+    });
+  }
 
   if (ON_SITE_PROVIDERS.has(provider)) {
     const intent = await stripe.paymentIntents.create(
@@ -137,13 +185,14 @@ export async function createPaymentIntent(
         metadata,
         description: productLabel(req),
       },
-      connectOpts,
+      { ...connectOpts, idempotencyKey: req.operationId },
     );
 
     if (!intent.client_secret) {
       throw new PaymentError("Stripe did not return a client secret.", 502);
     }
 
+    await completePaymentAttempt(supabase, req.operationId, intent.id, null);
     return {
       clientSecret: intent.client_secret,
       paymentIntentId: intent.id,
@@ -183,7 +232,7 @@ export async function createPaymentIntent(
     },
     metadata,
     payment_method_types: ["card", "link"],
-  });
+  }, { idempotencyKey: req.operationId });
 
   if (!session.url) {
     throw new PaymentError("Stripe Checkout session has no URL.", 502);
@@ -197,6 +246,12 @@ export async function createPaymentIntent(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id ?? null,
+  );
+  await completePaymentAttempt(
+    supabase,
+    req.operationId,
+    typeof session.payment_intent === "string" ? session.payment_intent : null,
+    session.id,
   );
 
   const expanded = await stripe.checkout.sessions.retrieve(session.id, {

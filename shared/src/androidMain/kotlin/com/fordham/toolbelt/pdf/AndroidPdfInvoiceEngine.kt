@@ -256,7 +256,7 @@ class AndroidPdfInvoiceEngine(
             AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, qtyText, 360f, currentY + 15f, paint)
             
             // Draw Unit Price
-            val unitPriceVal = (item.unitPrice ?: item.amount).value
+            val unitPriceVal = item.unitPrice?.value ?: (if (qtyVal > 0.0) item.amount.value / qtyVal else 0.0)
             val unitPriceText = "$${String.format("%.2f", unitPriceVal)}"
             AndroidPdfInvoiceBitmapUtils.drawTextRightAligned(canvas1, unitPriceText, 450f, currentY + 15f, paint)
             

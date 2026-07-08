@@ -40,6 +40,8 @@ interface AuthRepository {
     val currentUser: StateFlow<FordhamUser?>
 
     suspend fun signInWithGoogle(idToken: IdToken): AuthOutcome
+    /** Fresh Firebase ID token for authenticated backend calls. */
+    suspend fun getBackendIdToken(): IdToken?
     suspend fun signOut(): AuthOutcome
 
     /** Re-applies [FordhamUser.isPremium] from the subscription cache (after [syncEntitlementFromSupabase]). */

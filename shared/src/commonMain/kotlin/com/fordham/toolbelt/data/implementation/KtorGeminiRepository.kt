@@ -443,8 +443,11 @@ class KtorGeminiRepository(
                     }
                 } else {
                     val errMsg = (localOutcome as? GeminiOutcome.Failure)?.error?.value ?: "unknown"
-                    AppLogger.d("InvoiceAiLogging", "Local Gemma model returned failure: $errMsg. Falling back to cloud.")
+                    AppLogger.d("InvoiceAiLogging", "Local Gemma model returned failure: $errMsg.")
                 }
+                return InvoiceTextOutcome.Failure(
+                    FailureMessage("Local Gemma could not parse that voice invoice.")
+                )
             }
             if (!canUseCloud()) {
                 val message = if (localSupported) {

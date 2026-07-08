@@ -80,10 +80,14 @@ internal object ForemanLineItemParser {
                         it.equals("pricePerUnit", ignoreCase = true) ||
                         it.equals("price_per_unit", ignoreCase = true)
                 }
-                val unitPrice = priceKey?.let { obj[it]?.jsonPrimitive?.doubleOrNull }
+                var unitPrice = priceKey?.let { obj[it]?.jsonPrimitive?.doubleOrNull }
                 
                 if (amount == 0.0 && quantity != null && unitPrice != null) {
                     amount = quantity * unitPrice
+                }
+                
+                if (unitPrice == null && quantity != null && quantity > 0.0) {
+                    unitPrice = amount / quantity
                 }
                 
                 val catKey = obj.keys.firstOrNull {

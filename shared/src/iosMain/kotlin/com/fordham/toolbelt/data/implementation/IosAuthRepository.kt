@@ -26,6 +26,7 @@ class IosUserBridgeDto(
 
 interface IosAuthBridge {
     suspend fun signInWithGoogle(idToken: String): IosUserBridgeDto
+    suspend fun getIdToken(): String?
     suspend fun signOut()
     fun getCurrentUser(): IosUserBridgeDto?
 }
@@ -66,6 +67,9 @@ class IosAuthRepository(
             IsPremium(subscriptionRepository.value.peekEntitlement().isPro)
         )
     }
+
+    override suspend fun getBackendIdToken(): IdToken? =
+        IosAuthServiceProvider.bridge?.getIdToken()?.let(::IdToken)
 
     override suspend fun signOut(): AuthOutcome {
         val bridge = IosAuthServiceProvider.bridge

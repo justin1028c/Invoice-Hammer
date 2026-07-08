@@ -1,16 +1,34 @@
-/** Optional shared secret — set STRIPE_BACKEND_API_KEY in function secrets. */
-export function assertBackendAuth(req: Request): Response | null {
-  const expected = Deno.env.get("STRIPE_BACKEND_API_KEY")?.trim();
-  if (!expected) return null;
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
-  const header = req.headers.get("x-stripe-backend-key")?.trim() ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+export type AuthenticatedUser = { uid: string };
 
-  if (header !== expected) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
+const googleKeys = createRemoteJWKSet(
+  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
+);
+
+export async function requireFirebaseUser(req: Request): Promise<AuthenticatedUser> {
+  const projectId = Deno.env.get("FIREBASE_PROJECT_ID")?.trim();
+  if (!projectId) throw new AuthError("FIREBASE_PROJECT_ID is not configured.", 500);
+
+  const header = req.headers.get("authorization")?.trim() ?? "";
+  const match = /^Bearer\s+(.+)$/i.exec(header);
+  if (!match) throw new AuthError("Authentication required.", 401);
+
+  try {
+    const { payload } = await jwtVerify(match[1], googleKeys, {
+      issuer: `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+      algorithms: ["RS256"],
     });
+    if (!payload.sub) throw new Error("Token subject is missing.");
+    return { uid: payload.sub };
+  } catch {
+    throw new AuthError("Invalid or expired authentication token.", 401);
   }
-  return null;
+}
+
+export class AuthError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
 }

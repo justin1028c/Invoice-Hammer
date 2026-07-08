@@ -37,10 +37,7 @@ stripe.publishable.key=pk_test_
 # Base URL only (app appends /v1/payments/intent):
 # https://YOUR_PROJECT.supabase.co/functions/v1/stripe-payment-api
 stripe.payment.backend.url=
-# Must match STRIPE_BACKEND_API_KEY on the Edge Function (optional but recommended).
-stripe.backend.api.key=
 stripe.connect.onboarding.url=
-stripe.application.fee.bps=100
 
 # Foreman / Gemini — server-side key only (deploy supabase/functions/foreman-gemini-api).
 # Base URL only (app calls POST …/v1/generate):

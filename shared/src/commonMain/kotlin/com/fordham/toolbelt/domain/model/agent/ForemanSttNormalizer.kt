@@ -111,7 +111,6 @@ object ForemanSttNormalizer {
                         Regex("""\b$tensWord\s+y\s+$unitWord\b""", RegexOption.IGNORE_CASE),
                         "${tensValue + i}"
                     )
-                    result = result.replace("$tensValue $i", "${tensValue + i}")
                 }
             }
         } else {
@@ -121,7 +120,6 @@ object ForemanSttNormalizer {
                 for (i in 1..9) {
                     val prefixWord = TENS_EN.first { NUMBER_WORDS_EN.getValue(it) == prefix }
                     val suffixWord = NUMBER_WORDS_EN.entries.first { it.value == i.toString() }.key
-                    result = result.replace("$prefix $i", "${prefix.toInt() + i}")
                     result = result.replace(
                         Regex("""\b$prefixWord-$suffixWord\b""", RegexOption.IGNORE_CASE),
                         "${prefix.toInt() + i}"

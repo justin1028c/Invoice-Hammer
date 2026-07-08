@@ -24,8 +24,7 @@ class StripePaymentIntentRepositoryImpl(
                 contractorUserId = command.contractorUserId,
                 clientName = command.clientName,
                 requestType = command.requestType.toWireName(),
-                paymentProvider = command.channel.wireName,
-                applicationFeeBps = config.applicationFeeBps
+                paymentProvider = command.channel.wireName
             )
         )
         return when (outcome) {

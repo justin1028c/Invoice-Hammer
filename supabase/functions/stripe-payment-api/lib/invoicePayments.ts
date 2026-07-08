@@ -16,6 +16,14 @@ export async function upsertPendingCheckout(
   checkoutSessionId: string,
   paymentIntentId: string | null,
 ): Promise<void> {
+  const { data: existing, error: lookupError } = await supabase
+    .from("stripe_invoice_payments")
+    .select("status")
+    .eq("invoice_id", invoiceId)
+    .maybeSingle();
+  if (lookupError) throw new Error(`Invoice payment lookup failed: ${lookupError.message}`);
+  if (existing?.status === "paid") return;
+
   const { error } = await supabase.from("stripe_invoice_payments").upsert(
     {
       invoice_id: invoiceId,
@@ -28,9 +36,7 @@ export async function upsertPendingCheckout(
     },
     { onConflict: "invoice_id" },
   );
-  if (error) {
-    console.warn("stripe_invoice_payments upsert pending:", error.message);
-  }
+  if (error) throw new Error(`Invoice payment pending write failed: ${error.message}`);
 }
 
 export async function markInvoicePaymentPaid(
@@ -61,9 +67,7 @@ export async function markInvoicePaymentPaid(
     row,
     { onConflict: "invoice_id" },
   );
-  if (error) {
-    console.warn("stripe_invoice_payments mark paid:", error.message);
-  }
+  if (error) throw new Error(`Invoice payment paid write failed: ${error.message}`);
 }
 
 export async function fetchInvoicePaymentStatus(

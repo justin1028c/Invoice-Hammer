@@ -21,6 +21,7 @@ import com.fordham.toolbelt.data.remote.StripeInvoicePaymentStatusOutcome
 import com.fordham.toolbelt.data.remote.StripeInvoicePaymentStatusResponse
 import com.fordham.toolbelt.domain.model.stripe.CheckoutUrl
 import com.fordham.toolbelt.domain.model.stripe.StripeCheckoutSessionOutcome
+import com.fordham.toolbelt.domain.repository.AuthRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
@@ -34,13 +35,14 @@ import io.ktor.http.isSuccess
 
 class KtorStripePaymentBackendClient(
     private val httpClient: HttpClient,
-    private val config: StripeConfig
+    private val config: StripeConfig,
+    private val authRepository: AuthRepository
 ) : StripePaymentBackendClient {
 
-    private fun HttpRequestBuilder.applyBackendAuth() {
-        if (config.isBackendApiKeyConfigured) {
-            header("x-stripe-backend-key", config.backendApiKey)
-        }
+    private suspend fun HttpRequestBuilder.applyBackendAuth() {
+        val token = authRepository.getBackendIdToken()
+            ?: error("Sign in is required for Stripe operations.")
+        header("Authorization", "Bearer ${token.value}")
     }
 
     override suspend fun createPaymentIntent(

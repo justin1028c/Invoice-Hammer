@@ -8,6 +8,8 @@ Implements the HTTP contract used by `KtorStripePaymentBackendClient` in the KMP
    - `003_stripe_connect_accounts.sql`
    - `004_stripe_payment_events.sql` (optional webhook audit log)
    - `005_stripe_invoice_payments.sql` (paid-state for contractor polling)
+   - `006_stripe_payment_attempts.sql` (frozen invoice terms + idempotent attempts)
+   - `007_stripe_payment_lifecycle.sql` (refund/dispute/failure state)
 
 2. Set function secrets (Dashboard → Edge Functions → Secrets, or CLI):
 
@@ -15,7 +17,8 @@ Implements the HTTP contract used by `KtorStripePaymentBackendClient` in the KMP
 supabase secrets set \
   STRIPE_SECRET_KEY=sk_test_... \
   STRIPE_WEBHOOK_SECRET=whsec_... \
-  STRIPE_BACKEND_API_KEY=your-random-shared-secret \
+  FIREBASE_PROJECT_ID=your-firebase-project-id \
+  STRIPE_APPLICATION_FEE_BPS=100 \
   # Optional — defaults to hosted pages on this Edge Function:
   # STRIPE_CONNECT_RETURN_URL=https://YOUR_PROJECT.supabase.co/functions/v1/stripe-payment-api/v1/connect/return
   # STRIPE_CONNECT_REFRESH_URL=.../v1/connect/refresh
@@ -33,7 +36,6 @@ supabase functions deploy stripe-payment-api --no-verify-jwt
 
 ```properties
 stripe.payment.backend.url=https://YOUR_PROJECT.supabase.co/functions/v1/stripe-payment-api
-stripe.backend.api.key=your-random-shared-secret
 ```
 
 The app calls:
@@ -84,7 +86,14 @@ Events: `payment_intent.succeeded`, `checkout.session.completed` (updates `strip
 ## Security
 
 - Never put `STRIPE_SECRET_KEY` in the mobile app.
-- Set `STRIPE_BACKEND_API_KEY` and the same value in `local.properties` as `stripe.backend.api.key` (sent as `x-stripe-backend-key`).
+- Every operational endpoint requires a Firebase ID token. The function verifies
+  its Google signature, issuer, audience, and expiry, then derives the contractor
+  identity from the token subject.
+- `STRIPE_APPLICATION_FEE_BPS` is server-owned. Never accept a platform fee from
+  the mobile request.
+- Apply migrations through `007` before deploying either Stripe function. Each authenticated
+  payment publication freezes its invoice amount/currency, and each `operationId`
+  maps to one Stripe object through Stripe's idempotency mechanism.
 - `verify_jwt = false` in `config.toml` because the app uses Firebase auth, not Supabase Auth JWTs.
 
 ## Test mode

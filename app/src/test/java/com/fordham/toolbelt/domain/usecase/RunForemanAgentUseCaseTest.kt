@@ -13,6 +13,7 @@ import com.fordham.toolbelt.domain.model.agent.ForemanSession
 import com.fordham.toolbelt.domain.model.agent.NaturalLanguage
 import com.fordham.toolbelt.domain.model.agent.OpenTabArgs
 import com.fordham.toolbelt.domain.model.agent.AppTab
+import com.fordham.toolbelt.domain.model.agent.QuickClientAndInvoiceArgs
 import com.fordham.toolbelt.domain.model.agent.ResolvedClient
 import com.fordham.toolbelt.domain.model.agent.SearchClientsArgs
 import com.fordham.toolbelt.domain.model.agent.SessionId
@@ -172,6 +173,39 @@ class RunForemanAgentUseCaseTest {
         assertEquals(1, registry.executeCount)
         assertEquals(0, llmGateway.promptCount)
         assertEquals(ToolName.QuickInvoice, registry.executedToolName)
+    }
+
+    @Test
+    fun `new client local macro creates client and invoice without draft interception`() = runTest(testDispatcher) {
+        val llmGateway = FakeAgentLlmGateway(
+            AgentOutcome.TextResponse(NaturalLanguage("should not run"))
+        )
+        val registry = FakeToolRegistry(
+            result = ToolExecutionResult.QuickClientAndInvoiceCompleted(
+                invoiceId = InvoiceId("inv-1"),
+                clientName = NaturalLanguage("Bob"),
+                totalAmount = 200.0,
+                clientCreated = true
+            )
+        )
+        val useCase = foremanUseCase(llmGateway, registry)
+
+        val run = useCase(
+            command = NaturalLanguage("new client Bob invoice 200 for labor"),
+            session = ForemanSession.empty(SessionId("macro-new-client")),
+            systemPrompt = NaturalLanguage("ctx"),
+            timestamp = TimestampMillis(1L)
+        )
+
+        val chain = run.outcome as AgentOutcome.ToolChainExecuted
+        assertEquals(1, chain.steps.size)
+        assertEquals(1, registry.executeCount)
+        assertEquals(0, llmGateway.promptCount)
+        assertEquals(ToolName.QuickClientAndInvoice, registry.executedToolName)
+        val args = registry.executedArguments as QuickClientAndInvoiceArgs
+        assertEquals("Bob", args.clientName.value)
+        assertEquals(1, args.lineItems.size)
+        assertEquals(200.0, args.lineItems.first().amount, 0.01)
     }
 
     @Test
@@ -467,6 +501,42 @@ class RunForemanAgentUseCaseTest {
         assertEquals(5, args.lineItems.size)
         assertEquals(1500.0, args.lineItems.sumOf { it.amount }, 0.01)
         assertEquals(true, args.replaceLineItems)
+    }
+
+    @Test
+    fun `explicit new client deterministic invoice creates client before invoice`() = runTest(testDispatcher) {
+        val llmGateway = FakeAgentLlmGateway(
+            AgentOutcome.TextResponse(NaturalLanguage("should not run"))
+        )
+        val registry = FakeToolRegistry(
+            result = ToolExecutionResult.QuickClientAndInvoiceCompleted(
+                invoiceId = InvoiceId("inv-2"),
+                clientName = NaturalLanguage("Justin Fordham"),
+                totalAmount = 400.0,
+                clientCreated = true
+            )
+        )
+        val useCase = foremanUseCase(llmGateway, registry)
+
+        val run = useCase(
+            command = NaturalLanguage(
+                "make an invoice for new client Justin Fordham at 1941 Norwalk Court Jonesboro Georgia 30236 " +
+                    "we did drywall repair for $200 and paint touch up for $200"
+            ),
+            session = ForemanSession.empty(SessionId("session-deterministic-new-client")),
+            systemPrompt = NaturalLanguage("ctx"),
+            timestamp = TimestampMillis(4L)
+        )
+
+        assertTrue(run.outcome is AgentOutcome.ToolChainExecuted)
+        assertEquals(0, llmGateway.promptCount)
+        assertEquals(1, registry.executeCount)
+        assertEquals(ToolName.QuickClientAndInvoice, registry.executedToolName)
+        val args = registry.executedArguments as QuickClientAndInvoiceArgs
+        assertEquals("Justin Fordham", args.clientName.value)
+        assertEquals("1941 Norwalk Court Jonesboro GA 30236", args.clientAddress.value)
+        assertEquals(2, args.lineItems.size)
+        assertEquals(400.0, args.lineItems.sumOf { it.amount }, 0.01)
     }
 
     @Test

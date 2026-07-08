@@ -48,10 +48,6 @@
     <string>$(STRIPE_PAYMENT_BACKEND_URL)</string>
     <key>StripeConnectOnboardingUrl</key>
     <string>$(STRIPE_CONNECT_ONBOARDING_URL)</string>
-    <key>StripeBackendApiKey</key>
-    <string>$(STRIPE_BACKEND_API_KEY)</string>
-    <key>StripeApplicationFeeBps</key>
-    <string>$(STRIPE_APPLICATION_FEE_BPS)</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

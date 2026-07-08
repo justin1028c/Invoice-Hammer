@@ -14,5 +14,6 @@ data class VoiceInvoiceApplicationPlan(
     val confidenceScore: Double = 1.0,
     val userSummary: String = "",
     val validationIssues: List<String> = emptyList(),
+    val classifiedIssues: List<VoiceInvoiceIssue> = emptyList(),
     val requiresFollowUp: Boolean = false
 )

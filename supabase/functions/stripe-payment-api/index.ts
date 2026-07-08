@@ -1,10 +1,11 @@
 import Stripe from "stripe";
-import { assertBackendAuth } from "./lib/auth.ts";
+import { AuthError, requireFirebaseUser } from "./lib/auth.ts";
 import { corsHeaders, errorResponse, jsonResponse } from "./lib/cors.ts";
 import { createServiceClient } from "./lib/db.ts";
 import { createOnboardingLink, fetchConnectStatus } from "./lib/connect.ts";
 import { htmlPage, paymentBridgePage } from "./lib/html.ts";
 import { fetchInvoicePaymentStatus } from "./lib/invoicePayments.ts";
+import { PaymentAttemptError } from "./lib/paymentAttempts.ts";
 import {
   createPaymentIntent,
   PaymentError,
@@ -136,27 +137,20 @@ Deno.serve(async (req) => {
     return publicBrowserPage(route, url);
   }
 
-  const authFailure = assertBackendAuth(req);
-  if (authFailure) {
-    return new Response(authFailure.body, {
-      status: authFailure.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
+    const user = await requireFirebaseUser(req);
     const stripe = requireStripe();
     const supabase = createServiceClient();
 
     if (route.endsWith("/v1/payments/intent") && req.method === "POST") {
       const body = await req.json() as PaymentIntentRequest;
+      body.contractorUserId = user.uid;
       const result = await createPaymentIntent(stripe, supabase, body);
       return jsonResponse(result);
     }
 
     if (route.endsWith("/v1/payments/verify") && req.method === "GET") {
       const sessionId = url.searchParams.get("session_id")?.trim();
-      const contractorUserId = url.searchParams.get("contractorUserId")?.trim();
       if (!sessionId) {
         return errorResponse("Query parameter session_id is required.", 400);
       }
@@ -164,17 +158,16 @@ Deno.serve(async (req) => {
         stripe,
         supabase,
         sessionId,
-        contractorUserId,
+        user.uid,
       );
       return jsonResponse(result);
     }
 
     if (route.endsWith("/v1/payments/checkout-link") && req.method === "GET") {
       const sessionId = url.searchParams.get("session_id")?.trim();
-      const contractorUserId = url.searchParams.get("contractorUserId")?.trim();
-      if (!sessionId || !contractorUserId) {
+      if (!sessionId) {
         return errorResponse(
-          "Query parameters session_id and contractorUserId are required.",
+          "Query parameter session_id is required.",
           400,
         );
       }
@@ -182,44 +175,35 @@ Deno.serve(async (req) => {
         stripe,
         supabase,
         sessionId,
-        contractorUserId,
+        user.uid,
       );
       return jsonResponse(result);
     }
 
     if (route.endsWith("/v1/payments/invoice-status") && req.method === "GET") {
       const invoiceId = url.searchParams.get("invoiceId")?.trim();
-      const contractorUserId = url.searchParams.get("contractorUserId")?.trim();
-      if (!invoiceId || !contractorUserId) {
+      if (!invoiceId) {
         return errorResponse(
-          "Query parameters invoiceId and contractorUserId are required.",
+          "Query parameter invoiceId is required.",
           400,
         );
       }
       const status = await fetchInvoicePaymentStatus(
         supabase,
         invoiceId,
-        contractorUserId,
+        user.uid,
       );
       return jsonResponse(status);
     }
 
     if (route.endsWith("/v1/connect/status") && req.method === "GET") {
-      const userId = url.searchParams.get("userId")?.trim();
-      if (!userId) {
-        return errorResponse("Query parameter userId is required.", 400);
-      }
-      const status = await fetchConnectStatus(stripe, supabase, userId);
+      const status = await fetchConnectStatus(stripe, supabase, user.uid);
       const { onboardingUrl: _, ...response } = status;
       return jsonResponse(response);
     }
 
     if (route.endsWith("/v1/connect/onboard") && req.method === "POST") {
-      const body = await req.json() as { contractorUserId?: string };
-      const contractorUserId = body.contractorUserId?.trim();
-      if (!contractorUserId) {
-        return errorResponse("contractorUserId is required.", 400);
-      }
+      const contractorUserId = user.uid;
       const status = await fetchConnectStatus(stripe, supabase, contractorUserId);
       if (!status.accountId) {
         return errorResponse("Could not create Connect account.", 500);
@@ -231,14 +215,19 @@ Deno.serve(async (req) => {
 
     return errorResponse("Not found", 404);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return errorResponse(err.message, err.status);
+    }
     if (err instanceof PaymentError) {
       return jsonResponse(
         { error: err.message, ...err.details },
         err.status,
       );
     }
+    if (err instanceof PaymentAttemptError) {
+      return errorResponse(err.message, err.status);
+    }
     console.error("stripe-payment-api", err);
-    const message = err instanceof Error ? err.message : "Internal error";
-    return errorResponse(message, 500);
+    return errorResponse("Internal payment service error.", 500);
   }
 });

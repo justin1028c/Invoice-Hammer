@@ -4,8 +4,10 @@ import com.fordham.toolbelt.domain.model.FailureMessage
 import com.fordham.toolbelt.domain.model.InvoiceTextOutcome
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
 import com.fordham.toolbelt.domain.repository.GeminiRepository
+import com.fordham.toolbelt.domain.repository.LocalAiCapabilityRepository
 import com.fordham.toolbelt.domain.usecase.subscription.HasSubscriptionFeatureUseCase
 import com.fordham.toolbelt.util.AppLogger
+import com.fordham.toolbelt.util.VoiceInvoiceLogRedactor
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -16,11 +18,13 @@ class ProcessInvoiceAiUseCase(
     private val hasSubscriptionFeature: HasSubscriptionFeatureUseCase,
     private val parseVoiceInvoiceDeterministically: ParseVoiceInvoiceDeterministicallyUseCase,
     private val validateVoiceInvoiceResult: ValidateVoiceInvoiceResultUseCase,
+    private val localAiCapabilityRepository: LocalAiCapabilityRepository? = null,
     private val extractVoiceInvoiceEvidence: ExtractVoiceInvoiceEvidenceUseCase = ExtractVoiceInvoiceEvidenceUseCase()
 ) {
     suspend operator fun invoke(text: String, categories: List<String>): InvoiceTextOutcome {
-        AppLogger.e(LOG_TAG, "START raw='$text' categories=${categories.joinToString()}")
-        if (!hasSubscriptionFeature(SubscriptionFeature.AiAgent)) {
+        AppLogger.e(LOG_TAG, "START ${VoiceInvoiceLogRedactor.transcriptMeta(text)} categories=${categories.size}")
+        val localInvoiceAiAvailable = localAiCapabilityRepository?.isOnDeviceAgentAvailable() == true
+        if (!localInvoiceAiAvailable && !hasSubscriptionFeature(SubscriptionFeature.AiAgent)) {
             AppLogger.d(LOG_TAG, "BLOCKED missing AiAgent subscription")
             return InvoiceTextOutcome.Failure(
                 FailureMessage("Pro subscription required for invoice AI parsing.")
@@ -30,7 +34,8 @@ class ProcessInvoiceAiUseCase(
         val normalizedText = evidence.normalizedTranscript.ifBlank { text }
         AppLogger.d(
             LOG_TAG,
-            "EVIDENCE normalized='$normalizedText' money=${evidence.moneyAmounts.joinToString()} " +
+            "EVIDENCE normalized=${VoiceInvoiceLogRedactor.transcriptMeta(normalizedText)} money=${evidence.moneyAmounts.joinToString()} " +
+                "clientCandidate='${evidence.clientNameCandidate}' " +
                 "percentages=${evidence.percentages.joinToString()} measurements=${evidence.measurements.joinToString()} " +
                 "addresses=${evidence.streetAddressCandidates.joinToString()}"
         )

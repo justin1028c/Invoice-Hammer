@@ -114,8 +114,8 @@ class AndroidLocalLlmEngine(
             try {
                 val options = LlmInferenceOptions.builder()
                     .setModelPath(modelFile.absolutePath)
-                    .setMaxTokens(512)
-                    .setMaxTopK(64)
+                    .setMaxTokens(1024)
+                    .setMaxTopK(1)
                     .setPreferredBackend(LlmInference.Backend.GPU)
                     .build()
                 inference = LlmInference.createFromOptions(context, options)
@@ -129,8 +129,8 @@ class AndroidLocalLlmEngine(
                 try {
                     val cpuOptions = LlmInferenceOptions.builder()
                         .setModelPath(modelFile.absolutePath)
-                        .setMaxTokens(512)
-                        .setMaxTopK(64)
+                        .setMaxTokens(1024)
+                        .setMaxTopK(1)
                         .setPreferredBackend(LlmInference.Backend.CPU)
                         .build()
                     inference = LlmInference.createFromOptions(context, cpuOptions)

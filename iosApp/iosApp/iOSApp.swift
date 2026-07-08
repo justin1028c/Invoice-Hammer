@@ -149,8 +149,6 @@ struct iOSApp: App {
             ("StripePublishableKey", "stripe_publishable_key"),
             ("StripePaymentBackendUrl", "stripe_payment_backend_url"),
             ("StripeConnectOnboardingUrl", "stripe_connect_onboarding_url"),
-            ("StripeBackendApiKey", "stripe_backend_api_key"),
-            ("StripeApplicationFeeBps", "stripe_application_fee_bps")
         ]
 
         for (plistKey, keychainKey) in mappings {

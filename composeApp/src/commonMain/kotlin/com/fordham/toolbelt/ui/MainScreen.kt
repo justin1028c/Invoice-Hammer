@@ -301,7 +301,7 @@ fun MainScreen(
                     agentViewModel.setListening(false)
                     AppLogger.e(
                         "VoiceInvoiceHandoff",
-                        "FINAL_TO_FOREMAN text='${meta.text}' confidence=${meta.confidence} " +
+                        "FINAL_TO_FOREMAN text=${VoiceInvoiceLogRedactor.transcriptMeta(meta.text)} confidence=${meta.confidence} " +
                             "activeTab=${ForemanRuntimeBinding.current().activeTab} " +
                             "canUseForeman=$canUseForeman localLlmReady=$isLocalLlmReady"
                     )
@@ -316,7 +316,7 @@ fun MainScreen(
                 },
                 onEnd = { agentViewModel.setListening(false) },
                 onPartialResult = { partial ->
-                    AppLogger.e("VoiceInvoiceHandoff", "PARTIAL text='$partial'")
+                    AppLogger.e("VoiceInvoiceHandoff", "PARTIAL text=${VoiceInvoiceLogRedactor.transcriptMeta(partial)}")
                     agentViewModel.updateTranscript(partial)
                 }
             )

@@ -44,8 +44,6 @@ android {
         buildConfigField("String", "STRIPE_PUBLISHABLE_KEY", quotedProperty("stripe.publishable.key"))
         buildConfigField("String", "STRIPE_PAYMENT_BACKEND_URL", quotedProperty("stripe.payment.backend.url"))
         buildConfigField("String", "STRIPE_CONNECT_ONBOARDING_URL", quotedProperty("stripe.connect.onboarding.url"))
-        buildConfigField("String", "STRIPE_BACKEND_API_KEY", quotedProperty("stripe.backend.api.key"))
-        buildConfigField("String", "STRIPE_APPLICATION_FEE_BPS", quotedProperty("stripe.application.fee.bps", "100"))
         val geminiModelOverride = localProperties.getProperty("gemini.model.name", "gemini-3.5-flash")
         buildConfigField("String", "FOREMAN_GEMINI_BACKEND_URL", quotedProperty("foreman.gemini.backend.url"))
         buildConfigField("String", "FOREMAN_BACKEND_API_KEY", quotedProperty("foreman.backend.api.key"))

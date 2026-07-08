@@ -34,6 +34,7 @@ import com.fordham.toolbelt.domain.model.agent.ToolName
 import com.fordham.toolbelt.domain.model.agent.ToolSafety
 import com.fordham.toolbelt.domain.model.agent.UpdateDraftInvoiceArgs
 import com.fordham.toolbelt.util.AppLogger
+import com.fordham.toolbelt.util.VoiceInvoiceLogRedactor
 import com.fordham.toolbelt.util.randomUUID
 import com.fordham.toolbelt.domain.model.subscription.PremiumFeature
 import com.fordham.toolbelt.domain.model.subscription.SubscriptionFeature
@@ -66,6 +67,8 @@ class RunForemanAgentUseCase(
     private val parseVoiceInvoiceDeterministically: ParseVoiceInvoiceDeterministicallyUseCase,
     private val validateVoiceInvoiceResult: ValidateVoiceInvoiceResultUseCase,
     private val polishLineItemDescriptions: PolishLineItemDescriptionsUseCase,
+    private val normalizeVoiceInvoiceLineItems: NormalizeVoiceInvoiceLineItemsUseCase = NormalizeVoiceInvoiceLineItemsUseCase(),
+    private val buildVoiceInvoiceApplicationPlan: BuildVoiceInvoiceApplicationPlanUseCase = BuildVoiceInvoiceApplicationPlanUseCase(),
     private val processInvoiceAi: ProcessInvoiceAiUseCase? = null
 ) {
     suspend operator fun invoke(
@@ -90,7 +93,7 @@ class RunForemanAgentUseCase(
         val runtime = com.fordham.toolbelt.domain.model.agent.ForemanRuntimeBinding.current()
         AppLogger.e(
             "VoiceInvoicePipeline",
-            "FOREMAN_START command='${command.value}' activeTab=${runtime.activeTab} " +
+            "FOREMAN_START command=${VoiceInvoiceLogRedactor.transcriptMeta(command.value)} activeTab=${runtime.activeTab} " +
                 "selectedClient='${runtime.selectedClientName.orEmpty()}' autoSave=$autoSaveEnabled"
         )
         when (val route = ForemanCommandRouter.route(command.value, autoSaveEnabled)) {
@@ -100,10 +103,18 @@ class RunForemanAgentUseCase(
                 timestamp
             )
             is ForemanRoute.LocalMacro -> {
-                buildDeterministicInvoiceDraftArgs(command.value)?.let { args ->
+                if (route.toolName == ToolName.QuickClientAndInvoice) {
                     return@withContext runMacroFastPath(
                         workingSession,
-                        ToolName.UpdateDraftInvoice,
+                        route.toolName,
+                        route.arguments,
+                        timestamp
+                    )
+                }
+                buildDeterministicInvoiceDraftArgs(command.value)?.let { args ->
+                    return@withContext runVoiceInvoiceFastPath(
+                        workingSession,
+                        command.value,
                         args,
                         timestamp
                     )
@@ -118,17 +129,17 @@ class RunForemanAgentUseCase(
             is ForemanRoute.LlmChain -> Unit
         }
         buildDeterministicInvoiceDraftArgs(command.value)?.let { args ->
-            return@withContext runMacroFastPath(
+            return@withContext runVoiceInvoiceFastPath(
                 workingSession,
-                ToolName.UpdateDraftInvoice,
+                command.value,
                 args,
                 timestamp
             )
         }
         buildCompactGemmaInvoiceDraftArgs(command.value)?.let { args ->
-            return@withContext runMacroFastPath(
+            return@withContext runVoiceInvoiceFastPath(
                 workingSession,
-                ToolName.UpdateDraftInvoice,
+                command.value,
                 args,
                 timestamp
             )
@@ -141,8 +152,10 @@ class RunForemanAgentUseCase(
         AppLogger.d("VoiceInvoicePipeline", "FOREMAN_COMPACT_GEMMA_START")
         return when (val outcome = processor(command, emptyList())) {
             is InvoiceTextOutcome.Success -> {
-                val parsed = outcome.result
-                val rejectionReasons = voiceInvoiceDraftRejectionReasons(parsed)
+                val parsed = normalizeVoiceInvoiceLineItems(outcome.result)
+                val draft = draftRepository.getDraft().first()
+                val plan = buildVoiceInvoiceApplicationPlan(draft, parsed)
+                val rejectionReasons = voiceInvoiceDraftRejectionReasons(parsed) + voiceInvoicePlanRejectionReasons(plan)
                 if (rejectionReasons.isNotEmpty()) {
                     AppLogger.d(
                         "VoiceInvoicePipeline",
@@ -158,22 +171,7 @@ class RunForemanAgentUseCase(
                             "items=${parsed.items.size} confidence=${parsed.confidenceScore} issues=${parsed.validationIssues} " +
                             "lines=${parsed.items.joinToString(" | ") { "${it.description.value}:${it.amount.value}:qty=${it.quantity}:unit=${it.unitPrice?.value}:cat=${it.category}" }}"
                     )
-                    UpdateDraftInvoiceArgs(
-                        clientName = NaturalLanguage(parsed.clientName),
-                        clientAddress = parsed.clientAddress.takeIf { it.isNotBlank() }?.let(::NaturalLanguage),
-                        taxRate = parsed.taxRatePercent,
-                        deposit = parsed.depositAmount,
-                        lineItems = parsed.items.map { item ->
-                            DraftLineItemInput(
-                                description = NaturalLanguage(item.description.value),
-                                amount = item.amount.value,
-                                category = NaturalLanguage(item.category),
-                                quantity = item.quantity,
-                                unitPrice = item.unitPrice?.value
-                            )
-                        },
-                        replaceLineItems = true
-                    )
+                    plan.toUpdateDraftInvoiceArgs(replaceLineItems = true)
                 }
             }
             is InvoiceTextOutcome.Failure -> {
@@ -186,10 +184,15 @@ class RunForemanAgentUseCase(
     private suspend fun buildDeterministicInvoiceDraftArgs(command: String): UpdateDraftInvoiceArgs? {
         val rawParsed = parseVoiceInvoiceDeterministically(command)
         if (rawParsed == null) {
-            AppLogger.d("VoiceInvoicePipeline", "FOREMAN_DETERMINISTIC_SKIPPED no parse for '$command'")
+            AppLogger.d(
+                "VoiceInvoicePipeline",
+                "FOREMAN_DETERMINISTIC_SKIPPED no parse for ${VoiceInvoiceLogRedactor.transcriptMeta(command)}"
+            )
             return null
         }
-        val parsed = validateVoiceInvoiceResult(rawParsed)
+        val parsed = normalizeVoiceInvoiceLineItems(validateVoiceInvoiceResult(rawParsed))
+        val draft = draftRepository.getDraft().first()
+        val plan = buildVoiceInvoiceApplicationPlan(draft, parsed)
         AppLogger.d(
             "VoiceInvoicePipeline",
             "FOREMAN_DETERMINISTIC_PARSED client='${parsed.clientName}' address='${parsed.clientAddress}' " +
@@ -204,7 +207,7 @@ class RunForemanAgentUseCase(
             )
             return null
         }
-        val rejectionReasons = voiceInvoiceDraftRejectionReasons(parsed)
+        val rejectionReasons = voiceInvoiceDraftRejectionReasons(parsed) + voiceInvoicePlanRejectionReasons(plan)
         if (rejectionReasons.isNotEmpty()) {
             AppLogger.d(
                 "VoiceInvoicePipeline",
@@ -250,10 +253,10 @@ class RunForemanAgentUseCase(
         val rawDescriptions = parsed.items.map { it.description.value }
         val polishedDescriptions = polishLineItemDescriptions(rawDescriptions)
         return UpdateDraftInvoiceArgs(
-            clientName = NaturalLanguage(parsed.clientName),
-            clientAddress = parsed.clientAddress.takeIf { it.isNotBlank() }?.let(::NaturalLanguage),
-            taxRate = parsed.taxRatePercent,
-            deposit = parsed.depositAmount,
+            clientName = plan.clientName?.let(::NaturalLanguage),
+            clientAddress = plan.clientAddress?.takeIf { it.isNotBlank() }?.let(::NaturalLanguage),
+            taxRate = plan.taxRatePercent,
+            deposit = plan.depositAmount,
             lineItems = parsed.items.mapIndexed { index, item ->
                 DraftLineItemInput(
                     description = NaturalLanguage(
@@ -268,6 +271,62 @@ class RunForemanAgentUseCase(
             replaceLineItems = true
         )
     }
+
+    private fun voiceInvoicePlanRejectionReasons(
+        plan: com.fordham.toolbelt.domain.model.VoiceInvoiceApplicationPlan
+    ): List<String> = buildList {
+        if (plan.requiresFollowUp) add("PLAN_REQUIRES_FOLLOW_UP")
+        if (plan.pendingLineItems.isEmpty()) add("PLAN_HAS_NO_LINE_ITEMS")
+    }
+
+    private fun com.fordham.toolbelt.domain.model.VoiceInvoiceApplicationPlan.toUpdateDraftInvoiceArgs(
+        replaceLineItems: Boolean
+    ): UpdateDraftInvoiceArgs = UpdateDraftInvoiceArgs(
+        clientName = clientName?.let(::NaturalLanguage),
+        clientAddress = clientAddress?.takeIf { it.isNotBlank() }?.let(::NaturalLanguage),
+        taxRate = taxRatePercent,
+        deposit = depositAmount,
+        lineItems = pendingLineItems.map { item ->
+            DraftLineItemInput(
+                description = NaturalLanguage(item.description.value),
+                amount = item.amount.value,
+                category = NaturalLanguage(item.category),
+                quantity = item.quantity,
+                unitPrice = item.unitPrice?.value
+            )
+        },
+        replaceLineItems = replaceLineItems
+    )
+
+    private suspend fun runVoiceInvoiceFastPath(
+        session: ForemanSession,
+        command: String,
+        arguments: UpdateDraftInvoiceArgs,
+        timestamp: TimestampMillis
+    ): ForemanAgentRun {
+        val quickClientArgs = if (isExplicitNewClientCommand(command)) {
+            arguments.toQuickClientAndInvoiceArgsOrNull()
+        } else {
+            null
+        }
+        return if (quickClientArgs != null) {
+            runMacroFastPath(session, ToolName.QuickClientAndInvoice, quickClientArgs, timestamp)
+        } else {
+            runMacroFastPath(session, ToolName.UpdateDraftInvoice, arguments, timestamp)
+        }
+    }
+
+    private fun UpdateDraftInvoiceArgs.toQuickClientAndInvoiceArgsOrNull(): QuickClientAndInvoiceArgs? {
+        val name = clientName ?: return null
+        return QuickClientAndInvoiceArgs(
+            clientName = name,
+            clientAddress = clientAddress ?: NaturalLanguage(""),
+            lineItems = lineItems
+        )
+    }
+
+    private fun isExplicitNewClientCommand(command: String): Boolean =
+        ExplicitNewClientPattern.containsMatchIn(command)
 
     private fun isRiskyDeterministicDescription(description: String): Boolean {
         val normalized = description.lowercase()
@@ -959,6 +1018,9 @@ class RunForemanAgentUseCase(
         )
         val RiskyDeterministicDescriptionPattern = Regex(
             """(?i)(?:\bfixer\b|\bhard it off\b|\bla\b|\bdeer\b|\bbreak dollar\b|\bdollar deposit\b|\b(?:and|for|at|a)$|^(?:and|for|at)\b)"""
+        )
+        val ExplicitNewClientPattern = Regex(
+            """(?i)\b(?:new client|add client|create client|nuevo cliente|agrega cliente|anade cliente|añade cliente)\b"""
         )
     }
 }

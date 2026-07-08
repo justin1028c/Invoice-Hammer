@@ -13,9 +13,9 @@ class ValidateVoiceInvoiceResultUseCase {
         val normalizedItems = input.items.mapNotNull { item ->
             val quantity = item.quantity?.takeIf { it > 0.0 } ?: 1.0
             val normalizedUnitPrice = item.unitPrice?.value?.coerceAtLeast(0.0)
-                ?: if (quantity == 1.0) item.amount.value.coerceAtLeast(0.0) else null
+                ?: (item.amount.value.coerceAtLeast(0.0) / quantity)
             val normalizedAmount = when {
-                normalizedUnitPrice != null -> normalizedUnitPrice * quantity
+                item.unitPrice != null -> normalizedUnitPrice * quantity
                 else -> item.amount.value.coerceAtLeast(0.0)
             }
             if (normalizedAmount <= 0.0) {
@@ -35,7 +35,10 @@ class ValidateVoiceInvoiceResultUseCase {
         }
 
         val splitClient = splitAddressFromClientName(input.clientName.trim(), input.clientAddress.trim())
-        val normalizedClientName = splitClient.name
+        val normalizedClientName = chooseClientName(
+            parsedName = splitClient.name,
+            evidenceName = evidence?.clientNameCandidate.orEmpty()
+        )
         val normalizedClientAddress = splitClient.address
         splitClient.issue?.let { issue ->
             if (issue !in issues) issues += issue
@@ -83,6 +86,24 @@ class ValidateVoiceInvoiceResultUseCase {
             else -> extractedAddress
         }
         return ClientFields(cleanName, cleanAddress, "CLIENT_NAME_CONTAINED_ADDRESS")
+    }
+
+    private fun chooseClientName(parsedName: String, evidenceName: String): String {
+        val parsed = parsedName.trim()
+        val evidence = evidenceName.trim()
+        if (evidence.isBlank()) return parsed
+        if (parsed.isBlank()) return evidence
+
+        val parsedLower = parsed.lowercase()
+        val evidenceLower = evidence.lowercase()
+        if (parsedLower == evidenceLower) return parsed
+        if (parsedLower.startsWith("$evidenceLower ")) {
+            val remainder = parsedLower.removePrefix(evidenceLower).trim()
+            if (remainder in ClientNameContaminationWords || ClientNameContaminationPattern.containsMatchIn(remainder)) {
+                return evidence
+            }
+        }
+        return parsed
     }
 
     private fun addressesLookRelated(left: String, right: String): Boolean {
@@ -145,6 +166,10 @@ class ValidateVoiceInvoiceResultUseCase {
             "street", "avenue", "road", "drive", "court", "lane", "way", "place", "circle",
             "boulevard", "terrace", "trail", "parkway", "st", "ave", "rd", "dr", "ct",
             "ln", "pl", "cir", "blvd", "ter", "trl", "pkwy", "georgia"
+        )
+        val ClientNameContaminationWords = setOf("in", "at", "on", "for", "client", "customer")
+        val ClientNameContaminationPattern = Regex(
+            """(?i)\b(?:street|st|road|rd|avenue|ave|court|ct|drive|dr|lane|ln|boulevard|blvd|way|place|pl|circle|cir|georgia|ga|\d{3,})\b"""
         )
     }
 

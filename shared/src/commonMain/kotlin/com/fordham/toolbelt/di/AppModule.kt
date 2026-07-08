@@ -86,7 +86,7 @@ val dataModule = module {
     single<StripePaymentBackendClient> {
         val config = get<StripeConfig>()
         if (config.isBackendConfigured) {
-            KtorStripePaymentBackendClient(get(), config)
+            KtorStripePaymentBackendClient(get(), config, get())
         } else {
             DisabledStripePaymentBackendClient()
         }
@@ -164,9 +164,10 @@ val useCaseModule = module {
     factory { SaveBusinessLogoUseCase(get(), get()) }
     factory { ParseVoiceInvoiceDeterministicallyUseCase() }
     factory { ValidateVoiceInvoiceResultUseCase() }
+    factory { NormalizeVoiceInvoiceLineItemsUseCase() }
     factory { BuildVoiceInvoiceApplicationPlanUseCase() }
     factory { PolishLineItemDescriptionsUseCase(get()) }
-    factory { ProcessInvoiceAiUseCase(get(), get(), get(), get()) }
+    factory { ProcessInvoiceAiUseCase(get(), get(), get(), get(), get()) }
     factory { BillLaborUseCase(get()) }
     factory { GenerateAndSaveInvoiceUseCase(get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { GetProfitGuardianStatusUseCase(get(), get(), get()) }
@@ -208,6 +209,8 @@ val useCaseModule = module {
              parseVoiceInvoiceDeterministically = get(),
              validateVoiceInvoiceResult = get(),
              polishLineItemDescriptions = get(),
+             normalizeVoiceInvoiceLineItems = get(),
+             buildVoiceInvoiceApplicationPlan = get(),
              processInvoiceAi = get()
          )
      }

@@ -99,3 +99,6 @@
 
 # Suppress warnings from missing Protobuf classes in Google MediaPipe Tasks SDK
 -dontwarn com.google.protobuf.**
+
+# Preserve BuildConfig fields for reflection in AndroidSecretProvider
+-keep class com.fordham.toolbelt.BuildConfig { *; }

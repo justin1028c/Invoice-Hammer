@@ -1,9 +1,11 @@
 package com.fordham.toolbelt.data.remote
 
 import kotlinx.serialization.Serializable
+import com.fordham.toolbelt.util.randomUUID
 
 @Serializable
 data class StripeCreatePaymentIntentRequest(
+    val operationId: String = randomUUID(),
     val amountCents: Long,
     val currency: String = "usd",
     val invoiceId: String,
@@ -11,8 +13,7 @@ data class StripeCreatePaymentIntentRequest(
     val clientName: String,
     val requestType: String,
     /** google_pay | apple_pay | card_link — selects Stripe payment method profile on backend */
-    val paymentProvider: String,
-    val applicationFeeBps: Int
+    val paymentProvider: String
 )
 
 @Serializable
